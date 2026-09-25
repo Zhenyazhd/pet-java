@@ -23,3 +23,9 @@ app:
     secret-key: ${S3_SECRET_KEY:local}
     bucket: ${S3_BUCKET:job-search-cvs}
     path-style-access: ${S3_PATH_STYLE:true}
+  open-router:
+    api-key: ${OPENROUTER_API_KEY:}
+    base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
+    model: ${OPENROUTER_MODEL:openai/gpt-4o-mini}
+    site-url: ${OPENROUTER_SITE_URL:http://localhost:5173}
+    site-name: ${OPENROUTER_SITE_NAME:Job Search}

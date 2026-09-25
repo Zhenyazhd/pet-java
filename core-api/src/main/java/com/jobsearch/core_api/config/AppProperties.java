@@ -7,6 +7,7 @@ public class AppProperties {
 
 	private long currentUserId = 1L;
 	private final S3 s3 = new S3();
+	private final OpenRouter openRouter = new OpenRouter();
 
 	public long getCurrentUserId() {
 		return currentUserId;
@@ -18,6 +19,58 @@ public class AppProperties {
 
 	public S3 getS3() {
 		return s3;
+	}
+
+	public OpenRouter getOpenRouter() {
+		return openRouter;
+	}
+
+	public static class OpenRouter {
+		private String apiKey = "";
+		private String baseUrl = "https://openrouter.ai/api/v1";
+		private String model = "openai/gpt-4o-mini";
+		private String siteUrl = "http://localhost:5173";
+		private String siteName = "Job Search";
+
+		public String getApiKey() {
+			return apiKey;
+		}
+
+		public void setApiKey(String apiKey) {
+			this.apiKey = apiKey;
+		}
+
+		public String getBaseUrl() {
+			return baseUrl;
+		}
+
+		public void setBaseUrl(String baseUrl) {
+			this.baseUrl = baseUrl;
+		}
+
+		public String getModel() {
+			return model;
+		}
+
+		public void setModel(String model) {
+			this.model = model;
+		}
+
+		public String getSiteUrl() {
+			return siteUrl;
+		}
+
+		public void setSiteUrl(String siteUrl) {
+			this.siteUrl = siteUrl;
+		}
+
+		public String getSiteName() {
+			return siteName;
+		}
+
+		public void setSiteName(String siteName) {
+			this.siteName = siteName;
+		}
 	}
 
 	public static class S3 {

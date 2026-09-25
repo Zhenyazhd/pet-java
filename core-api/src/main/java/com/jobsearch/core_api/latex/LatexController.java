@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/** Raw LaTeX → PDF compile endpoint (used by the free-form editor). */
 @RestController
 @RequestMapping("/api/latex")
 public class LatexController {

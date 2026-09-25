@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+/** CV file upload/download and linking versions to vacancies. */
 @RestController
 @RequestMapping("/api")
 public class CvController {

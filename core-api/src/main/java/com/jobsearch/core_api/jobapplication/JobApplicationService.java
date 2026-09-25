@@ -9,12 +9,17 @@ import com.jobsearch.core_api.vacancy.Vacancy;
 import com.jobsearch.core_api.vacancy.VacancyRepository;
 import java.time.Instant;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** Tracks application status per vacancy (one application per vacancy). */
 @Service
 @Transactional
 public class JobApplicationService {
+
+	private static final Logger log = LoggerFactory.getLogger(JobApplicationService.class);
 
 	private final JobApplicationRepository jobApplicationRepository;
 	private final VacancyRepository vacancyRepository;
@@ -50,13 +55,16 @@ public class JobApplicationService {
 		application.setNotes(blankToNull(request.notes()));
 		vacancy.setApplication(application);
 
-		return toResponse(jobApplicationRepository.save(application));
+		JobApplication saved = jobApplicationRepository.save(application);
+		log.info("Created application id={} vacancyId={} status={}", saved.getId(), request.vacancyId(), saved.getStatus());
+		return toResponse(saved);
 	}
 
 	public JobApplicationResponse update(Long id, JobApplicationUpdateRequest request) {
 		JobApplication application = getApplication(id);
 		applyStatus(application, request.status());
 		application.setNotes(blankToNull(request.notes()));
+		log.info("Updated application id={} status={}", id, application.getStatus());
 		return toResponse(application);
 	}
 
@@ -67,6 +75,7 @@ public class JobApplicationService {
 			vacancy.setApplication(null);
 		}
 		jobApplicationRepository.delete(application);
+		log.info("Deleted application id={}", id);
 	}
 
 	private JobApplication getApplication(Long id) {

@@ -16,6 +16,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+/**
+ * Compiles LaTeX to PDF via native tectonic when available,
+ * otherwise falls back to Docker (slower on Apple Silicon).
+ */
 @Service
 public class LatexCompileService {
 
@@ -41,7 +45,9 @@ public class LatexCompileService {
 			if (!Files.exists(pdf)) {
 				throw new IllegalStateException("Compiler finished but PDF was not produced.\n" + trimLog(result.log()));
 			}
-			return Files.readAllBytes(pdf);
+			byte[] bytes = Files.readAllBytes(pdf);
+			log.info("LaTeX compile succeeded pdfBytes={}", bytes.length);
+			return bytes;
 		}
 		catch (IOException ex) {
 			throw new IllegalStateException("Failed to prepare LaTeX compilation workspace", ex);

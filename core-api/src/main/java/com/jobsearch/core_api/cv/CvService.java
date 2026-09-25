@@ -15,6 +15,8 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -23,9 +25,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+/** CV file versions in S3 and sendings linked to vacancies. */
 @Service
 @Transactional
 public class CvService {
+
+	private static final Logger log = LoggerFactory.getLogger(CvService.class);
 
 	private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
 			".pdf",
@@ -80,7 +85,9 @@ public class CvService {
 		version.setContentType(resolveContentType(file));
 		version.setStorageKey(stored.storageKey());
 		version.setSizeBytes(stored.sizeBytes());
-		return toVersionResponse(cvVersionRepository.save(version));
+		CvVersion saved = cvVersionRepository.save(version);
+		log.info("Uploaded CV version id={} label={}", saved.getId(), saved.getLabel());
+		return toVersionResponse(saved);
 	}
 
 	@Transactional(readOnly = true)
@@ -102,6 +109,7 @@ public class CvService {
 		}
 		objectStorageService.delete(version.getStorageKey());
 		cvVersionRepository.delete(version);
+		log.info("Deleted CV version id={}", cvVersionId);
 	}
 
 	public ApplicationCvResponse sendToVacancy(Long vacancyId, SendCvRequest request) {
@@ -118,7 +126,9 @@ public class CvService {
 		jobApplicationRepository.findByVacancyId(vacancyId)
 				.ifPresent(application -> sending.setJobApplicationId(application.getId()));
 
-		return toSendingResponse(applicationCvRepository.save(sending));
+		ApplicationCv saved = applicationCvRepository.save(sending);
+		log.info("Sent CV versionId={} to vacancyId={} sendingId={}", version.getId(), vacancyId, saved.getId());
+		return toSendingResponse(saved);
 	}
 
 	@Transactional(readOnly = true)
