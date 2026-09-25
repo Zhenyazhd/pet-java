@@ -1,4 +1,5 @@
 import type { ExperienceItem, ResumeDocument, ResumeSection, Selection } from '../types/resume'
+import { resolveLocale } from './resumeLocale'
 
 export function applyProposed(
   resume: ResumeDocument,
@@ -50,7 +51,11 @@ export function applyAiProposed(
   proposed: unknown,
 ): ResumeDocument {
   if (section === 'all') {
-    return proposed as ResumeDocument
+    const next = proposed as ResumeDocument
+    return {
+      ...next,
+      locale: resolveLocale(next.locale ?? resume.locale),
+    }
   }
   return applyProposed(
     resume,

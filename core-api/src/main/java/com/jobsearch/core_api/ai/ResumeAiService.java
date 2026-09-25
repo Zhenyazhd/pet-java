@@ -35,6 +35,19 @@ public class ResumeAiService {
 			"skills"
 	);
 
+	private static final Set<String> ALLOWED_MODELS = Set.of(
+			"openai/gpt-4o-mini",
+			"openai/gpt-4o",
+			"openai/gpt-4.1-mini",
+			"openai/gpt-4.1",
+			"openai/gpt-5-nano",
+			"openai/gpt-5-mini",
+			"openai/gpt-5",
+			"anthropic/claude-sonnet-4",
+			"google/gemini-2.5-flash",
+			"deepseek/deepseek-chat"
+	);
+
 	private static final Set<String> INDEXABLE = Set.of(
 			"experience",
 			"education",
@@ -121,9 +134,10 @@ public class ResumeAiService {
 				: (itemIndex == null ? section : section + "[" + itemIndex + "]");
 
 		log.info(
-				"AI suggest section={} itemIndex={} hasCareerPath={} hasVacancy={} historyTurns={}",
+				"AI suggest section={} itemIndex={} model={} hasCareerPath={} hasVacancy={} historyTurns={}",
 				scope,
 				itemIndex,
+				resolveModel(request.model()),
 				hasCareerPath,
 				hasVacancy,
 				request.history() == null ? 0 : request.history().size()
@@ -204,7 +218,7 @@ public class ResumeAiService {
 				request.instruction().strip()
 		);
 
-		String content = openRouterClient.chat(SYSTEM, userPrompt);
+		String content = openRouterClient.chat(SYSTEM, userPrompt, resolveModel(request.model()));
 		JsonNode parsed = objectMapper.readTree(content);
 		String message = parsed.path("message").asString("").strip();
 		if (message.isBlank()) {
@@ -219,6 +233,19 @@ public class ResumeAiService {
 
 		log.info("AI suggest done section={} hasProposed={}", scope, proposed != null);
 		return new SuggestResponse(wholeResume ? SCOPE_ALL : section, itemIndex, message, proposed);
+	}
+
+	private String resolveModel(String requested) {
+		if (requested == null || requested.isBlank()) {
+			return null; // OpenRouterClient uses configured default
+		}
+		String model = requested.strip();
+		if (!ALLOWED_MODELS.contains(model)) {
+			throw new IllegalArgumentException(
+					"Unsupported model '" + model + "'. Allowed: " + ALLOWED_MODELS
+			);
+		}
+		return model;
 	}
 
 	private JsonNode sectionValue(ResumeDocument resume, String section, Integer itemIndex) {

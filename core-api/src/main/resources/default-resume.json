@@ -88,5 +88,6 @@
     { "category": "DevOps", "items": "Git, GitHub, GitHub Actions, CI/CD, Docker, Linux" },
     { "category": "Bases de données", "items": "PostgreSQL, SQL, MongoDB, Redis, Firebase / Firestore" },
     { "category": "Langues", "items": "français et anglais professionnels | russe langue maternelle" }
-  ]
+  ],
+  "locale": "fr"
 }

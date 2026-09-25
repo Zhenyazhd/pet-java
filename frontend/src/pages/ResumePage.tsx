@@ -26,6 +26,22 @@ export function ResumePage() {
         lead="Edit the sheet by hand or chat with AI. Click a block to focus the chat; click empty sheet space for the full resume."
         actions={
           <>
+            <div className="locale-switch" role="group" aria-label="Resume language">
+              <button
+                type="button"
+                className={`locale-switch__btn ${editor.resume.locale === 'fr' ? 'locale-switch__btn--active' : ''}`}
+                onClick={() => editor.setLocale('fr')}
+              >
+                FR
+              </button>
+              <button
+                type="button"
+                className={`locale-switch__btn ${editor.resume.locale === 'en' ? 'locale-switch__btn--active' : ''}`}
+                onClick={() => editor.setLocale('en')}
+              >
+                EN
+              </button>
+            </div>
             <Button
               variant="ghost"
               active={Boolean(editor.vacancyContext.trim())}
@@ -67,6 +83,8 @@ export function ResumePage() {
           draft={editor.draft}
           busy={editor.busy}
           hasVacancyContext={Boolean(editor.vacancyContext.trim())}
+          aiModel={editor.aiModel}
+          onAiModelChange={editor.setAiModel}
           onClearFocus={editor.clearFocus}
           onDraftChange={editor.setDraft}
           onSend={editor.sendChat}

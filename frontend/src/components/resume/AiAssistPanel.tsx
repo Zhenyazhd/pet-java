@@ -1,4 +1,5 @@
 import type { FormEvent } from 'react'
+import { AI_MODELS } from '../../lib/aiModels'
 import { formatProposed } from '../../lib/resumeEdits'
 import { focusLabel } from '../../lib/resumeFocus'
 import type { ResumeDocument, Selection } from '../../types/resume'
@@ -21,6 +22,8 @@ type AiAssistPanelProps = {
   draft: string
   busy: boolean
   hasVacancyContext: boolean
+  aiModel: string
+  onAiModelChange: (model: string) => void
   onClearFocus: () => void
   onDraftChange: (value: string) => void
   onSend: (e: FormEvent) => void
@@ -34,6 +37,8 @@ export function AiAssistPanel({
   draft,
   busy,
   hasVacancyContext,
+  aiModel,
+  onAiModelChange,
   onClearFocus,
   onDraftChange,
   onSend,
@@ -52,6 +57,23 @@ export function AiAssistPanel({
           </Button>
         )}
       </div>
+
+      <label className="cv-assist__model">
+        <span className="cv-assist__model-label">Model</span>
+        <select
+          value={aiModel}
+          onChange={(e) => onAiModelChange(e.target.value)}
+          disabled={busy}
+          aria-label="AI model"
+        >
+          {AI_MODELS.map((model) => (
+            <option key={model.id} value={model.id}>
+              {model.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
       <p className="cv-assist__hint">
         One chat for this page
         {hasVacancyContext ? ', with vacancy context' : ''}. Click a block to narrow focus; click empty

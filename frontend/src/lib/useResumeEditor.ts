@@ -1,8 +1,10 @@
 import { FormEvent, useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import type { ChatItem } from '../components/resume/AiAssistPanel'
+import { readAiModel, writeAiModel } from './aiModels'
 import { clearResumeDraft, readResumeDraft, writeResumeDraft } from './resumeDraft'
 import { applyAiProposed } from './resumeEdits'
+import { resolveLocale } from './resumeLocale'
 import type {
   ResumeDocument,
   ResumeSection,
@@ -13,6 +15,10 @@ import type {
 
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback
+}
+
+function normalizeResume(data: ResumeDocument): ResumeDocument {
+  return { ...data, locale: resolveLocale(data.locale) }
 }
 
 export function useResumeEditor() {
@@ -28,6 +34,7 @@ export function useResumeEditor() {
   const [vacancyContext, setVacancyContext] = useState('')
   const [contextOpen, setContextOpen] = useState(false)
   const [contextDraft, setContextDraft] = useState('')
+  const [aiModel, setAiModelState] = useState(readAiModel)
   /** Unsaved edits relative to last server sync — drives localStorage draft. */
   const dirtyRef = useRef(false)
 
@@ -40,11 +47,11 @@ export function useResumeEditor() {
         const cached = readResumeDraft()
         if (cached) {
           dirtyRef.current = true
-          setResume(cached)
+          setResume(normalizeResume(cached))
           setStatus('Restored unsaved draft')
         } else {
           dirtyRef.current = false
-          setResume(data)
+          setResume(normalizeResume(data))
         }
       } catch (err) {
         if (!cancelled) setError(errorMessage(err, 'Failed to load resume'))
@@ -65,6 +72,11 @@ export function useResumeEditor() {
       if (pdfUrl) URL.revokeObjectURL(pdfUrl)
     }
   }, [pdfUrl])
+
+  function setAiModel(model: string) {
+    setAiModelState(model)
+    writeAiModel(model)
+  }
 
   function markDirty() {
     dirtyRef.current = true
@@ -97,7 +109,7 @@ export function useResumeEditor() {
     setError(null)
     try {
       const saved = await api.saveResume(resume)
-      setResume(saved)
+      setResume(normalizeResume(saved))
       markSynced()
       setStatus('Saved')
     } catch (err) {
@@ -157,6 +169,7 @@ export function useResumeEditor() {
         itemIndex,
         history,
         vacancyContext,
+        aiModel,
       )
       setChat((items) => [
         ...items,
@@ -180,6 +193,10 @@ export function useResumeEditor() {
     markDirty()
     setResume(applyAiProposed(resume, item.section, item.itemIndex, item.proposed))
     setStatus('AI edit applied — remember to Save')
+  }
+
+  function setLocale(locale: 'fr' | 'en') {
+    patch((r) => ({ ...r, locale }))
   }
 
   function openContextModal() {
@@ -206,7 +223,7 @@ export function useResumeEditor() {
     setError(null)
     try {
       const data = await api.getResume()
-      setResume(data)
+      setResume(normalizeResume(data))
       setStatus('Vacancy context updated — draft and chat cleared')
     } catch (err) {
       setError(errorMessage(err, 'Failed to reload resume'))
@@ -228,6 +245,9 @@ export function useResumeEditor() {
     contextOpen,
     contextDraft,
     setContextDraft,
+    aiModel,
+    setAiModel,
+    setLocale,
     select,
     clearFocus,
     patch,

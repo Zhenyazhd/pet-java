@@ -204,6 +204,7 @@ h1 {
 
 .header-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.65rem;
   align-items: center;
   flex-shrink: 0;
@@ -632,6 +633,42 @@ h1 {
   white-space: nowrap;
 }
 
+.cv-assist__model {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.cv-assist__model-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cv-assist__model select {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.88rem;
+  padding: 0.35rem 0 0.45rem;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.cv-assist__model select:focus {
+  outline: none;
+  border-bottom-color: var(--ink);
+}
+
+.cv-assist__model select:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .cv-assist__hint,
 .cv-assist__empty {
   margin: 0;
@@ -733,6 +770,32 @@ h1 {
   font-size: 0.82rem;
   color: var(--muted);
   letter-spacing: 0.02em;
+}
+
+.locale-switch {
+  display: inline-flex;
+  border-bottom: 1px solid var(--line-strong);
+  gap: 0;
+}
+
+.locale-switch__btn {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.55rem;
+  cursor: pointer;
+}
+
+.locale-switch__btn--active {
+  color: var(--ink);
+}
+
+.locale-switch__btn:hover {
+  color: var(--ink);
 }
 
 .button--active {

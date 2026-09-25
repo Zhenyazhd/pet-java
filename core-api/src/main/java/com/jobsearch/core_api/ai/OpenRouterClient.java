@@ -38,8 +38,10 @@ public class OpenRouterClient {
 	/**
 	 * Sends system+user prompts and returns the assistant message content.
 	 * Expects JSON-mode output from the model.
+	 *
+	 * @param modelOverride OpenRouter model id, or null/blank to use configured default
 	 */
-	public String chat(String systemPrompt, String userPrompt) {
+	public String chat(String systemPrompt, String userPrompt, String modelOverride) {
 		AppProperties.OpenRouter cfg = appProperties.getOpenRouter();
 		if (cfg.getApiKey() == null || cfg.getApiKey().isBlank()) {
 			throw new IllegalStateException(
@@ -47,10 +49,14 @@ public class OpenRouterClient {
 			);
 		}
 
-		log.info("OpenRouter chat request model={} userPromptChars={}", cfg.getModel(), userPrompt.length());
+		String model = (modelOverride != null && !modelOverride.isBlank())
+				? modelOverride.strip()
+				: cfg.getModel();
+
+		log.info("OpenRouter chat request model={} userPromptChars={}", model, userPrompt.length());
 
 		ChatRequest body = new ChatRequest(
-				cfg.getModel(),
+				model,
 				List.of(
 						new ChatMessage("system", systemPrompt),
 						new ChatMessage("user", userPrompt)

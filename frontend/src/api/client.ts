@@ -54,6 +54,7 @@ export const api = {
     itemIndex?: number,
     history?: ChatTurn[],
     vacancyContext?: string,
+    model?: string,
   ): Promise<SuggestResponse> => {
     const response = await fetch('/api/ai/resume/suggest', {
       method: 'POST',
@@ -64,6 +65,7 @@ export const api = {
         ...(itemIndex === undefined ? {} : { itemIndex }),
         ...(history && history.length > 0 ? { history } : {}),
         ...(vacancyContext?.trim() ? { vacancyContext: vacancyContext.trim() } : {}),
+        ...(model?.trim() ? { model: model.trim() } : {}),
       }),
     })
     if (!response.ok) throw new Error(await readErrorMessage(response))

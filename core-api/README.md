@@ -187,6 +187,7 @@ Structured document (not raw `.tex`):
 | `itemIndex` | int | no | list index (for experience / education / achievements / skills) |
 | `history` | `{role, content}[]` | no | recent chat turns |
 | `vacancyContext` | string | no | vacancy text from the UI (Add context) — wording targeting |
+| `model` | string | no | OpenRouter model id (allowlisted); default from `OPENROUTER_MODEL` |
 
 **Response (`SuggestResponse`):**
 

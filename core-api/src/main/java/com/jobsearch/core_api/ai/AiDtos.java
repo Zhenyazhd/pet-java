@@ -21,7 +21,9 @@ public final class AiDtos {
 			Integer itemIndex,
 			List<ChatTurn> history,
 			/** Pasted vacancy / job description used to tailor suggestions. Optional. */
-			String vacancyContext
+			String vacancyContext,
+			/** OpenRouter model id; falls back to app.open-router.model when blank. */
+			String model
 	) {
 		// section: "all" = full resume focus; otherwise a resume section name
 	}

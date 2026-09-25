@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 public class ResumeLatexRenderer {
 
 	public String render(ResumeDocument r) {
+		SectionTitles titles = SectionTitles.forLocale(r.locale());
 		StringBuilder sb = new StringBuilder(8_000);
 		sb.append("""
 				\\documentclass[10pt]{extarticle}
@@ -75,9 +76,10 @@ public class ResumeLatexRenderer {
 				.append(esc(r.linkedinLabel())).append("}\n");
 		sb.append("    }\n\\end{center}\n\\vspace{-9pt}\n\n");
 
-		sb.append("\\section{Profil}\n\n").append(esc(r.profile())).append("\n\n");
+		sb.append("\\section{").append(esc(titles.profile())).append("}\n\n")
+				.append(esc(r.profile())).append("\n\n");
 
-		sb.append("\\section{Expérience professionnelle}\n\n");
+		sb.append("\\section{").append(esc(titles.experience())).append("}\n\n");
 		for (ExperienceItem job : r.experience()) {
 			sb.append("\\role{").append(esc(job.title())).append("}{")
 					.append(esc(job.subtitle())).append("}{")
@@ -89,7 +91,7 @@ public class ResumeLatexRenderer {
 			sb.append("\\end{tightlist}\n\n");
 		}
 
-		sb.append("\\section{Education}\n\n");
+		sb.append("\\section{").append(esc(titles.education())).append("}\n\n");
 		for (EducationItem edu : r.education()) {
 			sb.append("\\edu{").append(esc(edu.title())).append("}{")
 					.append(esc(edu.subtitle())).append("}{")
@@ -99,20 +101,47 @@ public class ResumeLatexRenderer {
 			}
 		}
 
-		sb.append("\\section{Réalisations}\n\n\\begin{tightlist}\n");
+		sb.append("\\section{").append(esc(titles.achievements())).append("}\n\n\\begin{tightlist}\n");
 		for (AchievementItem a : r.achievements()) {
 			sb.append("\\item \\textbf{").append(esc(a.title())).append(" :} ")
 					.append(esc(a.text())).append("\n");
 		}
 		sb.append("\\end{tightlist}\n\n");
 
-		sb.append("\\section{Compétences}\n\n\\begin{tightlist}\n");
+		sb.append("\\section{").append(esc(titles.skills())).append("}\n\n\\begin{tightlist}\n");
 		for (SkillItem s : r.skills()) {
 			sb.append("    \\item[] \\textbf{").append(esc(s.category())).append(" :} ")
 					.append(esc(s.items())).append("\n\n");
 		}
 		sb.append("\\end{tightlist}\n\\end{document}\n");
 		return sb.toString();
+	}
+
+	private record SectionTitles(
+			String profile,
+			String experience,
+			String education,
+			String achievements,
+			String skills
+	) {
+		static SectionTitles forLocale(String locale) {
+			if (locale != null && locale.strip().equalsIgnoreCase("en")) {
+				return new SectionTitles(
+						"Profile",
+						"Professional Experience",
+						"Education",
+						"Achievements",
+						"Skills"
+				);
+			}
+			return new SectionTitles(
+					"Profil",
+					"Expérience professionnelle",
+					"Education",
+					"Réalisations",
+					"Compétences"
+			);
+		}
 	}
 
 	private static String phoneLatex(String phone) {

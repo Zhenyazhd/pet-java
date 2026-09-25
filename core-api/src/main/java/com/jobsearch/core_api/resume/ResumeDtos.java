@@ -21,7 +21,9 @@ public final class ResumeDtos {
 			@NotNull List<@Valid ExperienceItem> experience,
 			@NotNull List<@Valid EducationItem> education,
 			@NotNull List<@Valid AchievementItem> achievements,
-			@NotNull List<@Valid SkillItem> skills
+			@NotNull List<@Valid SkillItem> skills,
+			/** Section heading language: "fr" or "en". Null/blank → fr. */
+			String locale
 	) {
 	}
 

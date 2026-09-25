@@ -34,6 +34,8 @@ export type ResumeDocument = {
   education: EducationItem[]
   achievements: AchievementItem[]
   skills: SkillItem[]
+  /** Section heading language on the sheet / PDF. */
+  locale: 'fr' | 'en'
 }
 
 export type ResumeSection =

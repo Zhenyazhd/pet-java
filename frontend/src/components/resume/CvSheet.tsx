@@ -1,5 +1,6 @@
 import { removeAt, setAt, updateAt } from '../../lib/list'
 import { isSelected } from '../../lib/resumeFocus'
+import { resolveLocale, SECTION_TITLES } from '../../lib/resumeLocale'
 import type { ResumeDocument, ResumeSection, Selection } from '../../types/resume'
 import { CvField } from './CvField'
 import { CvSection } from './CvSection'
@@ -13,6 +14,8 @@ type CvSheetProps = {
 }
 
 export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: CvSheetProps) {
+  const titles = SECTION_TITLES[resolveLocale(resume.locale)]
+
   return (
     <article className="cv-sheet" onClick={onClearFocus}>
       <div
@@ -47,7 +50,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
       </div>
 
       <CvSection
-        title="Profil"
+        title={titles.profile}
         active={isSelected(selected, 'profile')}
         onSelect={(e) => onSelect('profile', undefined, e)}
       >
@@ -60,7 +63,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
       </CvSection>
 
       <div className="cv-section">
-        <h2 className="cv-section__title">Expérience professionnelle</h2>
+        <h2 className="cv-section__title">{titles.experience}</h2>
         {resume.experience.map((job, index) => (
           <div
             key={index}
@@ -177,7 +180,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
       </div>
 
       <CvSection
-        title="Education"
+        title={titles.education}
         active={isSelected(selected, 'education')}
         onSelect={(e) => onSelect('education', undefined, e)}
       >
@@ -247,7 +250,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
       </CvSection>
 
       <CvSection
-        title="Réalisations"
+        title={titles.achievements}
         active={isSelected(selected, 'achievements')}
         onSelect={(e) => onSelect('achievements', undefined, e)}
       >
@@ -310,7 +313,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
       </CvSection>
 
       <CvSection
-        title="Compétences"
+        title={titles.skills}
         active={isSelected(selected, 'skills')}
         onSelect={(e) => onSelect('skills', undefined, e)}
       >
