@@ -22,6 +22,18 @@ public class ApiExceptionHandler {
 		return ResponseEntity.badRequest().body(errorBody(HttpStatus.BAD_REQUEST, "Validation failed", fields));
 	}
 
+	@ExceptionHandler(IllegalArgumentException.class)
+	public ResponseEntity<Map<String, Object>> handleBadRequest(IllegalArgumentException ex) {
+		return ResponseEntity.badRequest()
+				.body(errorBody(HttpStatus.BAD_REQUEST, ex.getMessage(), null));
+	}
+
+	@ExceptionHandler(IllegalStateException.class)
+	public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException ex) {
+		return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+				.body(errorBody(HttpStatus.BAD_GATEWAY, ex.getMessage(), null));
+	}
+
 	@ExceptionHandler(NotFoundException.class)
 	public ResponseEntity<Map<String, Object>> handleNotFound(NotFoundException ex) {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
