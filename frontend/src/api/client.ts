@@ -1,3 +1,10 @@
+import type {
+  ChatTurn,
+  ResumeDocument,
+  AiScope,
+  SuggestResponse,
+} from '../types/resume'
+
 async function readErrorMessage(response: Response): Promise<string> {
   const text = await response.text()
   let message = `Request failed (${response.status})`
@@ -12,18 +19,70 @@ async function readErrorMessage(response: Response): Promise<string> {
   return message
 }
 
+export type Profile = {
+  displayName: string
+  email: string
+  careerPath: string
+}
+
 export const api = {
-  compileLatex: async (source: string): Promise<Blob> => {
-    const response = await fetch('/api/latex/compile', {
+  getResume: async (): Promise<ResumeDocument> => {
+    const response = await fetch('/api/resume')
+    if (!response.ok) throw new Error(await readErrorMessage(response))
+    return response.json()
+  },
+
+  saveResume: async (resume: ResumeDocument): Promise<ResumeDocument> => {
+    const response = await fetch('/api/resume', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(resume),
+    })
+    if (!response.ok) throw new Error(await readErrorMessage(response))
+    return response.json()
+  },
+
+  compileResume: async (): Promise<Blob> => {
+    const response = await fetch('/api/resume/compile', { method: 'POST' })
+    if (!response.ok) throw new Error(await readErrorMessage(response))
+    return response.blob()
+  },
+
+  suggestResumeSection: async (
+    section: AiScope,
+    instruction: string,
+    itemIndex?: number,
+    history?: ChatTurn[],
+    vacancyContext?: string,
+  ): Promise<SuggestResponse> => {
+    const response = await fetch('/api/ai/resume/suggest', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ source }),
+      body: JSON.stringify({
+        section,
+        instruction,
+        ...(itemIndex === undefined ? {} : { itemIndex }),
+        ...(history && history.length > 0 ? { history } : {}),
+        ...(vacancyContext?.trim() ? { vacancyContext: vacancyContext.trim() } : {}),
+      }),
     })
+    if (!response.ok) throw new Error(await readErrorMessage(response))
+    return response.json()
+  },
 
-    if (!response.ok) {
-      throw new Error(await readErrorMessage(response))
-    }
+  getProfile: async (): Promise<Profile> => {
+    const response = await fetch('/api/profile')
+    if (!response.ok) throw new Error(await readErrorMessage(response))
+    return response.json()
+  },
 
-    return response.blob()
+  saveProfile: async (profile: Profile): Promise<Profile> => {
+    const response = await fetch('/api/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profile),
+    })
+    if (!response.ok) throw new Error(await readErrorMessage(response))
+    return response.json()
   },
 }

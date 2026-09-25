@@ -58,7 +58,7 @@ public class ResumeAiService {
 
 			Critical rules for "proposed":
 			- Default is null.
-			- Set "proposed" ONLY if the user clearly asks you to change/rewrite/improve/update the resume text,
+			- Set "proposed" ONLY if the user clearly asks you to change/rewrite/improve/update the section text,
 			  OR you are offering a concrete revision they can apply.
 			- Greetings, thanks, questions, opinions, explanations, brainstorming → proposed MUST be null.
 			- If you are not changing the content, proposed MUST be null. Never echo the current JSON as proposed.
