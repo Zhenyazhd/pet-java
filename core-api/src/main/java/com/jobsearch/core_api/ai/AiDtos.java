@@ -23,6 +23,7 @@ public final class AiDtos {
 			/** Pasted vacancy / job description used to tailor suggestions. Optional. */
 			String vacancyContext
 	) {
+		// section: "all" = full resume focus; otherwise a resume section name
 	}
 
 	public record SuggestResponse(
