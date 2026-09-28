@@ -1,0 +1,25 @@
+{
+  "name": "job-search",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Root scripts to run infra + API + UI + ATS together",
+  "scripts": {
+    "setup": "npm install && npm --prefix frontend install && pnpm --dir tools/ats-screener install",
+    "infra:up": "docker compose up -d --wait",
+    "infra:down": "docker compose down",
+    "dev:api": "cd core-api && ./mvnw spring-boot:run",
+    "dev:web": "npm --prefix frontend run dev",
+    "dev:ats": "pnpm --dir tools/ats-screener exec vite dev --host 127.0.0.1 --port 5174 --strictPort",
+    "predev": "npm run infra:up",
+    "dev": "dotenv -e .env -- concurrently -k --restart-tries 0 -n api,web,ats -c blue,green,magenta \"npm run dev:api\" \"npm run dev:web\" \"npm run dev:ats\"",
+    "dev:core": "dotenv -e .env -- concurrently -k --restart-tries 0 -n api,web -c blue,green \"npm run dev:api\" \"npm run dev:web\"",
+    "predev:core": "npm run infra:up"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "dotenv-cli": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

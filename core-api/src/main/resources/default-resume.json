@@ -1,0 +1,93 @@
+{
+  "name": "EVGENII ZHDARKIN",
+  "headline": "Software Engineer | TypeScript • Python",
+  "phone": "+33 7 53 50 70 89",
+  "email": "zhenyazhdarkin@gmail.com",
+  "linkedinUrl": "https://www.linkedin.com/in/evgenii-zhdarkin-2758b1233",
+  "linkedinLabel": "linkedin.com/in/evgenii-zhdarkin",
+  "profile": "Ingénieur logiciel avec 5+ ans d'expérience, à l'aise aussi bien sur des services backend en production que sur la modélisation de données. J'ai construit des pipelines et des modèles de données pour des systèmes où l'exactitude compte réellement - protocoles financiers en tant qu'auditeur, télémétrie d'équipements IoT en production, données de santé chez ScientificCoin.",
+  "experience": [
+    {
+      "title": "Software Developer --- Werenode",
+      "subtitle": "IoT & EV-charging startup --- selected for Ontochain 2023 & Trustchain 2024 EU research programs",
+      "dates": "Sept. 2023 -- Mars 2026",
+      "bullets": [
+        "Conception du modèle de données et de la couche d'intégration MQTT--OCPP : normalisation de données hétérogènes et incomplètes en provenance de plusieurs fournisseurs, avec contrôles de qualité avant écriture.",
+        "Développement et maintenance de services backend et d'API REST en Node.js / TypeScript, avec traitements asynchrones via RabbitMQ et intégrations avec des systèmes externes.",
+        "Refonte complète de l'application mobile en React Native, Expo et TypeScript, avec définition de son architecture, de la gestion d'état et des intégrations backend."
+      ]
+    },
+    {
+      "title": "Security Auditor --- Statemind",
+      "subtitle": "Sécurité logicielle",
+      "dates": "Mars 2026 -- Juil. 2026",
+      "bullets": [
+        "Audit de systèmes complexes en production avec analyse de la logique métier, des transitions d'état, des contrôles d'accès et des invariants. Identification de 2 vulnérabilités de sévérité moyenne créditées dans le rapport public Symbiotic Core V2."
+      ]
+    },
+    {
+      "title": "Research Intern --- ISAE-SUPAERO",
+      "subtitle": "Recherche & traitement de données",
+      "dates": "Avr. 2023 -- Août 2023",
+      "bullets": [
+        "Conception et développement en Python d'une méthodologie de benchmarking permettant de comparer deux architectures distribuées selon différents scénarios d'utilisation."
+      ]
+    },
+    {
+      "title": "Développeur logiciel --- Rock'n'Block",
+      "subtitle": "Société de développement logiciel",
+      "dates": "Août 2021 -- Juil. 2022",
+      "bullets": [
+        "Réalisation de plus de 5 projets clients de bout en bout : conception technique, développement, tests automatisés, QA et livraison."
+      ]
+    },
+    {
+      "title": "Développeur logiciel --- ScientificCoin",
+      "subtitle": "Startup technologique",
+      "dates": "Juin 2019 -- Juil. 2021",
+      "bullets": [
+        "Développement de services backend, d'API et de pipelines de traitement de données avec Python / FastAPI et Node.js.",
+        "Développement d'une interface React Native pour un dispositif d'analyse respiratoire, avec visualisation des données destinée à des utilisateurs sans contexte technique --- itération continue sur la lisibilité, pas seulement l'exactitude."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "title": "Master's, Software Engineering --- ISAE-SUPAERO",
+      "subtitle": "World's first dedicated aerospace engineering institute; Top 10 engineering school in France (DAUR ranking)",
+      "location": "France",
+      "details": "Generalist engineering program; final-year focus on Data Science & Decision-Making with Python (NumPy, pandas). Coursework: Docker/Kubernetes, PostgreSQL."
+    },
+    {
+      "title": "Mathematics and Computer Science --- Novosibirsk State University (NSU)",
+      "subtitle": "Top 5 university in Russia (Interfax National Ranking)",
+      "location": "Russia",
+      "details": "Faculty of Mechanics and Mathematics --- algebra, mathematical analysis, discrete mathematics, probability, algorithms and programming."
+    }
+  ],
+  "achievements": [
+    {
+      "title": "Modélisation quantitative",
+      "text": "simulation en Python d'un market maker automatisé basé sur le Logarithmic Market Scoring Rule (LMSR) --- identification d'un défaut structurel dans le calcul des paiements faussant la propriété de proper scoring rule."
+    },
+    {
+      "title": "Vérification formelle",
+      "text": "utilisation de Microsoft Z3 dans le cadre du travail de fin d'études, récompensé par un prix IEEE EDM."
+    },
+    {
+      "title": "Hackathons",
+      "text": "Cardano EMURGO BUILD 2023 --- 1re place ; ETHGlobal 2025."
+    }
+  ],
+  "skills": [
+    { "category": "Mobile & Frontend", "items": "React Native, Expo, React, TypeScript, JavaScript, HTML, CSS" },
+    { "category": "Backend & APIs", "items": "Node.js, Express.js, Python, FastAPI, APIs REST, Google Cloud" },
+    { "category": "Systèmes connectés", "items": "IoT, EV charging, OCPP, MQTT, WebSocket" },
+    { "category": "Architecture", "items": "architecture applicative, conception d'API, systèmes distribués, traitements asynchrones" },
+    { "category": "Qualité & sécurité", "items": "tests unitaires et d'intégration, revue de code, debugging, cybersécurité, analyse de causes racines" },
+    { "category": "DevOps", "items": "Git, GitHub, GitHub Actions, CI/CD, Docker, Linux" },
+    { "category": "Bases de données", "items": "PostgreSQL, SQL, MongoDB, Redis, Firebase / Firestore" },
+    { "category": "Langues", "items": "français et anglais professionnels | russe langue maternelle" }
+  ],
+  "locale": "fr"
+}

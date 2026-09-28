@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/** Job application status tracking API. */
 @RestController
 @RequestMapping("/api/applications")
 public class JobApplicationController {
