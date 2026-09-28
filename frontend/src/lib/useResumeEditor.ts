@@ -31,7 +31,8 @@ export function useResumeEditor() {
   const [selected, setSelected] = useState<Selection | null>(null)
   const [chat, setChat] = useState<ChatItem[]>([])
   const [draft, setDraft] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [aiBusy, setAiBusy] = useState(false)
+  const [previewing, setPreviewing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
@@ -145,8 +146,8 @@ export function useResumeEditor() {
   }
 
   async function previewPdf() {
-    if (!resume) return
-    setBusy(true)
+    if (!resume || previewing) return
+    setPreviewing(true)
     setError(null)
     try {
       await api.saveResume(resume)
@@ -160,7 +161,7 @@ export function useResumeEditor() {
     } catch (err) {
       setError(errorMessage(err, 'Compile failed'))
     } finally {
-      setBusy(false)
+      setPreviewing(false)
     }
   }
 
@@ -173,7 +174,7 @@ export function useResumeEditor() {
 
   async function sendChat(e: FormEvent) {
     e.preventDefault()
-    if (!draft.trim() || !resume) return
+    if (!draft.trim() || !resume || aiBusy) return
     const instruction = draft.trim()
     setDraft('')
     const history: ChatTurn[] = chat.slice(-12).map((item) => ({
@@ -181,7 +182,7 @@ export function useResumeEditor() {
       content: item.text,
     }))
     setChat((items) => [...items, { role: 'user', text: instruction }])
-    setBusy(true)
+    setAiBusy(true)
     setError(null)
     const scope = selected?.section ?? 'all'
     const itemIndex = selected?.itemIndex
@@ -209,7 +210,7 @@ export function useResumeEditor() {
     } catch (err) {
       setError(errorMessage(err, 'AI request failed'))
     } finally {
-      setBusy(false)
+      setAiBusy(false)
     }
   }
 
@@ -258,7 +259,7 @@ export function useResumeEditor() {
   }
 
   async function checkVacancyMatch() {
-    if (!resume || !vacancyContext.trim() || matching || busy) return
+    if (!resume || !vacancyContext.trim() || matching || aiBusy) return
     setMatching(true)
     setMatchError(null)
     setMatchReport(null)
@@ -286,7 +287,8 @@ export function useResumeEditor() {
     chat,
     draft,
     setDraft,
-    busy,
+    aiBusy,
+    previewing,
     saving,
     error,
     status,

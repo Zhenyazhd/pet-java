@@ -63,7 +63,10 @@ public class JobApplicationService {
 	public JobApplicationResponse update(Long id, JobApplicationUpdateRequest request) {
 		JobApplication application = getApplication(id);
 		applyStatus(application, request.status());
-		application.setNotes(blankToNull(request.notes()));
+		// null notes = status-only update (e.g. from vacancy list); keep existing notes
+		if (request.notes() != null) {
+			application.setNotes(blankToNull(request.notes()));
+		}
 		log.info("Updated application id={} status={}", id, application.getStatus());
 		return toResponse(application);
 	}

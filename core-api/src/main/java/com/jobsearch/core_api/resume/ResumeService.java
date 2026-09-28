@@ -1,7 +1,6 @@
 package com.jobsearch.core_api.resume;
 
-import com.jobsearch.core_api.common.NotFoundException;
-import com.jobsearch.core_api.config.AppProperties;
+import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.profile.AppUser;
 import com.jobsearch.core_api.profile.AppUserRepository;
 import com.jobsearch.core_api.resume.ResumeDtos.ResumeDocument;
@@ -21,19 +20,19 @@ public class ResumeService {
 
 	private static final Logger log = LoggerFactory.getLogger(ResumeService.class);
 
-	private final AppProperties appProperties;
+	private final CurrentUserService currentUserService;
 	private final AppUserRepository appUserRepository;
 	private final ObjectMapper objectMapper;
 	private final ResumeLatexRenderer latexRenderer;
 	private final ResumeDocument defaultResume;
 
 	public ResumeService(
-			AppProperties appProperties,
+			CurrentUserService currentUserService,
 			AppUserRepository appUserRepository,
 			ObjectMapper objectMapper,
 			ResumeLatexRenderer latexRenderer
 	) {
-		this.appProperties = appProperties;
+		this.currentUserService = currentUserService;
 		this.appUserRepository = appUserRepository;
 		this.objectMapper = objectMapper;
 		this.latexRenderer = latexRenderer;
@@ -42,7 +41,7 @@ public class ResumeService {
 
 	@Transactional(readOnly = true)
 	public ResumeDocument get() {
-		AppUser user = currentUser();
+		AppUser user = currentUserService.requireUser();
 		if (user.getResumeJson() == null || user.getResumeJson().isBlank()) {
 			log.debug("No saved resume for userId={}, returning default template", user.getId());
 			return defaultResume;
@@ -51,7 +50,7 @@ public class ResumeService {
 	}
 
 	public ResumeDocument save(ResumeDocument resume) {
-		AppUser user = currentUser();
+		AppUser user = currentUserService.requireUser();
 		user.setResumeJson(objectMapper.writeValueAsString(resume));
 		appUserRepository.save(user);
 		log.info("Saved resume for userId={}", user.getId());
@@ -61,12 +60,6 @@ public class ResumeService {
 	@Transactional(readOnly = true)
 	public String toLatex() {
 		return latexRenderer.render(get());
-	}
-
-	private AppUser currentUser() {
-		long userId = appProperties.getCurrentUserId();
-		return appUserRepository.findById(userId)
-				.orElseThrow(() -> new NotFoundException("User not found: " + userId));
 	}
 
 	private ResumeDocument loadDefault() {

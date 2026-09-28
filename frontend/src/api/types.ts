@@ -64,3 +64,21 @@ export const APPLICATION_STATUSES: ApplicationStatus[] = [
   'REJECTED',
   'WITHDRAWN',
 ]
+
+export type AuthUser = {
+  id: number
+  email: string
+  displayName: string
+}
+
+export type LoginRequest = {
+  email: string
+  password: string
+}
+
+export type RegisterRequest = {
+  email: string
+  password: string
+  displayName: string
+  inviteCode: string
+}

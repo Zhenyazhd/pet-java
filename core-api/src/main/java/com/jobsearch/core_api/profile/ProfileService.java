@@ -1,7 +1,6 @@
 package com.jobsearch.core_api.profile;
 
-import com.jobsearch.core_api.common.NotFoundException;
-import com.jobsearch.core_api.config.AppProperties;
+import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.profile.ProfileDtos.CareerPathRequest;
 import com.jobsearch.core_api.profile.ProfileDtos.CareerPathResponse;
 import com.jobsearch.core_api.profile.ProfileDtos.ProfileRequest;
@@ -11,28 +10,28 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Profile + career-path storage for the temporary single-user mode. */
+/** Profile + career-path storage for the authenticated user. */
 @Service
 @Transactional
 public class ProfileService {
 
 	private static final Logger log = LoggerFactory.getLogger(ProfileService.class);
 
-	private final AppProperties appProperties;
+	private final CurrentUserService currentUserService;
 	private final AppUserRepository appUserRepository;
 
-	public ProfileService(AppProperties appProperties, AppUserRepository appUserRepository) {
-		this.appProperties = appProperties;
+	public ProfileService(CurrentUserService currentUserService, AppUserRepository appUserRepository) {
+		this.currentUserService = currentUserService;
 		this.appUserRepository = appUserRepository;
 	}
 
 	@Transactional(readOnly = true)
 	public ProfileResponse getProfile() {
-		return toResponse(currentUser());
+		return toResponse(currentUserService.requireUser());
 	}
 
 	public ProfileResponse saveProfile(ProfileRequest request) {
-		AppUser user = currentUser();
+		AppUser user = currentUserService.requireUser();
 		user.setDisplayName(request.displayName().strip());
 		user.setEmail(request.email().strip());
 		user.setCareerPath(request.careerPath() == null ? "" : request.careerPath());
@@ -43,22 +42,16 @@ public class ProfileService {
 
 	@Transactional(readOnly = true)
 	public CareerPathResponse getCareerPath() {
-		return new CareerPathResponse(currentUser().getCareerPath());
+		return new CareerPathResponse(currentUserService.requireUser().getCareerPath());
 	}
 
 	public CareerPathResponse saveCareerPath(CareerPathRequest request) {
-		AppUser user = currentUser();
+		AppUser user = currentUserService.requireUser();
 		user.setCareerPath(request.careerPath() == null ? "" : request.careerPath());
 		return new CareerPathResponse(appUserRepository.save(user).getCareerPath());
 	}
 
 	private ProfileResponse toResponse(AppUser user) {
 		return new ProfileResponse(user.getDisplayName(), user.getEmail(), user.getCareerPath());
-	}
-
-	private AppUser currentUser() {
-		long userId = appProperties.getCurrentUserId();
-		return appUserRepository.findById(userId)
-				.orElseThrow(() -> new NotFoundException("User not found: " + userId));
 	}
 }

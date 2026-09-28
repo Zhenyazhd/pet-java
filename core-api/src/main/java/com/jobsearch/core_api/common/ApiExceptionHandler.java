@@ -43,6 +43,13 @@ public class ApiExceptionHandler {
 				.body(errorBody(HttpStatus.BAD_GATEWAY, ex.getMessage(), null));
 	}
 
+	@ExceptionHandler(UnauthorizedException.class)
+	public ResponseEntity<Map<String, Object>> handleUnauthorized(UnauthorizedException ex) {
+		log.info("Unauthorized: {}", ex.getMessage());
+		return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+				.body(errorBody(HttpStatus.UNAUTHORIZED, ex.getMessage(), null));
+	}
+
 	@ExceptionHandler(NotFoundException.class)
 	public ResponseEntity<Map<String, Object>> handleNotFound(NotFoundException ex) {
 		log.info("Not found: {}", ex.getMessage());

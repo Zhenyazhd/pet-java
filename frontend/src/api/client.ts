@@ -1,6 +1,9 @@
 import type {
   ApplicationStatus,
+  AuthUser,
   JobApplication,
+  LoginRequest,
+  RegisterRequest,
   Vacancy,
   VacancyImportRequest,
   VacancyRequest,
@@ -12,6 +15,34 @@ import type {
   SuggestResponse,
   MatchResponse,
 } from '../types/resume'
+
+export class ApiError extends Error {
+  readonly status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
+export function isUnauthorized(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401
+}
+
+type UnauthorizedListener = () => void
+
+let unauthorizedListener: UnauthorizedListener | null = null
+
+/** Register a handler for session expiry (401 on protected calls). */
+export function setUnauthorizedListener(listener: UnauthorizedListener | null): void {
+  unauthorizedListener = listener
+}
+
+type RequestOptions = {
+  /** Do not notify global 401 handler (e.g. GET /api/auth/me while bootstrapping). */
+  skipAuthRedirect?: boolean
+}
 
 async function readErrorMessage(response: Response): Promise<string> {
   const text = await response.text()
@@ -27,8 +58,9 @@ async function readErrorMessage(response: Response): Promise<string> {
   return message
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, options?: RequestOptions): Promise<T> {
   const response = await fetch(path, {
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(init?.headers ?? {}),
@@ -41,7 +73,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response))
+    const message = await readErrorMessage(response)
+    if (response.status === 401 && !options?.skipAuthRedirect) {
+      unauthorizedListener?.()
+    }
+    throw new ApiError(message, response.status)
   }
 
   const text = await response.text()
@@ -55,6 +91,25 @@ export type Profile = {
 }
 
 export const api = {
+  getMe: () => request<AuthUser>('/api/auth/me', undefined, { skipAuthRedirect: true }),
+
+  login: (body: LoginRequest) =>
+    request<AuthUser>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, { skipAuthRedirect: true }),
+
+  register: (body: RegisterRequest) =>
+    request<AuthUser>('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, { skipAuthRedirect: true }),
+
+  logout: () =>
+    request<void>('/api/auth/logout', {
+      method: 'POST',
+    }, { skipAuthRedirect: true }),
+
   listVacancies: () => request<Vacancy[]>('/api/vacancies'),
 
   getVacancy: (id: number) => request<Vacancy>(`/api/vacancies/${id}`),
@@ -88,10 +143,11 @@ export const api = {
       body: JSON.stringify({ vacancyId, status, notes: notes || null }),
     }),
 
+  /** Omit `notes` to leave existing notes unchanged (status-only update). */
   updateApplication: (id: number, status: ApplicationStatus, notes?: string) =>
     request<JobApplication>(`/api/applications/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ status, notes: notes || null }),
+      body: JSON.stringify(notes === undefined ? { status } : { status, notes }),
     }),
 
   getResume: () => request<ResumeDocument>('/api/resume'),
@@ -103,8 +159,15 @@ export const api = {
     }),
 
   compileResume: async (): Promise<Blob> => {
-    const response = await fetch('/api/resume/compile', { method: 'POST' })
-    if (!response.ok) throw new Error(await readErrorMessage(response))
+    const response = await fetch('/api/resume/compile', {
+      method: 'POST',
+      credentials: 'include',
+    })
+    if (!response.ok) {
+      const message = await readErrorMessage(response)
+      if (response.status === 401) unauthorizedListener?.()
+      throw new ApiError(message, response.status)
+    }
     return response.blob()
   },
 

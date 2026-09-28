@@ -16,6 +16,8 @@ spring:
 
 app:
   current-user-id: ${APP_CURRENT_USER_ID:1}
+  invite-code: ${APP_INVITE_CODE:}
+  bootstrap-password: ${APP_BOOTSTRAP_PASSWORD:}
   s3:
     endpoint: ${S3_ENDPOINT:http://localhost:9090}
     region: ${S3_REGION:us-east-1}

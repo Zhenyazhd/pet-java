@@ -1,8 +1,8 @@
 package com.jobsearch.core_api.cv;
 
+import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.common.ConflictException;
 import com.jobsearch.core_api.common.NotFoundException;
-import com.jobsearch.core_api.config.AppProperties;
 import com.jobsearch.core_api.cv.CvDtos.ApplicationCvResponse;
 import com.jobsearch.core_api.cv.CvDtos.CvVersionResponse;
 import com.jobsearch.core_api.cv.CvDtos.SendCvRequest;
@@ -39,7 +39,7 @@ public class CvService {
 			".tex"
 	);
 
-	private final AppProperties appProperties;
+	private final CurrentUserService currentUserService;
 	private final ObjectStorageService objectStorageService;
 	private final CvVersionRepository cvVersionRepository;
 	private final ApplicationCvRepository applicationCvRepository;
@@ -47,14 +47,14 @@ public class CvService {
 	private final JobApplicationRepository jobApplicationRepository;
 
 	public CvService(
-			AppProperties appProperties,
+			CurrentUserService currentUserService,
 			ObjectStorageService objectStorageService,
 			CvVersionRepository cvVersionRepository,
 			ApplicationCvRepository applicationCvRepository,
 			VacancyRepository vacancyRepository,
 			JobApplicationRepository jobApplicationRepository
 	) {
-		this.appProperties = appProperties;
+		this.currentUserService = currentUserService;
 		this.objectStorageService = objectStorageService;
 		this.cvVersionRepository = cvVersionRepository;
 		this.applicationCvRepository = applicationCvRepository;
@@ -155,7 +155,7 @@ public class CvService {
 	}
 
 	private long currentUserId() {
-		return appProperties.getCurrentUserId();
+		return currentUserService.requireUserId();
 	}
 
 	private CvVersionResponse toVersionResponse(CvVersion version) {

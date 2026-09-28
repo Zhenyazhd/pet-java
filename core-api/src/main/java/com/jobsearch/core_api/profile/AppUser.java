@@ -2,7 +2,10 @@ package com.jobsearch.core_api.profile;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
 
@@ -11,13 +14,17 @@ import java.time.Instant;
 public class AppUser {
 
 	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@Column(nullable = false, length = 255)
+	@Column(nullable = false, unique = true, length = 255)
 	private String email;
 
 	@Column(name = "display_name", nullable = false, length = 255)
 	private String displayName;
+
+	@Column(name = "password_hash", length = 255)
+	private String passwordHash;
 
 	@Column(name = "career_path", nullable = false, columnDefinition = "TEXT")
 	private String careerPath = "";
@@ -27,6 +34,19 @@ public class AppUser {
 
 	@Column(name = "created_at", nullable = false)
 	private Instant createdAt;
+
+	@PrePersist
+	void onCreate() {
+		if (createdAt == null) {
+			createdAt = Instant.now();
+		}
+		if (careerPath == null) {
+			careerPath = "";
+		}
+		if (resumeJson == null) {
+			resumeJson = "";
+		}
+	}
 
 	public Long getId() {
 		return id;
@@ -50,6 +70,14 @@ public class AppUser {
 
 	public void setDisplayName(String displayName) {
 		this.displayName = displayName;
+	}
+
+	public String getPasswordHash() {
+		return passwordHash;
+	}
+
+	public void setPasswordHash(String passwordHash) {
+		this.passwordHash = passwordHash;
 	}
 
 	public String getCareerPath() {
