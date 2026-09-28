@@ -1,0 +1,3 @@
+[submodule "tools/ats-screener"]
+	path = tools/ats-screener
+	url = https://github.com/sunnypatell/ats-screener.git

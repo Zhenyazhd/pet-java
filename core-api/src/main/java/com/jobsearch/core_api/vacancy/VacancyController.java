@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/** Vacancy list and detail API. */
 @RestController
 @RequestMapping("/api/vacancies")
 public class VacancyController {

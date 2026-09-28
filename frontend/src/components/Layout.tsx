@@ -7,11 +7,12 @@ export function Layout() {
         <Link to="/" className="brand">
           Job Search
         </Link>
-        <nav className="nav">
+        <nav className="nav" aria-label="Primary">
           <NavLink to="/" end>
-            Vacancies
+            Resume
           </NavLink>
-          <NavLink to="/vacancies/new">Add vacancy</NavLink>
+          <NavLink to="/vacancies">Vacancies</NavLink>
+          <NavLink to="/profile">Profile</NavLink>
         </nav>
       </header>
       <main className="main">

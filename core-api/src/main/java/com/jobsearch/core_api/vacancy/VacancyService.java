@@ -10,12 +10,17 @@ import com.jobsearch.core_api.vacancy.VacancyDtos.RequirementResponse;
 import com.jobsearch.core_api.vacancy.VacancyDtos.VacancyRequest;
 import com.jobsearch.core_api.vacancy.VacancyDtos.VacancyResponse;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** Vacancy CRUD and requirement lists. */
 @Service
 @Transactional
 public class VacancyService {
+
+	private static final Logger log = LoggerFactory.getLogger(VacancyService.class);
 
 	private final VacancyRepository vacancyRepository;
 
@@ -39,7 +44,9 @@ public class VacancyService {
 		}
 		Vacancy vacancy = new Vacancy();
 		applyRequest(vacancy, request);
-		return toResponse(vacancyRepository.save(vacancy));
+		Vacancy saved = vacancyRepository.save(vacancy);
+		log.info("Created vacancy id={} title={}", saved.getId(), saved.getTitle());
+		return toResponse(saved);
 	}
 
 	public VacancyResponse update(Long id, VacancyRequest request) {
@@ -48,6 +55,7 @@ public class VacancyService {
 			throw new ConflictException("Vacancy with this URL already exists");
 		}
 		applyRequest(vacancy, request);
+		log.info("Updated vacancy id={}", id);
 		return toResponse(vacancy);
 	}
 
@@ -56,6 +64,7 @@ public class VacancyService {
 			throw new NotFoundException("Vacancy not found: " + id);
 		}
 		vacancyRepository.deleteById(id);
+		log.info("Deleted vacancy id={}", id);
 	}
 
 	Vacancy getVacancy(Long id) {

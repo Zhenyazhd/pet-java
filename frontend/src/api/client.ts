@@ -1,4 +1,25 @@
 import type { ApplicationStatus, JobApplication, Vacancy, VacancyRequest } from './types'
+import type {
+  ChatTurn,
+  ResumeDocument,
+  AiScope,
+  SuggestResponse,
+  MatchResponse,
+} from '../types/resume'
+
+async function readErrorMessage(response: Response): Promise<string> {
+  const text = await response.text()
+  let message = `Request failed (${response.status})`
+  try {
+    const data = JSON.parse(text)
+    if (typeof data?.message === 'string') {
+      message = data.message
+    }
+  } catch {
+    if (text) message = text
+  }
+  return message
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
@@ -13,16 +34,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     return undefined as T
   }
 
-  const text = await response.text()
-  const data = text ? JSON.parse(text) : null
-
   if (!response.ok) {
-    const message =
-      typeof data?.message === 'string' ? data.message : `Request failed (${response.status})`
-    throw new Error(message)
+    throw new Error(await readErrorMessage(response))
   }
 
-  return data as T
+  const text = await response.text()
+  return (text ? JSON.parse(text) : null) as T
+}
+
+export type Profile = {
+  displayName: string
+  email: string
+  careerPath: string
 }
 
 export const api = {
@@ -57,5 +80,53 @@ export const api = {
     request<JobApplication>(`/api/applications/${id}`, {
       method: 'PUT',
       body: JSON.stringify({ status, notes: notes || null }),
+    }),
+
+  getResume: () => request<ResumeDocument>('/api/resume'),
+
+  saveResume: (resume: ResumeDocument) =>
+    request<ResumeDocument>('/api/resume', {
+      method: 'PUT',
+      body: JSON.stringify(resume),
+    }),
+
+  compileResume: async (): Promise<Blob> => {
+    const response = await fetch('/api/resume/compile', { method: 'POST' })
+    if (!response.ok) throw new Error(await readErrorMessage(response))
+    return response.blob()
+  },
+
+  suggestResumeSection: (
+    section: AiScope,
+    instruction: string,
+    itemIndex?: number,
+    history?: ChatTurn[],
+    vacancyContext?: string,
+    model?: string,
+  ) =>
+    request<SuggestResponse>('/api/ai/resume/suggest', {
+      method: 'POST',
+      body: JSON.stringify({
+        section,
+        instruction,
+        ...(itemIndex === undefined ? {} : { itemIndex }),
+        ...(history && history.length > 0 ? { history } : {}),
+        ...(vacancyContext?.trim() ? { vacancyContext: vacancyContext.trim() } : {}),
+        ...(model?.trim() ? { model: model.trim() } : {}),
+      }),
+    }),
+
+  matchResume: (vacancyContext: string) =>
+    request<MatchResponse>('/api/ai/resume/match', {
+      method: 'POST',
+      body: JSON.stringify({ vacancyContext: vacancyContext.trim() }),
+    }),
+
+  getProfile: () => request<Profile>('/api/profile'),
+
+  saveProfile: (profile: Profile) =>
+    request<Profile>('/api/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profile),
     }),
 }
