@@ -4,6 +4,11 @@ import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { APPLICATION_STATUSES, type ApplicationStatus } from '../api/types'
+import {
+  buildVacancyContext,
+  isNotApplied,
+  stashPrepareVacancyContext,
+} from '../lib/vacancyPrepare'
 
 export function VacancyDetailPage() {
   const { id } = useParams()
@@ -50,7 +55,7 @@ export function VacancyDetailPage() {
     mutationFn: () => api.deleteVacancy(vacancyId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['vacancies'] })
-      navigate('/')
+      navigate('/vacancies')
     },
     onError: (err: Error) => setError(err.message),
   })
@@ -83,6 +88,18 @@ export function VacancyDetailPage() {
           <span className="match match--lg">
             {data.matchPercent == null ? '—%' : `${data.matchPercent}%`}
           </span>
+          {isNotApplied(data) && (
+            <button
+              type="button"
+              className="button"
+              onClick={() => {
+                stashPrepareVacancyContext(buildVacancyContext(data))
+                navigate('/')
+              }}
+            >
+              Prepare CV
+            </button>
+          )}
           <button
             type="button"
             className="button button--danger"
@@ -152,7 +169,7 @@ export function VacancyDetailPage() {
         </form>
       </div>
 
-      <Link className="back-link" to="/">
+      <Link className="back-link" to="/vacancies">
         ← Back to list
       </Link>
     </section>

@@ -34,7 +34,7 @@ export function VacancyListPage() {
       {data && data.length === 0 && (
         <div className="empty">
           <h2>No vacancies yet</h2>
-          <p>Save a job link, requirements, and match score to start tracking.</p>
+          <p>Paste a job URL and description — AI fills title and company, then tracks it as not applied.</p>
           <Link className="button" to="/vacancies/new">
             Add first vacancy
           </Link>

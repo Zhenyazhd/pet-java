@@ -1,5 +1,11 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import type { MouseEvent } from 'react'
 import type { Vacancy } from '../api/types'
+import {
+  buildVacancyContext,
+  isNotApplied,
+  stashPrepareVacancyContext,
+} from '../lib/vacancyPrepare'
 
 function statusLabel(vacancy: Vacancy): string {
   if (!vacancy.application) return 'Not tracked'
@@ -7,12 +13,22 @@ function statusLabel(vacancy: Vacancy): string {
 }
 
 export function VacancyRow({ vacancy }: { vacancy: Vacancy }) {
+  const navigate = useNavigate()
+  const canPrepare = isNotApplied(vacancy)
+
+  function onPrepareCv(event: MouseEvent) {
+    event.preventDefault()
+    event.stopPropagation()
+    stashPrepareVacancyContext(buildVacancyContext(vacancy))
+    navigate('/')
+  }
+
   return (
-    <Link to={`/vacancies/${vacancy.id}`} className="vacancy-row">
-      <div className="vacancy-row__main">
+    <div className="vacancy-row">
+      <Link to={`/vacancies/${vacancy.id}`} className="vacancy-row__main">
         <h2>{vacancy.title}</h2>
         <p>{vacancy.company ?? 'Company not set'}</p>
-      </div>
+      </Link>
       <div className="vacancy-row__meta">
         <span className={`pill ${vacancy.application?.applied ? 'pill--ok' : ''}`}>
           {statusLabel(vacancy)}
@@ -20,7 +36,12 @@ export function VacancyRow({ vacancy }: { vacancy: Vacancy }) {
         <span className="match">
           {vacancy.matchPercent == null ? '—%' : `${vacancy.matchPercent}%`}
         </span>
+        {canPrepare && (
+          <button type="button" className="button button--ghost vacancy-row__prepare" onClick={onPrepareCv}>
+            Prepare CV
+          </button>
+        )}
       </div>
-    </Link>
+    </div>
   )
 }

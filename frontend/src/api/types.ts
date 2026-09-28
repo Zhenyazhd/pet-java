@@ -34,10 +34,15 @@ export interface Vacancy {
 export interface VacancyRequest {
   url: string
   title: string
-  company?: string
-  description?: string
+  company?: string | null
+  description?: string | null
   matchPercent?: number | null
-  requirements: Requirement[]
+  requirements: Array<Pick<Requirement, 'name' | 'required'>>
+}
+
+export interface VacancyImportRequest {
+  url: string
+  pastedText: string
 }
 
 export interface JobApplication {

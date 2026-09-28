@@ -1,4 +1,10 @@
-import type { ApplicationStatus, JobApplication, Vacancy, VacancyRequest } from './types'
+import type {
+  ApplicationStatus,
+  JobApplication,
+  Vacancy,
+  VacancyImportRequest,
+  VacancyRequest,
+} from './types'
 import type {
   ChatTurn,
   ResumeDocument,
@@ -55,6 +61,12 @@ export const api = {
 
   createVacancy: (body: VacancyRequest) =>
     request<Vacancy>('/api/vacancies', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  importVacancy: (body: VacancyImportRequest) =>
+    request<Vacancy>('/api/vacancies/import', {
       method: 'POST',
       body: JSON.stringify(body),
     }),

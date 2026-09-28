@@ -5,6 +5,10 @@ import { readAiModel, writeAiModel } from './aiModels'
 import { clearResumeDraft, readResumeDraft, writeResumeDraft } from './resumeDraft'
 import { applyAiProposed } from './resumeEdits'
 import { resolveLocale } from './resumeLocale'
+import {
+  acknowledgePrepareVacancyContext,
+  takePrepareVacancyContext,
+} from './vacancyPrepare'
 import type {
   MatchResponse,
   ResumeDocument,
@@ -44,12 +48,28 @@ export function useResumeEditor() {
 
   useEffect(() => {
     let cancelled = false
+    let ackTimer: ReturnType<typeof setTimeout> | undefined
     ;(async () => {
       try {
         const data = await api.getResume()
         if (cancelled) return
+        const incomingContext = takePrepareVacancyContext()
         const cached = readResumeDraft()
-        if (cached) {
+        if (incomingContext) {
+          dirtyRef.current = false
+          clearResumeDraft()
+          setResume(normalizeResume(data))
+          setVacancyContext(incomingContext)
+          setContextDraft(incomingContext)
+          setContextOpen(true)
+          setChat([])
+          setDraft('')
+          setMatchReport(null)
+          setMatchError(null)
+          setStatus('Vacancy context loaded from Prepare CV — chat cleared')
+          // Defer clear so React Strict Mode remount can re-read the handoff.
+          ackTimer = setTimeout(() => acknowledgePrepareVacancyContext(), 0)
+        } else if (cached) {
           dirtyRef.current = true
           setResume(normalizeResume(cached))
           setStatus('Restored unsaved draft')
@@ -63,6 +83,7 @@ export function useResumeEditor() {
     })()
     return () => {
       cancelled = true
+      if (ackTimer) clearTimeout(ackTimer)
     }
   }, [])
 
