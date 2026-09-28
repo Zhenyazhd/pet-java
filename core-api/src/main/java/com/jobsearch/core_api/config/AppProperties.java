@@ -8,6 +8,7 @@ public class AppProperties {
 	private long currentUserId = 1L;
 	private final S3 s3 = new S3();
 	private final OpenRouter openRouter = new OpenRouter();
+	private final AtsScreener atsScreener = new AtsScreener();
 
 	public long getCurrentUserId() {
 		return currentUserId;
@@ -23,6 +24,33 @@ public class AppProperties {
 
 	public OpenRouter getOpenRouter() {
 		return openRouter;
+	}
+
+	public AtsScreener getAtsScreener() {
+		return atsScreener;
+	}
+
+	public static class AtsScreener {
+		/** Base URL of tools/ats-screener Vite/SvelteKit app (e.g. http://127.0.0.1:5174). */
+		private String baseUrl = "http://127.0.0.1:5174";
+		/** Read timeout for /api/analyze — full Gemini scoring often exceeds 90s. */
+		private int timeoutSeconds = 180;
+
+		public String getBaseUrl() {
+			return baseUrl;
+		}
+
+		public void setBaseUrl(String baseUrl) {
+			this.baseUrl = baseUrl;
+		}
+
+		public int getTimeoutSeconds() {
+			return timeoutSeconds;
+		}
+
+		public void setTimeoutSeconds(int timeoutSeconds) {
+			this.timeoutSeconds = timeoutSeconds;
+		}
 	}
 
 	public static class OpenRouter {

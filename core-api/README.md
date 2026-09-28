@@ -69,6 +69,8 @@ Environment variables come from the shell / IDE / root `.env` (if exported). Mai
 | `app.open-router.api-key` / `OPENROUTER_API_KEY` | OpenRouter API key | empty |
 | `app.open-router.model` / `OPENROUTER_MODEL` | Chat model | `openai/gpt-4o-mini` |
 | `app.open-router.base-url` | API base URL | `https://openrouter.ai/api/v1` |
+| `app.ats-screener.base-url` / `ATS_SCREENER_BASE_URL` | Local ATS Screener (`tools/ats-screener`) | `http://127.0.0.1:5174` |
+| `app.ats-screener.timeout-seconds` | HTTP read timeout for ATS analyze | `180` |
 | `POSTGRES_*` | JDBC to Postgres | see `application.yml` |
 
 Multipart: max file **10MB**, request **12MB**.
@@ -80,13 +82,14 @@ Multipart: max file **10MB**, request **12MB**.
 ```
 com.jobsearch.core_api
 ├── ai/              OpenRouter client + AI suggest for resume sections
+├── ats/             Proxy to local ATS Screener (vacancy match scores)
 ├── common/          NotFoundException, ConflictException, ApiExceptionHandler
 ├── config/          AppProperties, CorsConfig, S3Config
 ├── cv/              CV file versions + sendings linked to vacancies
 ├── jobapplication/  Application status (1:1 with vacancy)
 ├── latex/           Compile arbitrary LaTeX → PDF
 ├── profile/         app_user: name, email, career_path
-├── resume/          Structured resume JSON, LaTeX render, compile
+├── resume/          Structured resume JSON, LaTeX render, plain-text, compile
 ├── storage/         ObjectStorageService (S3)
 └── vacancy/         Vacancies and requirements
 ```
@@ -177,6 +180,7 @@ Structured document (not raw `.tex`):
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/api/ai/resume/suggest` | ongoing chat / edit — full resume (`section: "all"`) or one focused block |
+| POST | `/api/ai/resume/match` | score saved resume vs vacancy via ATS Screener (`tools/ats-screener`) |
 
 **Request (`SuggestRequest`):**
 
@@ -205,6 +209,29 @@ Structured document (not raw `.tex`):
 - Prompt includes: current JSON for the focus, profile (name/email), career path, vacancy context, history.
 
 Flow: `AiController` → `ResumeAiService` → `OpenRouterClient.chat(system, user)`.
+
+**Vacancy match (`POST /api/ai/resume/match`):**
+
+Requires ATS Screener running (`npm run dev` or `tools/ats-screener` on `:5174` with `GEMINI_API_KEY`).
+
+```json
+{ "vacancyContext": "job description text…" }
+```
+
+Uses the **saved** resume (JSON → plain text) + vacancy context → ATS `POST /api/analyze` (`mode: full-score`). Response:
+
+```json
+{
+  "averageScore": 72,
+  "platforms": [{ "system": "Workday", "vendor": "…", "overallScore": 70, "passesFilter": true }],
+  "suggestions": [{ "summary": "…", "details": ["…"], "impact": "high", "platforms": ["Workday"] }],
+  "provider": "gemini-3.5-flash-lite",
+  "cached": false,
+  "summary": "Average ATS match: 72/100 …"
+}
+```
+
+Flow: `AtsMatchController` → `AtsMatchService` → `AtsScreenerClient` → `tools/ats-screener`.
 
 ### LaTeX (raw) — `/api/latex`
 

@@ -29,3 +29,6 @@ app:
     model: ${OPENROUTER_MODEL:openai/gpt-4o-mini}
     site-url: ${OPENROUTER_SITE_URL:http://localhost:5173}
     site-name: ${OPENROUTER_SITE_NAME:Job Search}
+  ats-screener:
+    base-url: ${ATS_SCREENER_BASE_URL:http://127.0.0.1:5174}
+    timeout-seconds: ${ATS_SCREENER_TIMEOUT_SECONDS:180}

@@ -6,6 +6,7 @@ import { clearResumeDraft, readResumeDraft, writeResumeDraft } from './resumeDra
 import { applyAiProposed } from './resumeEdits'
 import { resolveLocale } from './resumeLocale'
 import type {
+  MatchResponse,
   ResumeDocument,
   ResumeSection,
   Selection,
@@ -35,6 +36,9 @@ export function useResumeEditor() {
   const [contextOpen, setContextOpen] = useState(false)
   const [contextDraft, setContextDraft] = useState('')
   const [aiModel, setAiModelState] = useState(readAiModel)
+  const [matching, setMatching] = useState(false)
+  const [matchReport, setMatchReport] = useState<MatchResponse | null>(null)
+  const [matchError, setMatchError] = useState<string | null>(null)
   /** Unsaved edits relative to last server sync — drives localStorage draft. */
   const dirtyRef = useRef(false)
 
@@ -218,6 +222,8 @@ export function useResumeEditor() {
 
     setChat([])
     setDraft('')
+    setMatchReport(null)
+    setMatchError(null)
     clearResumeDraft()
     dirtyRef.current = false
     setError(null)
@@ -227,6 +233,29 @@ export function useResumeEditor() {
       setStatus('Vacancy context updated — draft and chat cleared')
     } catch (err) {
       setError(errorMessage(err, 'Failed to reload resume'))
+    }
+  }
+
+  async function checkVacancyMatch() {
+    if (!resume || !vacancyContext.trim() || matching || busy) return
+    setMatching(true)
+    setMatchError(null)
+    setMatchReport(null)
+    setStatus(null)
+    try {
+      await api.saveResume(resume)
+      markSynced()
+      const result = await api.matchResume(vacancyContext)
+      setMatchReport(result)
+      setMatchError(null)
+      setStatus(`Vacancy match: ${result.averageScore}/100`)
+    } catch (err) {
+      const message = errorMessage(err, 'Match check failed')
+      setMatchReport(null)
+      setMatchError(message)
+      setStatus(null)
+    } finally {
+      setMatching(false)
     }
   }
 
@@ -247,6 +276,10 @@ export function useResumeEditor() {
     setContextDraft,
     aiModel,
     setAiModel,
+    matching,
+    matchReport,
+    matchError,
+    setMatchError,
     setLocale,
     select,
     clearFocus,
@@ -259,5 +292,6 @@ export function useResumeEditor() {
     openContextModal,
     closeContextModal,
     commitVacancyContext,
+    checkVacancyMatch,
   }
 }

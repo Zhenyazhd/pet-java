@@ -56,6 +56,29 @@ export type SuggestResponse = {
   proposed: unknown | null
 }
 
+export type MatchPlatformScore = {
+  system: string
+  vendor: string
+  overallScore: number
+  passesFilter: boolean
+}
+
+export type MatchSuggestion = {
+  summary: string
+  details: string[]
+  impact: string
+  platforms: string[]
+}
+
+export type MatchResponse = {
+  averageScore: number
+  platforms: MatchPlatformScore[]
+  suggestions: MatchSuggestion[]
+  provider?: string | null
+  cached: boolean
+  summary: string
+}
+
 export type ChatTurn = {
   role: 'user' | 'assistant'
   content: string

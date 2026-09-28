@@ -3,6 +3,7 @@ import type {
   ResumeDocument,
   AiScope,
   SuggestResponse,
+  MatchResponse,
 } from '../types/resume'
 
 async function readErrorMessage(response: Response): Promise<string> {
@@ -67,6 +68,16 @@ export const api = {
         ...(vacancyContext?.trim() ? { vacancyContext: vacancyContext.trim() } : {}),
         ...(model?.trim() ? { model: model.trim() } : {}),
       }),
+    })
+    if (!response.ok) throw new Error(await readErrorMessage(response))
+    return response.json()
+  },
+
+  matchResume: async (vacancyContext: string): Promise<MatchResponse> => {
+    const response = await fetch('/api/ai/resume/match', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vacancyContext: vacancyContext.trim() }),
     })
     if (!response.ok) throw new Error(await readErrorMessage(response))
     return response.json()

@@ -2,6 +2,7 @@ import { AiAssistPanel } from '../components/resume/AiAssistPanel'
 import { CvSheet } from '../components/resume/CvSheet'
 import { PdfPreviewModal } from '../components/resume/PdfPreviewModal'
 import { VacancyContextModal } from '../components/resume/VacancyContextModal'
+import { VacancyMatchPanel } from '../components/resume/VacancyMatchPanel'
 import { Banner } from '../components/ui/Banner'
 import { Button } from '../components/ui/Button'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -91,6 +92,16 @@ export function ResumePage() {
           onApply={editor.applySuggestion}
         />
       </div>
+
+      <VacancyMatchPanel
+        hasContext={Boolean(editor.vacancyContext.trim())}
+        matching={editor.matching}
+        busy={editor.busy}
+        report={editor.matchReport}
+        error={editor.matchError}
+        onCheck={() => void editor.checkVacancyMatch()}
+        onDismissError={() => editor.setMatchError(null)}
+      />
 
       <PdfPreviewModal url={editor.pdfUrl} onClose={editor.closePdf} />
 
