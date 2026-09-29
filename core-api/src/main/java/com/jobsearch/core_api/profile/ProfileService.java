@@ -1,6 +1,9 @@
 package com.jobsearch.core_api.profile;
 
 import com.jobsearch.core_api.auth.CurrentUserService;
+import com.jobsearch.core_api.common.ConflictException;
+import com.jobsearch.core_api.common.Emails;
+import com.jobsearch.core_api.common.UniqueConstraint;
 import com.jobsearch.core_api.profile.ProfileDtos.CareerPathRequest;
 import com.jobsearch.core_api.profile.ProfileDtos.CareerPathResponse;
 import com.jobsearch.core_api.profile.ProfileDtos.ProfileRequest;
@@ -32,10 +35,20 @@ public class ProfileService {
 
 	public ProfileResponse saveProfile(ProfileRequest request) {
 		AppUser user = currentUserService.requireUser();
+		String email = Emails.normalize(request.email());
+		if (!email.equalsIgnoreCase(user.getEmail())
+				&& appUserRepository.existsByEmailIgnoreCaseAndIdNot(email, user.getId())) {
+			throw new ConflictException("Email already registered");
+		}
+
 		user.setDisplayName(request.displayName().strip());
-		user.setEmail(request.email().strip());
+		user.setEmail(email);
 		user.setCareerPath(request.careerPath() == null ? "" : request.careerPath());
-		ProfileResponse saved = toResponse(appUserRepository.save(user));
+		ProfileResponse saved = UniqueConstraint.onConflict(
+				"Email already registered",
+				() -> toResponse(appUserRepository.saveAndFlush(user)),
+				UniqueConstraint.APP_USER_EMAIL_LOWER
+		);
 		log.info("Saved profile for userId={} careerPathChars={}", user.getId(), saved.careerPath().length());
 		return saved;
 	}

@@ -3,8 +3,9 @@ package com.jobsearch.core_api.auth;
 import com.jobsearch.core_api.auth.AuthDtos.AuthUserResponse;
 import com.jobsearch.core_api.auth.AuthDtos.LoginRequest;
 import com.jobsearch.core_api.auth.AuthDtos.RegisterRequest;
-import com.jobsearch.core_api.common.ConflictException;
+import com.jobsearch.core_api.common.Emails;
 import com.jobsearch.core_api.common.UnauthorizedException;
+import com.jobsearch.core_api.common.UniqueConstraint;
 import com.jobsearch.core_api.profile.AppUser;
 import com.jobsearch.core_api.profile.AppUserRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,7 +21,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,27 +31,33 @@ public class AuthService {
 	private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
 	private final AppUserRepository appUserRepository;
+	private final CurrentUserService currentUserService;
 	private final PasswordEncoder passwordEncoder;
 	private final AuthenticationManager authenticationManager;
 	private final InviteCodeService inviteCodeService;
-	private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
+	private final SecurityContextRepository securityContextRepository;
 
 	public AuthService(
 			AppUserRepository appUserRepository,
+			CurrentUserService currentUserService,
 			PasswordEncoder passwordEncoder,
 			AuthenticationManager authenticationManager,
-			InviteCodeService inviteCodeService
+			InviteCodeService inviteCodeService,
+			SecurityContextRepository securityContextRepository
 	) {
 		this.appUserRepository = appUserRepository;
+		this.currentUserService = currentUserService;
 		this.passwordEncoder = passwordEncoder;
 		this.authenticationManager = authenticationManager;
 		this.inviteCodeService = inviteCodeService;
+		this.securityContextRepository = securityContextRepository;
 	}
 
 	@Transactional(readOnly = true)
 	public AuthUserResponse me() {
-		AppUserPrincipal principal = currentPrincipalOrThrow();
-		return toResponse(principal);
+		AppUser user = currentUserService.requireUser();
+		UserRole role = AppUserDetailsService.parseRole(user.getRole());
+		return new AuthUserResponse(user.getId(), user.getEmail(), user.getDisplayName(), role.name());
 	}
 
 	@Transactional(readOnly = true)
@@ -59,7 +65,7 @@ public class AuthService {
 		try {
 			Authentication authentication = authenticationManager.authenticate(
 					new UsernamePasswordAuthenticationToken(
-							request.email().strip().toLowerCase(),
+							Emails.normalize(request.email()),
 							request.password()
 					)
 			);
@@ -79,13 +85,12 @@ public class AuthService {
 			HttpServletRequest httpRequest,
 			HttpServletResponse httpResponse
 	) {
-		String email = request.email().strip().toLowerCase();
-		if (appUserRepository.existsByEmailIgnoreCase(email)) {
-			throw new ConflictException("Email already registered");
-		}
+		// Invite first: invalid codes always 401, before any email-existence signal (409).
+		InviteCode invite = inviteCodeService.lockAvailable(request.inviteCode());
 
+		String email = Emails.normalize(request.email());
 		String displayName = request.displayName() == null || request.displayName().isBlank()
-				? email.split("@")[0]
+				? Emails.localPart(email)
 				: request.displayName().strip();
 
 		AppUser user = new AppUser();
@@ -95,9 +100,13 @@ public class AuthService {
 		user.setCareerPath("");
 		user.setResumeJson("");
 		user.setRole(UserRole.USER.name());
-		AppUser saved = appUserRepository.saveAndFlush(user);
+		AppUser saved = UniqueConstraint.onConflict(
+				"Email already registered",
+				() -> appUserRepository.saveAndFlush(user),
+				UniqueConstraint.APP_USER_EMAIL_LOWER
+		);
 
-		inviteCodeService.consume(request.inviteCode(), saved.getId());
+		inviteCodeService.markUsed(invite, saved.getId());
 
 		AppUserPrincipal principal = new AppUserPrincipal(
 				saved.getId(),
@@ -131,18 +140,16 @@ public class AuthService {
 			HttpServletRequest httpRequest,
 			HttpServletResponse httpResponse
 	) {
+		// Rotate session id on login/register (session fixation defense).
+		HttpSession existing = httpRequest.getSession(false);
+		if (existing != null) {
+			httpRequest.changeSessionId();
+		}
+
 		SecurityContext context = SecurityContextHolder.createEmptyContext();
 		context.setAuthentication(authentication);
 		SecurityContextHolder.setContext(context);
 		securityContextRepository.saveContext(context, httpRequest, httpResponse);
-	}
-
-	private AppUserPrincipal currentPrincipalOrThrow() {
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		if (authentication == null || !(authentication.getPrincipal() instanceof AppUserPrincipal principal)) {
-			throw new UnauthorizedException("Not authenticated");
-		}
-		return principal;
 	}
 
 	private AuthUserResponse toResponse(AppUserPrincipal principal) {

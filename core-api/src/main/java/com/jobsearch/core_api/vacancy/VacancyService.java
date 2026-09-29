@@ -3,6 +3,7 @@ package com.jobsearch.core_api.vacancy;
 import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.common.ConflictException;
 import com.jobsearch.core_api.common.NotFoundException;
+import com.jobsearch.core_api.common.UniqueConstraint;
 import com.jobsearch.core_api.jobapplication.ApplicationStatus;
 import com.jobsearch.core_api.jobapplication.JobApplication;
 import com.jobsearch.core_api.vacancy.VacancyDtos.ApplicationSummaryResponse;
@@ -52,8 +53,20 @@ public class VacancyService {
 		Vacancy vacancy = new Vacancy();
 		vacancy.setUserId(userId);
 		applyRequest(vacancy, request);
-		Vacancy saved = vacancyRepository.save(vacancy);
-		log.info("Created vacancy id={} userId={} title={}", saved.getId(), userId, saved.getTitle());
+		JobApplication application = new JobApplication();
+		application.setStatus(ApplicationStatus.NOT_APPLIED);
+		vacancy.setApplication(application);
+		Vacancy saved = UniqueConstraint.onConflict(
+				"Vacancy with this URL already exists",
+				() -> vacancyRepository.saveAndFlush(vacancy),
+				UniqueConstraint.VACANCY_USER_URL
+		);
+		log.info(
+				"Created vacancy id={} userId={} title={} applicationStatus=NOT_APPLIED",
+				saved.getId(),
+				userId,
+				saved.getTitle()
+		);
 		return toResponse(saved);
 	}
 
@@ -65,8 +78,13 @@ public class VacancyService {
 			throw new ConflictException("Vacancy with this URL already exists");
 		}
 		applyRequest(vacancy, request);
+		Vacancy saved = UniqueConstraint.onConflict(
+				"Vacancy with this URL already exists",
+				() -> vacancyRepository.saveAndFlush(vacancy),
+				UniqueConstraint.VACANCY_USER_URL
+		);
 		log.info("Updated vacancy id={} userId={}", id, userId);
-		return toResponse(vacancy);
+		return toResponse(saved);
 	}
 
 	public void delete(Long id) {
@@ -94,16 +112,23 @@ public class VacancyService {
 		vacancy.clearRequirements();
 		List<RequirementRequest> requirements = request.requirements();
 		if (requirements != null) {
-			for (RequirementRequest item : requirements) {
+			List<VacancyRequirements.Item> items = requirements.stream()
+					.filter(item -> item != null)
+					.map(item -> new VacancyRequirements.Item(
+							item.name(),
+							Boolean.TRUE.equals(item.required())
+					))
+					.toList();
+			for (VacancyRequirements.Item item : VacancyRequirements.dedupe(items)) {
 				VacancyRequirement requirement = new VacancyRequirement();
-				requirement.setName(item.name().trim());
-				requirement.setRequired(Boolean.TRUE.equals(item.required()));
+				requirement.setName(item.name());
+				requirement.setRequired(item.required());
 				vacancy.addRequirement(requirement);
 			}
 		}
 	}
 
-	private VacancyResponse toResponse(Vacancy vacancy) {
+	VacancyResponse toResponse(Vacancy vacancy) {
 		List<RequirementResponse> requirements = vacancy.getRequirements().stream()
 				.map(item -> new RequirementResponse(item.getId(), item.getName(), item.isRequired()))
 				.toList();

@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 /** Loads/saves structured resume JSON for the current user and renders it to LaTeX. */
@@ -46,12 +47,22 @@ public class ResumeService {
 			log.debug("No saved resume for userId={}, returning default template", user.getId());
 			return defaultResume;
 		}
-		return objectMapper.readValue(user.getResumeJson(), ResumeDocument.class);
+		try {
+			return objectMapper.readValue(user.getResumeJson(), ResumeDocument.class);
+		}
+		catch (JacksonException ex) {
+			throw new IllegalStateException("Stored resume JSON is invalid for userId=" + user.getId(), ex);
+		}
 	}
 
 	public ResumeDocument save(ResumeDocument resume) {
 		AppUser user = currentUserService.requireUser();
-		user.setResumeJson(objectMapper.writeValueAsString(resume));
+		try {
+			user.setResumeJson(objectMapper.writeValueAsString(resume));
+		}
+		catch (JacksonException ex) {
+			throw new IllegalStateException("Failed to serialize resume JSON", ex);
+		}
 		appUserRepository.save(user);
 		log.info("Saved resume for userId={}", user.getId());
 		return resume;
@@ -66,7 +77,7 @@ public class ResumeService {
 		try (InputStream in = new ClassPathResource("default-resume.json").getInputStream()) {
 			return objectMapper.readValue(in, ResumeDocument.class);
 		}
-		catch (IOException ex) {
+		catch (IOException | JacksonException ex) {
 			throw new IllegalStateException("Failed to load default-resume.json", ex);
 		}
 	}

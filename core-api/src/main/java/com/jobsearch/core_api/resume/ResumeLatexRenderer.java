@@ -5,6 +5,8 @@ import com.jobsearch.core_api.resume.ResumeDtos.EducationItem;
 import com.jobsearch.core_api.resume.ResumeDtos.ExperienceItem;
 import com.jobsearch.core_api.resume.ResumeDtos.ResumeDocument;
 import com.jobsearch.core_api.resume.ResumeDtos.SkillItem;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.stereotype.Component;
 
 /** Turns ResumeDocument JSON into the project LaTeX CV template. */
@@ -80,19 +82,22 @@ public class ResumeLatexRenderer {
 				.append(esc(r.profile())).append("\n\n");
 
 		sb.append("\\section{").append(esc(titles.experience())).append("}\n\n");
-		for (ExperienceItem job : r.experience()) {
+		for (ExperienceItem job : nullToEmpty(r.experience())) {
 			sb.append("\\role{").append(esc(job.title())).append("}{")
 					.append(esc(job.subtitle())).append("}{")
 					.append(esc(job.dates())).append("}\n\n");
-			sb.append("\\begin{tightlist}\n");
-			for (String bullet : job.bullets()) {
-				sb.append("    \\item ").append(esc(bullet)).append("\n\n");
+			List<String> bullets = nonBlank(job.bullets());
+			if (!bullets.isEmpty()) {
+				sb.append("\\begin{tightlist}\n");
+				for (String bullet : bullets) {
+					sb.append("    \\item ").append(esc(bullet)).append("\n\n");
+				}
+				sb.append("\\end{tightlist}\n\n");
 			}
-			sb.append("\\end{tightlist}\n\n");
 		}
 
 		sb.append("\\section{").append(esc(titles.education())).append("}\n\n");
-		for (EducationItem edu : r.education()) {
+		for (EducationItem edu : nullToEmpty(r.education())) {
 			sb.append("\\edu{").append(esc(edu.title())).append("}{")
 					.append(esc(edu.subtitle())).append("}{")
 					.append(esc(edu.location())).append("}\n\n");
@@ -101,19 +106,32 @@ public class ResumeLatexRenderer {
 			}
 		}
 
-		sb.append("\\section{").append(esc(titles.achievements())).append("}\n\n\\begin{tightlist}\n");
-		for (AchievementItem a : r.achievements()) {
-			sb.append("\\item \\textbf{").append(esc(a.title())).append(" :} ")
-					.append(esc(a.text())).append("\n");
+		List<AchievementItem> achievements = nullToEmpty(r.achievements()).stream()
+				.filter(a -> (a.title() != null && !a.title().isBlank())
+						|| (a.text() != null && !a.text().isBlank()))
+				.toList();
+		if (!achievements.isEmpty()) {
+			sb.append("\\section{").append(esc(titles.achievements())).append("}\n\n\\begin{tightlist}\n");
+			for (AchievementItem a : achievements) {
+				sb.append("\\item \\textbf{").append(esc(a.title())).append(" :} ")
+						.append(esc(a.text())).append("\n");
+			}
+			sb.append("\\end{tightlist}\n\n");
 		}
-		sb.append("\\end{tightlist}\n\n");
 
-		sb.append("\\section{").append(esc(titles.skills())).append("}\n\n\\begin{tightlist}\n");
-		for (SkillItem s : r.skills()) {
-			sb.append("    \\item[] \\textbf{").append(esc(s.category())).append(" :} ")
-					.append(esc(s.items())).append("\n\n");
+		List<SkillItem> skills = nullToEmpty(r.skills()).stream()
+				.filter(s -> (s.category() != null && !s.category().isBlank())
+						|| (s.items() != null && !s.items().isBlank()))
+				.toList();
+		if (!skills.isEmpty()) {
+			sb.append("\\section{").append(esc(titles.skills())).append("}\n\n\\begin{tightlist}\n");
+			for (SkillItem s : skills) {
+				sb.append("    \\item[] \\textbf{").append(esc(s.category())).append(" :} ")
+						.append(esc(s.items())).append("\n\n");
+			}
+			sb.append("\\end{tightlist}\n");
 		}
-		sb.append("\\end{tightlist}\n\\end{document}\n");
+		sb.append("\\end{document}\n");
 		return sb.toString();
 	}
 
@@ -177,5 +195,22 @@ public class ResumeLatexRenderer {
 			return "";
 		}
 		return value.replace("\\", "").replace("{", "").replace("}", "").replace("#", "");
+	}
+
+	private static <T> List<T> nullToEmpty(List<T> values) {
+		return values == null ? List.of() : values;
+	}
+
+	private static List<String> nonBlank(List<String> values) {
+		if (values == null || values.isEmpty()) {
+			return List.of();
+		}
+		List<String> out = new ArrayList<>(values.size());
+		for (String value : values) {
+			if (value != null && !value.isBlank()) {
+				out.add(value);
+			}
+		}
+		return out;
 	}
 }

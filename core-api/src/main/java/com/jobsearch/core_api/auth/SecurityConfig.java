@@ -1,18 +1,20 @@
 package com.jobsearch.core_api.auth;
 
+import com.jobsearch.core_api.common.ApiErrorResponses;
+import com.jobsearch.core_api.common.ExpensiveOpsRateLimitFilter;
+import com.jobsearch.core_api.common.FixedWindowRateLimiter;
+import com.jobsearch.core_api.config.AppProperties;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.util.List;
 import java.util.function.Supplier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -58,7 +60,30 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+	AuthRateLimitFilter authRateLimitFilter(
+			FixedWindowRateLimiter rateLimiter,
+			AppProperties appProperties,
+			ApiErrorResponses apiErrorResponses
+	) {
+		return new AuthRateLimitFilter(rateLimiter, appProperties, apiErrorResponses);
+	}
+
+	@Bean
+	ExpensiveOpsRateLimitFilter expensiveOpsRateLimitFilter(
+			FixedWindowRateLimiter rateLimiter,
+			AppProperties appProperties,
+			ApiErrorResponses apiErrorResponses
+	) {
+		return new ExpensiveOpsRateLimitFilter(rateLimiter, appProperties, apiErrorResponses);
+	}
+
+	@Bean
+	SecurityFilterChain securityFilterChain(
+			HttpSecurity http,
+			AuthRateLimitFilter authRateLimitFilter,
+			ExpensiveOpsRateLimitFilter expensiveOpsRateLimitFilter,
+			ApiErrorResponses apiErrorResponses
+	) throws Exception {
 		CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
 		csrfTokenRepository.setCookieCustomizer(cookie -> cookie.sameSite("Lax").path("/"));
 
@@ -71,6 +96,7 @@ public class SecurityConfig {
 				.securityContext(context -> context.securityContextRepository(securityContextRepository()))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register").permitAll()
+						// permitAll so expired sessions can still clear cookies; CSRF header is still required.
 						.requestMatchers(HttpMethod.POST, "/api/auth/logout").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
 						.requestMatchers("/api/invite-codes", "/api/invite-codes/**").hasRole("ADMIN")
@@ -79,11 +105,13 @@ public class SecurityConfig {
 				)
 				.exceptionHandling(ex -> ex
 						.authenticationEntryPoint((request, response, authException) ->
-								writeJsonError(response, HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
+								apiErrorResponses.write(response, HttpStatus.UNAUTHORIZED, "Unauthorized"))
 						.accessDeniedHandler((request, response, accessDeniedException) ->
-								writeJsonError(response, HttpServletResponse.SC_FORBIDDEN, "Forbidden"))
+								apiErrorResponses.write(response, HttpStatus.FORBIDDEN, "Forbidden"))
 				)
 				.addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
+				.addFilterAfter(authRateLimitFilter, CsrfCookieFilter.class)
+				.addFilterAfter(expensiveOpsRateLimitFilter, AuthRateLimitFilter.class)
 				.formLogin(form -> form.disable())
 				.httpBasic(basic -> basic.disable())
 				.logout(logout -> logout.disable());
@@ -92,26 +120,19 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	CorsConfigurationSource corsConfigurationSource() {
+	CorsConfigurationSource corsConfigurationSource(AppProperties appProperties) {
+		List<String> origins = appProperties.getCors().allowedOriginList();
+		if (origins.isEmpty()) {
+			throw new IllegalStateException("app.cors.allowed-origins must list at least one origin");
+		}
 		CorsConfiguration config = new CorsConfiguration();
-		config.setAllowedOrigins(List.of("http://localhost:5173"));
+		config.setAllowedOrigins(origins);
 		config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 		config.setAllowedHeaders(List.of("*"));
 		config.setAllowCredentials(true);
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/api/**", config);
 		return source;
-	}
-
-	private static void writeJsonError(HttpServletResponse response, int status, String message) throws IOException {
-		response.setStatus(status);
-		response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-		String error = status == 401 ? "Unauthorized" : "Forbidden";
-		String body = """
-				{"timestamp":"%s","status":%d,"error":"%s","message":"%s"}
-				""".formatted(Instant.now(), status, error, message).trim();
-		response.getWriter().write(body);
 	}
 
 	/**

@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { api, isUnauthorized, setUnauthorizedListener } from '../api/client'
+import { api, isForbidden, isUnauthorized, setUnauthorizedListener } from '../api/client'
 import type { AuthUser, LoginRequest, RegisterRequest } from '../api/types'
 
 type AuthContextValue = {
@@ -83,7 +83,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await api.logout()
     } catch (err) {
-      if (!isUnauthorized(err)) throw err
+      // 401: session already gone. 403: stale/invalid CSRF — Spring rejects before logout.
+      if (!isUnauthorized(err) && !isForbidden(err)) throw err
+      await api.refreshCsrf()
     } finally {
       clearSession()
     }

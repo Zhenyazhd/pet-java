@@ -68,15 +68,13 @@ public class AtsScreenerClient {
 					.body(body)
 					.retrieve()
 					.body(String.class);
-		}
-		catch (RestClientResponseException ex) {
+		} catch (RestClientResponseException ex) {
 			log.error("ATS Screener HTTP {} body={}", ex.getStatusCode().value(), ex.getResponseBodyAsString());
 			throw new IllegalStateException(
 					"ATS Screener error " + ex.getStatusCode().value() + ": " + summarizeError(ex.getResponseBodyAsString()),
 					ex
 			);
-		}
-		catch (Exception ex) {
+		} catch (Exception ex) {
 			if (isTimeout(ex)) {
 				log.error("ATS Screener timed out after {}s at {}", timeoutSeconds, baseUrl);
 				throw new IllegalStateException(

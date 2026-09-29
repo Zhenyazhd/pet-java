@@ -7,7 +7,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
-/** Resolves the authenticated app_user for services that used APP_CURRENT_USER_ID before. */
+/** Resolves the authenticated app_user for service-layer ownership checks. */
 @Component
 public class CurrentUserService {
 

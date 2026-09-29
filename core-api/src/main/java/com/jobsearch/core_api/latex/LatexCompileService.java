@@ -19,6 +19,11 @@ import org.springframework.stereotype.Service;
 /**
  * Compiles LaTeX to PDF via native tectonic when available,
  * otherwise falls back to Docker (slower on Apple Silicon).
+ *
+ * <p>Trust model: source may be user-controlled (structured resume render or raw
+ * {@code /api/latex/compile} up to 500k chars). Compiles always pass
+ * {@code tectonic --untrusted} so known-insecure engine features (e.g. shell escape)
+ * stay disabled. Work runs in a per-request temp directory that is deleted afterward.
  */
 @Service
 public class LatexCompileService {
@@ -28,6 +33,23 @@ public class LatexCompileService {
 	private static final String DOCKER_IMAGE = "dxjoke/tectonic-docker";
 	private static final Path HOST_TECTONIC_CACHE =
 			Path.of(System.getProperty("user.home"), ".cache", "job-search-tectonic");
+
+	private final Optional<String> tectonicBinary;
+	private final boolean dockerAvailable;
+
+	public LatexCompileService() {
+		this.tectonicBinary = resolveTectonicBinary();
+		this.dockerAvailable = tectonicBinary.isEmpty() && commandExists("docker");
+		if (tectonicBinary.isPresent()) {
+			log.info("LaTeX compiler ready: native tectonic={}", tectonicBinary.get());
+		}
+		else if (dockerAvailable) {
+			log.info("LaTeX compiler ready: Docker fallback image={}", DOCKER_IMAGE);
+		}
+		else {
+			log.warn("No LaTeX compiler detected at startup (tectonic/docker missing)");
+		}
+	}
 
 	public byte[] compile(String source) {
 		Path workDir = null;
@@ -62,12 +84,11 @@ public class LatexCompileService {
 	}
 
 	private CompileResult runCompiler(Path workDir) throws IOException, InterruptedException {
-		Optional<String> tectonic = resolveTectonicBinary();
-		if (tectonic.isPresent()) {
-			log.info("Compiling LaTeX with native tectonic: {}", tectonic.get());
-			return execute(List.of(tectonic.get(), "main.tex"), workDir, Map.of());
+		if (tectonicBinary.isPresent()) {
+			log.info("Compiling LaTeX with native tectonic --untrusted: {}", tectonicBinary.get());
+			return execute(List.of(tectonicBinary.get(), "--untrusted", "main.tex"), workDir, Map.of());
 		}
-		if (commandExists("docker")) {
+		if (dockerAvailable) {
 			Files.createDirectories(HOST_TECTONIC_CACHE);
 			log.warn(
 					"Compiling LaTeX via Docker amd64 emulation (slow on Apple Silicon). "
@@ -87,6 +108,7 @@ public class LatexCompileService {
 			command.add("/data");
 			command.add(DOCKER_IMAGE);
 			command.add("tectonic");
+			command.add("--untrusted");
 			command.add("main.tex");
 			return execute(command, workDir, Map.of());
 		}

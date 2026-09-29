@@ -57,15 +57,23 @@ public class InviteCodeService {
 		log.info("Deleted unused invite code id={}", id);
 	}
 
-	/** Locks and consumes an unused code; throws if missing/used. */
+	/**
+	 * Locks an unused invite for the current transaction. Call before creating the user so
+	 * invalid invites fail with 401 before any email-existence checks (no enumeration oracle).
+	 */
 	@Transactional
-	public InviteCode consume(String rawCode, Long userId) {
+	public InviteCode lockAvailable(String rawCode) {
 		String code = rawCode == null ? "" : rawCode.strip();
 		if (code.isBlank()) {
 			throw new UnauthorizedException("Invalid invite code");
 		}
-		InviteCode invite = inviteCodeRepository.findAvailableForUpdate(code)
+		return inviteCodeRepository.findAvailableForUpdate(code)
 				.orElseThrow(() -> new UnauthorizedException("Invalid or already used invite code"));
+	}
+
+	/** Marks a previously locked invite as used by {@code userId}. */
+	@Transactional
+	public InviteCode markUsed(InviteCode invite, Long userId) {
 		invite.setUsedAt(Instant.now());
 		invite.setUsedByUserId(userId);
 		return inviteCodeRepository.save(invite);

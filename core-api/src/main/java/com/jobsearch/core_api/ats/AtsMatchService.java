@@ -4,9 +4,13 @@ import com.jobsearch.core_api.ats.AtsDtos.MatchRequest;
 import com.jobsearch.core_api.ats.AtsDtos.MatchResponse;
 import com.jobsearch.core_api.ats.AtsDtos.PlatformScore;
 import com.jobsearch.core_api.ats.AtsDtos.Suggestion;
+import com.jobsearch.core_api.auth.CurrentUserService;
+import com.jobsearch.core_api.common.NotFoundException;
 import com.jobsearch.core_api.resume.ResumeDtos.ResumeDocument;
 import com.jobsearch.core_api.resume.ResumePlainTextRenderer;
 import com.jobsearch.core_api.resume.ResumeService;
+import com.jobsearch.core_api.vacancy.Vacancy;
+import com.jobsearch.core_api.vacancy.VacancyRepository;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -15,9 +19,14 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.JsonNode;
 
-/** Scores the current resume against a vacancy via ATS Screener. */
+/**
+ * Scores the current resume against a vacancy via ATS Screener.
+ * HTTP to the screener runs outside a DB transaction so the pool connection is not held open.
+ */
 @Service
 public class AtsMatchService {
 
@@ -26,15 +35,24 @@ public class AtsMatchService {
 	private final ResumeService resumeService;
 	private final ResumePlainTextRenderer plainTextRenderer;
 	private final AtsScreenerClient atsScreenerClient;
+	private final VacancyRepository vacancyRepository;
+	private final CurrentUserService currentUserService;
+	private final TransactionTemplate transactionTemplate;
 
 	public AtsMatchService(
 			ResumeService resumeService,
 			ResumePlainTextRenderer plainTextRenderer,
-			AtsScreenerClient atsScreenerClient
+			AtsScreenerClient atsScreenerClient,
+			VacancyRepository vacancyRepository,
+			CurrentUserService currentUserService,
+			PlatformTransactionManager transactionManager
 	) {
 		this.resumeService = resumeService;
 		this.plainTextRenderer = plainTextRenderer;
 		this.atsScreenerClient = atsScreenerClient;
+		this.vacancyRepository = vacancyRepository;
+		this.currentUserService = currentUserService;
+		this.transactionTemplate = new TransactionTemplate(transactionManager);
 	}
 
 	public MatchResponse match(MatchRequest request) {
@@ -46,6 +64,7 @@ public class AtsMatchService {
 			throw new IllegalArgumentException("vacancyContext exceeds 20,000 characters");
 		}
 
+		// ResumeService.get() uses its own short read-only TX; do not wrap this method.
 		ResumeDocument resume = resumeService.get();
 		String resumeText = plainTextRenderer.render(resume);
 		if (resumeText.isBlank()) {
@@ -54,14 +73,29 @@ public class AtsMatchService {
 
 		JsonNode root = atsScreenerClient.fullScore(resumeText, vacancy);
 		MatchResponse response = mapResponse(root);
+		if (request.vacancyId() != null) {
+			persistMatchPercent(request.vacancyId(), response.averageScore());
+		}
 		log.info(
-				"ATS match done average={} platforms={} provider={} cached={}",
+				"ATS match done average={} platforms={} provider={} cached={} vacancyId={}",
 				response.averageScore(),
 				response.platforms().size(),
 				response.provider(),
-				response.cached()
+				response.cached(),
+				request.vacancyId()
 		);
 		return response;
+	}
+
+	private void persistMatchPercent(Long vacancyId, int averageScore) {
+		long userId = currentUserService.requireUserId();
+		transactionTemplate.executeWithoutResult(status -> {
+			Vacancy owned = vacancyRepository.findByIdAndUserId(vacancyId, userId)
+					.orElseThrow(() -> new NotFoundException("Vacancy not found: " + vacancyId));
+			owned.setMatchPercent(clampScore(averageScore));
+			vacancyRepository.save(owned);
+			log.info("Persisted matchPercent={} on vacancyId={} userId={}", averageScore, vacancyId, userId);
+		});
 	}
 
 	private static MatchResponse mapResponse(JsonNode root) {

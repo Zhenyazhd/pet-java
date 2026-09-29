@@ -9,5 +9,5 @@ public interface ApplicationCvRepository extends JpaRepository<ApplicationCv, Lo
 
 	List<ApplicationCv> findByVacancyIdAndUserIdOrderBySentAtDesc(Long vacancyId, Long userId);
 
-	boolean existsByCvVersionId(Long cvVersionId);
+	boolean existsByCvVersionIdAndUserId(Long cvVersionId, Long userId);
 }

@@ -30,6 +30,11 @@ export function isUnauthorized(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401
 }
 
+/** CSRF rejection (invalid/missing token) — Spring Security returns 403. */
+export function isForbidden(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 403
+}
+
 type UnauthorizedListener = () => void
 
 let unauthorizedListener: UnauthorizedListener | null = null
@@ -53,9 +58,14 @@ function readXsrfToken(): string | null {
   return readCookie('XSRF-TOKEN')
 }
 
+async function refreshCsrfCookie(): Promise<void> {
+  await fetch('/api/auth/csrf', { credentials: 'include' })
+}
+
+/** Fetch CSRF cookie only if missing. After logout, call {@link refreshCsrfCookie} instead. */
 async function ensureCsrfCookie(): Promise<void> {
   if (readXsrfToken()) return
-  await fetch('/api/auth/csrf', { credentials: 'include' })
+  await refreshCsrfCookie()
 }
 
 function needsCsrf(method: string): boolean {
@@ -122,6 +132,8 @@ export type Profile = {
 
 export const api = {
   ensureCsrf: () => ensureCsrfCookie(),
+  /** Force a new XSRF-TOKEN (required after logout — session invalidate leaves a stale cookie). */
+  refreshCsrf: () => refreshCsrfCookie(),
 
   getMe: () => request<AuthUser>('/api/auth/me', undefined, { skipAuthRedirect: true }),
 
@@ -145,14 +157,18 @@ export const api = {
       { skipAuthRedirect: true },
     ),
 
-  logout: () =>
-    request<void>(
+  // POST logout is permitAll but still CSRF-protected — send X-XSRF-TOKEN.
+  // After success, refresh CSRF for the next anonymous session.
+  logout: async () => {
+    await request<void>(
       '/api/auth/logout',
       {
         method: 'POST',
       },
       { skipAuthRedirect: true },
-    ),
+    )
+    await refreshCsrfCookie()
+  },
 
   listVacancies: () => request<Vacancy[]>('/api/vacancies'),
 
@@ -240,10 +256,13 @@ export const api = {
       }),
     }),
 
-  matchResume: (vacancyContext: string) =>
+  matchResume: (vacancyContext: string, vacancyId?: number) =>
     request<MatchResponse>('/api/ai/resume/match', {
       method: 'POST',
-      body: JSON.stringify({ vacancyContext: vacancyContext.trim() }),
+      body: JSON.stringify({
+        vacancyContext: vacancyContext.trim(),
+        ...(vacancyId != null ? { vacancyId } : {}),
+      }),
     }),
 
   getProfile: () => request<Profile>('/api/profile'),

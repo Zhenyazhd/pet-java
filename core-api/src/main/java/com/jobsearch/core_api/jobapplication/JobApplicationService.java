@@ -1,7 +1,6 @@
 package com.jobsearch.core_api.jobapplication;
 
 import com.jobsearch.core_api.auth.CurrentUserService;
-import com.jobsearch.core_api.common.ConflictException;
 import com.jobsearch.core_api.common.NotFoundException;
 import com.jobsearch.core_api.jobapplication.JobApplicationDtos.JobApplicationRequest;
 import com.jobsearch.core_api.jobapplication.JobApplicationDtos.JobApplicationResponse;
@@ -49,15 +48,34 @@ public class JobApplicationService {
 		return toResponse(getOwnedApplication(id));
 	}
 
+	/**
+	 * Upsert by vacancy: create if missing, otherwise update status/notes on the existing row.
+	 * Vacancies from import/manual create already have a NOT_APPLIED application.
+	 */
 	public JobApplicationResponse create(JobApplicationRequest request) {
 		long userId = currentUserService.requireUserId();
 		Vacancy vacancy = vacancyRepository.findByIdAndUserId(request.vacancyId(), userId)
 				.orElseThrow(() -> new NotFoundException("Vacancy not found: " + request.vacancyId()));
-		if (jobApplicationRepository.existsByVacancyId(request.vacancyId())) {
-			throw new ConflictException("Application for this vacancy already exists");
+
+		JobApplication application = jobApplicationRepository
+				.findByVacancyIdAndUserId(request.vacancyId(), userId)
+				.orElse(null);
+		if (application != null) {
+			applyStatus(application, request.status());
+			if (request.notes() != null) {
+				application.setNotes(blankToNull(request.notes()));
+			}
+			log.info(
+					"Updated existing application id={} vacancyId={} userId={} status={}",
+					application.getId(),
+					request.vacancyId(),
+					userId,
+					application.getStatus()
+			);
+			return toResponse(application);
 		}
 
-		JobApplication application = new JobApplication();
+		application = new JobApplication();
 		application.setVacancy(vacancy);
 		applyStatus(application, request.status());
 		application.setNotes(blankToNull(request.notes()));

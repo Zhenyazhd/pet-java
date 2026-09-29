@@ -3,25 +3,25 @@ package com.jobsearch.core_api.vacancy;
 import com.jobsearch.core_api.ai.OpenRouterClient;
 import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.common.ConflictException;
+import com.jobsearch.core_api.common.UniqueConstraint;
 import com.jobsearch.core_api.jobapplication.ApplicationStatus;
 import com.jobsearch.core_api.jobapplication.JobApplication;
 import com.jobsearch.core_api.vacancy.VacancyDtos.VacancyImportRequest;
 import com.jobsearch.core_api.vacancy.VacancyDtos.VacancyResponse;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
  * Imports a vacancy from URL + pasted JD text via OpenRouter, then persists
  * vacancy + requirements + application (NOT_APPLIED).
+ * LLM calls run outside a DB transaction so the pool connection is not held open.
  */
 @Service
 public class VacancyImportService {
@@ -59,22 +59,24 @@ public class VacancyImportService {
 	private final OpenRouterClient openRouterClient;
 	private final ObjectMapper objectMapper;
 	private final CurrentUserService currentUserService;
+	private final TransactionTemplate transactionTemplate;
 
 	public VacancyImportService(
 			VacancyRepository vacancyRepository,
 			VacancyService vacancyService,
 			OpenRouterClient openRouterClient,
 			ObjectMapper objectMapper,
-			CurrentUserService currentUserService
+			CurrentUserService currentUserService,
+			PlatformTransactionManager transactionManager
 	) {
 		this.vacancyRepository = vacancyRepository;
 		this.vacancyService = vacancyService;
 		this.openRouterClient = openRouterClient;
 		this.objectMapper = objectMapper;
 		this.currentUserService = currentUserService;
+		this.transactionTemplate = new TransactionTemplate(transactionManager);
 	}
 
-	@Transactional
 	public VacancyResponse importFromPaste(VacancyImportRequest request) {
 		long userId = currentUserService.requireUserId();
 		String url = request.url().strip();
@@ -84,36 +86,49 @@ public class VacancyImportService {
 		}
 
 		ParsedVacancy parsed = parseWithLlm(url, pasted);
+		return persistImported(userId, url, parsed);
+	}
 
-		Vacancy vacancy = new Vacancy();
-		vacancy.setUserId(userId);
-		vacancy.setUrl(url);
-		vacancy.setTitle(parsed.title());
-		vacancy.setCompany(parsed.company());
-		vacancy.setDescription(parsed.description());
-		vacancy.setMatchPercent(null);
+	private VacancyResponse persistImported(long userId, String url, ParsedVacancy parsed) {
+		return UniqueConstraint.onConflict(
+				"Vacancy with this URL already exists",
+				() -> transactionTemplate.execute(status -> {
+					if (vacancyRepository.existsByUserIdAndUrl(userId, url)) {
+						throw new ConflictException("Vacancy with this URL already exists");
+					}
 
-		for (ParsedRequirement item : parsed.requirements()) {
-			VacancyRequirement requirement = new VacancyRequirement();
-			requirement.setName(item.name());
-			requirement.setRequired(item.required());
-			vacancy.addRequirement(requirement);
-		}
+					Vacancy vacancy = new Vacancy();
+					vacancy.setUserId(userId);
+					vacancy.setUrl(url);
+					vacancy.setTitle(parsed.title());
+					vacancy.setCompany(parsed.company());
+					vacancy.setDescription(parsed.description());
+					vacancy.setMatchPercent(null);
 
-		JobApplication application = new JobApplication();
-		application.setStatus(ApplicationStatus.NOT_APPLIED);
-		vacancy.setApplication(application);
+					for (ParsedRequirement item : parsed.requirements()) {
+						VacancyRequirement requirement = new VacancyRequirement();
+						requirement.setName(item.name());
+						requirement.setRequired(item.required());
+						vacancy.addRequirement(requirement);
+					}
 
-		Vacancy saved = vacancyRepository.save(vacancy);
-		log.info(
-				"Imported vacancy id={} userId={} title={} company={} requirements={} applicationStatus=NOT_APPLIED",
-				saved.getId(),
-				userId,
-				saved.getTitle(),
-				saved.getCompany(),
-				parsed.requirements().size()
+					JobApplication application = new JobApplication();
+					application.setStatus(ApplicationStatus.NOT_APPLIED);
+					vacancy.setApplication(application);
+
+					Vacancy saved = vacancyRepository.saveAndFlush(vacancy);
+					log.info(
+							"Imported vacancy id={} userId={} title={} company={} requirements={} applicationStatus=NOT_APPLIED",
+							saved.getId(),
+							userId,
+							saved.getTitle(),
+							saved.getCompany(),
+							parsed.requirements().size()
+					);
+					return vacancyService.toResponse(saved);
+				}),
+				UniqueConstraint.VACANCY_USER_URL
 		);
-		return vacancyService.findById(saved.getId());
 	}
 
 	private ParsedVacancy parseWithLlm(String url, String pasted) {
@@ -159,31 +174,18 @@ public class VacancyImportService {
 		if (node == null || !node.isArray()) {
 			return List.of();
 		}
-		Map<String, ParsedRequirement> unique = new LinkedHashMap<>();
+		List<VacancyRequirements.Item> collected = new ArrayList<>();
 		for (JsonNode item : node) {
-			if (unique.size() >= MAX_REQUIREMENTS) {
-				break;
-			}
 			String name = textOrNull(item.path("name"));
 			if (name == null || name.isBlank()) {
 				continue;
 			}
-			name = name.strip();
-			if (name.length() > 255) {
-				name = name.substring(0, 255).strip();
-			}
-			String key = name.toLowerCase(Locale.ROOT);
 			boolean required = !item.path("required").isBoolean() || item.path("required").asBoolean(true);
-			// if duplicate: keep required=true if either says required
-			ParsedRequirement existing = unique.get(key);
-			if (existing != null) {
-				unique.put(key, new ParsedRequirement(existing.name(), existing.required() || required));
-			}
-			else {
-				unique.put(key, new ParsedRequirement(name, required));
-			}
+			collected.add(new VacancyRequirements.Item(name, required));
 		}
-		return new ArrayList<>(unique.values());
+		return VacancyRequirements.dedupe(collected, MAX_REQUIREMENTS).stream()
+				.map(item -> new ParsedRequirement(item.name(), item.required()))
+				.toList();
 	}
 
 	private static ParsedVacancy fallback(String pasted) {
