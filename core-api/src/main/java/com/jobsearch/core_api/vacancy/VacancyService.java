@@ -1,5 +1,6 @@
 package com.jobsearch.core_api.vacancy;
 
+import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.common.ConflictException;
 import com.jobsearch.core_api.common.NotFoundException;
 import com.jobsearch.core_api.jobapplication.ApplicationStatus;
@@ -15,7 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Vacancy CRUD and requirement lists. */
+/** Vacancy CRUD scoped to the authenticated owner. */
 @Service
 @Transactional
 public class VacancyService {
@@ -23,52 +24,63 @@ public class VacancyService {
 	private static final Logger log = LoggerFactory.getLogger(VacancyService.class);
 
 	private final VacancyRepository vacancyRepository;
+	private final CurrentUserService currentUserService;
 
-	public VacancyService(VacancyRepository vacancyRepository) {
+	public VacancyService(VacancyRepository vacancyRepository, CurrentUserService currentUserService) {
 		this.vacancyRepository = vacancyRepository;
+		this.currentUserService = currentUserService;
 	}
 
 	@Transactional(readOnly = true)
 	public List<VacancyResponse> findAll() {
-		return vacancyRepository.findAllByOrderByCreatedAtDesc().stream().map(this::toResponse).toList();
+		long userId = currentUserService.requireUserId();
+		return vacancyRepository.findAllByUserIdOrderByCreatedAtDesc(userId).stream()
+				.map(this::toResponse)
+				.toList();
 	}
 
 	@Transactional(readOnly = true)
 	public VacancyResponse findById(Long id) {
-		return toResponse(getVacancy(id));
+		return toResponse(getOwnedVacancy(id));
 	}
 
 	public VacancyResponse create(VacancyRequest request) {
-		if (vacancyRepository.existsByUrl(request.url())) {
+		long userId = currentUserService.requireUserId();
+		if (vacancyRepository.existsByUserIdAndUrl(userId, request.url())) {
 			throw new ConflictException("Vacancy with this URL already exists");
 		}
 		Vacancy vacancy = new Vacancy();
+		vacancy.setUserId(userId);
 		applyRequest(vacancy, request);
 		Vacancy saved = vacancyRepository.save(vacancy);
-		log.info("Created vacancy id={} title={}", saved.getId(), saved.getTitle());
+		log.info("Created vacancy id={} userId={} title={}", saved.getId(), userId, saved.getTitle());
 		return toResponse(saved);
 	}
 
 	public VacancyResponse update(Long id, VacancyRequest request) {
-		Vacancy vacancy = getVacancy(id);
-		if (!vacancy.getUrl().equals(request.url()) && vacancyRepository.existsByUrl(request.url())) {
+		long userId = currentUserService.requireUserId();
+		Vacancy vacancy = getOwnedVacancy(id);
+		if (!vacancy.getUrl().equals(request.url())
+				&& vacancyRepository.existsByUserIdAndUrl(userId, request.url())) {
 			throw new ConflictException("Vacancy with this URL already exists");
 		}
 		applyRequest(vacancy, request);
-		log.info("Updated vacancy id={}", id);
+		log.info("Updated vacancy id={} userId={}", id, userId);
 		return toResponse(vacancy);
 	}
 
 	public void delete(Long id) {
-		if (!vacancyRepository.existsById(id)) {
+		long userId = currentUserService.requireUserId();
+		if (!vacancyRepository.existsByIdAndUserId(id, userId)) {
 			throw new NotFoundException("Vacancy not found: " + id);
 		}
 		vacancyRepository.deleteById(id);
-		log.info("Deleted vacancy id={}", id);
+		log.info("Deleted vacancy id={} userId={}", id, userId);
 	}
 
-	Vacancy getVacancy(Long id) {
-		return vacancyRepository.findDetailedById(id)
+	Vacancy getOwnedVacancy(Long id) {
+		long userId = currentUserService.requireUserId();
+		return vacancyRepository.findDetailedByIdAndUserId(id, userId)
 				.orElseThrow(() -> new NotFoundException("Vacancy not found: " + id));
 	}
 

@@ -13,12 +13,14 @@ public class AppUserPrincipal implements UserDetails {
 	private final String email;
 	private final String displayName;
 	private final String passwordHash;
+	private final UserRole role;
 
-	public AppUserPrincipal(Long id, String email, String displayName, String passwordHash) {
+	public AppUserPrincipal(Long id, String email, String displayName, String passwordHash, UserRole role) {
 		this.id = id;
 		this.email = email;
 		this.displayName = displayName;
 		this.passwordHash = passwordHash;
+		this.role = role == null ? UserRole.USER : role;
 	}
 
 	public Long getId() {
@@ -29,9 +31,13 @@ public class AppUserPrincipal implements UserDetails {
 		return displayName;
 	}
 
+	public UserRole getRole() {
+		return role;
+	}
+
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
-		return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+		return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
 	}
 
 	@Override

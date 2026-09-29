@@ -113,7 +113,7 @@ public class CvService {
 	}
 
 	public ApplicationCvResponse sendToVacancy(Long vacancyId, SendCvRequest request) {
-		Vacancy vacancy = vacancyRepository.findById(vacancyId)
+		Vacancy vacancy = vacancyRepository.findByIdAndUserId(vacancyId, currentUserId())
 				.orElseThrow(() -> new NotFoundException("Vacancy not found: " + vacancyId));
 		CvVersion version = getOwnedVersion(request.cvVersionId());
 
@@ -133,7 +133,7 @@ public class CvService {
 
 	@Transactional(readOnly = true)
 	public List<ApplicationCvResponse> listSendingsForVacancy(Long vacancyId) {
-		if (!vacancyRepository.existsById(vacancyId)) {
+		if (!vacancyRepository.existsByIdAndUserId(vacancyId, currentUserId())) {
 			throw new NotFoundException("Vacancy not found: " + vacancyId);
 		}
 		return applicationCvRepository.findByVacancyIdAndUserIdOrderBySentAtDesc(vacancyId, currentUserId())

@@ -22,8 +22,21 @@ public class AppUserDetailsService implements UserDetailsService {
 						user.getId(),
 						user.getEmail(),
 						user.getDisplayName(),
-						user.getPasswordHash()
+						user.getPasswordHash(),
+						parseRole(user.getRole())
 				))
 				.orElseThrow(() -> new UsernameNotFoundException("User not found"));
+	}
+
+	static UserRole parseRole(String role) {
+		if (role == null || role.isBlank()) {
+			return UserRole.USER;
+		}
+		try {
+			return UserRole.valueOf(role.strip().toUpperCase());
+		}
+		catch (IllegalArgumentException ex) {
+			return UserRole.USER;
+		}
 	}
 }

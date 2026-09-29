@@ -94,6 +94,7 @@ public class AuthService {
 		user.setPasswordHash(passwordEncoder.encode(request.password()));
 		user.setCareerPath("");
 		user.setResumeJson("");
+		user.setRole(UserRole.USER.name());
 		AppUser saved = appUserRepository.saveAndFlush(user);
 
 		inviteCodeService.consume(request.inviteCode(), saved.getId());
@@ -102,7 +103,8 @@ public class AuthService {
 				saved.getId(),
 				saved.getEmail(),
 				saved.getDisplayName(),
-				saved.getPasswordHash()
+				saved.getPasswordHash(),
+				UserRole.USER
 		);
 		Authentication authentication = new UsernamePasswordAuthenticationToken(
 				principal,
@@ -111,7 +113,7 @@ public class AuthService {
 		);
 		establishSession(authentication, httpRequest, httpResponse);
 		log.info("Registered userId={} email={}", saved.getId(), saved.getEmail());
-		return new AuthUserResponse(saved.getId(), saved.getEmail(), saved.getDisplayName());
+		return new AuthUserResponse(saved.getId(), saved.getEmail(), saved.getDisplayName(), UserRole.USER.name());
 	}
 
 	public void logout(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
@@ -144,6 +146,11 @@ public class AuthService {
 	}
 
 	private AuthUserResponse toResponse(AppUserPrincipal principal) {
-		return new AuthUserResponse(principal.getId(), principal.getUsername(), principal.getDisplayName());
+		return new AuthUserResponse(
+				principal.getId(),
+				principal.getUsername(),
+				principal.getDisplayName(),
+				principal.getRole().name()
+		);
 	}
 }

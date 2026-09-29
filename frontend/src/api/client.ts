@@ -44,6 +44,25 @@ type RequestOptions = {
   skipAuthRedirect?: boolean
 }
 
+function readCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name.replace(/[$()*+.?[\\\]^{|}]/g, '\\$&')}=([^;]*)`))
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+function readXsrfToken(): string | null {
+  return readCookie('XSRF-TOKEN')
+}
+
+async function ensureCsrfCookie(): Promise<void> {
+  if (readXsrfToken()) return
+  await fetch('/api/auth/csrf', { credentials: 'include' })
+}
+
+function needsCsrf(method: string): boolean {
+  const m = method.toUpperCase()
+  return m !== 'GET' && m !== 'HEAD' && m !== 'OPTIONS' && m !== 'TRACE'
+}
+
 async function readErrorMessage(response: Response): Promise<string> {
   const text = await response.text()
   let message = `Request failed (${response.status})`
@@ -59,13 +78,24 @@ async function readErrorMessage(response: Response): Promise<string> {
 }
 
 async function request<T>(path: string, init?: RequestInit, options?: RequestOptions): Promise<T> {
+  const method = init?.method ?? 'GET'
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(init?.headers as Record<string, string> | undefined),
+  }
+
+  if (needsCsrf(method)) {
+    await ensureCsrfCookie()
+    const token = readXsrfToken()
+    if (token) {
+      headers['X-XSRF-TOKEN'] = token
+    }
+  }
+
   const response = await fetch(path, {
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
     ...init,
+    headers,
   })
 
   if (response.status === 204) {
@@ -91,24 +121,38 @@ export type Profile = {
 }
 
 export const api = {
+  ensureCsrf: () => ensureCsrfCookie(),
+
   getMe: () => request<AuthUser>('/api/auth/me', undefined, { skipAuthRedirect: true }),
 
   login: (body: LoginRequest) =>
-    request<AuthUser>('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }, { skipAuthRedirect: true }),
+    request<AuthUser>(
+      '/api/auth/login',
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      },
+      { skipAuthRedirect: true },
+    ),
 
   register: (body: RegisterRequest) =>
-    request<AuthUser>('/api/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }, { skipAuthRedirect: true }),
+    request<AuthUser>(
+      '/api/auth/register',
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      },
+      { skipAuthRedirect: true },
+    ),
 
   logout: () =>
-    request<void>('/api/auth/logout', {
-      method: 'POST',
-    }, { skipAuthRedirect: true }),
+    request<void>(
+      '/api/auth/logout',
+      {
+        method: 'POST',
+      },
+      { skipAuthRedirect: true },
+    ),
 
   listVacancies: () => request<Vacancy[]>('/api/vacancies'),
 
@@ -159,9 +203,14 @@ export const api = {
     }),
 
   compileResume: async (): Promise<Blob> => {
+    await ensureCsrfCookie()
+    const headers: Record<string, string> = {}
+    const token = readXsrfToken()
+    if (token) headers['X-XSRF-TOKEN'] = token
     const response = await fetch('/api/resume/compile', {
       method: 'POST',
       credentials: 'include',
+      headers,
     })
     if (!response.ok) {
       const message = await readErrorMessage(response)

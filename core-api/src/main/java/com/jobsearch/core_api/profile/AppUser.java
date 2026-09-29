@@ -1,5 +1,6 @@
 package com.jobsearch.core_api.profile;
 
+import com.jobsearch.core_api.auth.UserRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -26,6 +27,9 @@ public class AppUser {
 	@Column(name = "password_hash", length = 255)
 	private String passwordHash;
 
+	@Column(nullable = false, length = 32)
+	private String role = UserRole.USER.name();
+
 	@Column(name = "career_path", nullable = false, columnDefinition = "TEXT")
 	private String careerPath = "";
 
@@ -45,6 +49,9 @@ public class AppUser {
 		}
 		if (resumeJson == null) {
 			resumeJson = "";
+		}
+		if (role == null || role.isBlank()) {
+			role = UserRole.USER.name();
 		}
 	}
 
@@ -78,6 +85,14 @@ public class AppUser {
 
 	public void setPasswordHash(String passwordHash) {
 		this.passwordHash = passwordHash;
+	}
+
+	public String getRole() {
+		return role;
+	}
+
+	public void setRole(String role) {
+		this.role = role;
 	}
 
 	public String getCareerPath() {

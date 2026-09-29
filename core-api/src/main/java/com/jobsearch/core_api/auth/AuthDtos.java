@@ -12,7 +12,8 @@ public final class AuthDtos {
 	public record AuthUserResponse(
 			Long id,
 			String email,
-			String displayName
+			String displayName,
+			String role
 	) {
 	}
 

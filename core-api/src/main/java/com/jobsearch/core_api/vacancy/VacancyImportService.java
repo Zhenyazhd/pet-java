@@ -1,6 +1,7 @@
 package com.jobsearch.core_api.vacancy;
 
 import com.jobsearch.core_api.ai.OpenRouterClient;
+import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.common.ConflictException;
 import com.jobsearch.core_api.jobapplication.ApplicationStatus;
 import com.jobsearch.core_api.jobapplication.JobApplication;
@@ -57,30 +58,35 @@ public class VacancyImportService {
 	private final VacancyService vacancyService;
 	private final OpenRouterClient openRouterClient;
 	private final ObjectMapper objectMapper;
+	private final CurrentUserService currentUserService;
 
 	public VacancyImportService(
 			VacancyRepository vacancyRepository,
 			VacancyService vacancyService,
 			OpenRouterClient openRouterClient,
-			ObjectMapper objectMapper
+			ObjectMapper objectMapper,
+			CurrentUserService currentUserService
 	) {
 		this.vacancyRepository = vacancyRepository;
 		this.vacancyService = vacancyService;
 		this.openRouterClient = openRouterClient;
 		this.objectMapper = objectMapper;
+		this.currentUserService = currentUserService;
 	}
 
 	@Transactional
 	public VacancyResponse importFromPaste(VacancyImportRequest request) {
+		long userId = currentUserService.requireUserId();
 		String url = request.url().strip();
 		String pasted = request.pastedText().strip();
-		if (vacancyRepository.existsByUrl(url)) {
+		if (vacancyRepository.existsByUserIdAndUrl(userId, url)) {
 			throw new ConflictException("Vacancy with this URL already exists");
 		}
 
 		ParsedVacancy parsed = parseWithLlm(url, pasted);
 
 		Vacancy vacancy = new Vacancy();
+		vacancy.setUserId(userId);
 		vacancy.setUrl(url);
 		vacancy.setTitle(parsed.title());
 		vacancy.setCompany(parsed.company());
@@ -100,8 +106,9 @@ public class VacancyImportService {
 
 		Vacancy saved = vacancyRepository.save(vacancy);
 		log.info(
-				"Imported vacancy id={} title={} company={} requirements={} applicationStatus=NOT_APPLIED",
+				"Imported vacancy id={} userId={} title={} company={} requirements={} applicationStatus=NOT_APPLIED",
 				saved.getId(),
+				userId,
 				saved.getTitle(),
 				saved.getCompany(),
 				parsed.requirements().size()

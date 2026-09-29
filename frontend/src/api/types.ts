@@ -69,6 +69,7 @@ export type AuthUser = {
   id: number
   email: string
   displayName: string
+  role?: 'USER' | 'ADMIN'
 }
 
 export type LoginRequest = {

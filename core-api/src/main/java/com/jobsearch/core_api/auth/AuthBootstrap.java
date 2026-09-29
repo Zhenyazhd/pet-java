@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Optionally sets a password on the seed user (id=1) so local data stays usable after auth lands.
+ * Bootstraps seed user password (optional) and keeps id=1 as ADMIN for invite management.
  */
 @Component
 public class AuthBootstrap {
@@ -35,21 +35,31 @@ public class AuthBootstrap {
 
 	@EventListener(ApplicationReadyEvent.class)
 	@Transactional
-	public void ensureBootstrapPassword() {
-		String bootstrapPassword = appProperties.getBootstrapPassword();
-		if (bootstrapPassword == null || bootstrapPassword.isBlank()) {
-			return;
-		}
+	public void ensureSeedAdmin() {
 		AppUser user = appUserRepository.findById(1L).orElse(null);
 		if (user == null) {
-			log.warn("Bootstrap password set but seed user id=1 is missing");
+			log.warn("Seed user id=1 is missing");
 			return;
 		}
-		if (user.getPasswordHash() != null && !user.getPasswordHash().isBlank()) {
-			return;
+
+		boolean changed = false;
+		if (!UserRole.ADMIN.name().equalsIgnoreCase(user.getRole())) {
+			user.setRole(UserRole.ADMIN.name());
+			changed = true;
+			log.info("Promoted seed user id=1 to ADMIN");
 		}
-		user.setPasswordHash(passwordEncoder.encode(bootstrapPassword));
-		appUserRepository.save(user);
-		log.info("Set bootstrap password for seed user id=1 email={}", user.getEmail());
+
+		String bootstrapPassword = appProperties.getBootstrapPassword();
+		if (bootstrapPassword != null
+				&& !bootstrapPassword.isBlank()
+				&& (user.getPasswordHash() == null || user.getPasswordHash().isBlank())) {
+			user.setPasswordHash(passwordEncoder.encode(bootstrapPassword));
+			changed = true;
+			log.info("Set bootstrap password for seed user id=1 email={}", user.getEmail());
+		}
+
+		if (changed) {
+			appUserRepository.save(user);
+		}
 	}
 }
