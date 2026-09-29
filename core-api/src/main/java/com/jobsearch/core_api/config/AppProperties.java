@@ -8,8 +8,6 @@ public class AppProperties {
 	/** @deprecated Prefer authenticated session; kept only as migration fallback reference. */
 	@Deprecated
 	private long currentUserId = 1L;
-	/** Shared invite code required for POST /api/auth/register. */
-	private String inviteCode = "";
 	/** If set and seed user has no password yet, hash this onto user id=1 on startup. */
 	private String bootstrapPassword = "";
 	private final S3 s3 = new S3();
@@ -22,14 +20,6 @@ public class AppProperties {
 
 	public void setCurrentUserId(long currentUserId) {
 		this.currentUserId = currentUserId;
-	}
-
-	public String getInviteCode() {
-		return inviteCode;
-	}
-
-	public void setInviteCode(String inviteCode) {
-		this.inviteCode = inviteCode;
 	}
 
 	public String getBootstrapPassword() {

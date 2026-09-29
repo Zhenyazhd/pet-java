@@ -5,14 +5,11 @@ import com.jobsearch.core_api.auth.AuthDtos.LoginRequest;
 import com.jobsearch.core_api.auth.AuthDtos.RegisterRequest;
 import com.jobsearch.core_api.common.ConflictException;
 import com.jobsearch.core_api.common.UnauthorizedException;
-import com.jobsearch.core_api.config.AppProperties;
 import com.jobsearch.core_api.profile.AppUser;
 import com.jobsearch.core_api.profile.AppUserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -36,19 +33,19 @@ public class AuthService {
 	private final AppUserRepository appUserRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final AuthenticationManager authenticationManager;
-	private final AppProperties appProperties;
+	private final InviteCodeService inviteCodeService;
 	private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
 
 	public AuthService(
 			AppUserRepository appUserRepository,
 			PasswordEncoder passwordEncoder,
 			AuthenticationManager authenticationManager,
-			AppProperties appProperties
+			InviteCodeService inviteCodeService
 	) {
 		this.appUserRepository = appUserRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.authenticationManager = authenticationManager;
-		this.appProperties = appProperties;
+		this.inviteCodeService = inviteCodeService;
 	}
 
 	@Transactional(readOnly = true)
@@ -82,8 +79,6 @@ public class AuthService {
 			HttpServletRequest httpRequest,
 			HttpServletResponse httpResponse
 	) {
-		assertInviteCode(request.inviteCode());
-
 		String email = request.email().strip().toLowerCase();
 		if (appUserRepository.existsByEmailIgnoreCase(email)) {
 			throw new ConflictException("Email already registered");
@@ -99,7 +94,9 @@ public class AuthService {
 		user.setPasswordHash(passwordEncoder.encode(request.password()));
 		user.setCareerPath("");
 		user.setResumeJson("");
-		AppUser saved = appUserRepository.save(user);
+		AppUser saved = appUserRepository.saveAndFlush(user);
+
+		inviteCodeService.consume(request.inviteCode(), saved.getId());
 
 		AppUserPrincipal principal = new AppUserPrincipal(
 				saved.getId(),
@@ -125,18 +122,6 @@ public class AuthService {
 		}
 		securityContextRepository.saveContext(SecurityContextHolder.createEmptyContext(), httpRequest, httpResponse);
 		log.info("User logged out");
-	}
-
-	private void assertInviteCode(String provided) {
-		String expected = appProperties.getInviteCode();
-		if (expected == null || expected.isBlank()) {
-			throw new IllegalStateException("Invite code is not configured on the server");
-		}
-		byte[] left = provided.strip().getBytes(StandardCharsets.UTF_8);
-		byte[] right = expected.strip().getBytes(StandardCharsets.UTF_8);
-		if (left.length != right.length || !MessageDigest.isEqual(left, right)) {
-			throw new UnauthorizedException("Invalid invite code");
-		}
 	}
 
 	private void establishSession(

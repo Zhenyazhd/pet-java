@@ -51,7 +51,7 @@ export function RegisterPage() {
           <p className="eyebrow">Invite only</p>
           <h1>Create account</h1>
           <p className="page-lead">
-            Registration requires an invite code. Ask the project owner if you do not have one.
+            Registration requires a one-time invite code. Ask the project owner if you do not have one.
           </p>
         </div>
       </div>
