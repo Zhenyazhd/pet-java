@@ -1,6 +1,12 @@
 # Job Search
 
-Personal job-search workspace: structured resume editing with AI, vacancy targeting, CV file versions, and application tracking.
+A personal tool that ties together the three things I needed for my own job search: an AI chat that edits a structured resume against my real career history and each vacancy's text, a LaTeX renderer that turns that resume straight into a polished PDF, and a tracker for every vacancy I'm targeting (not applied → applied → interview → offer/rejected/withdrawn). One place instead of a resume doc, a LaTeX template, and a spreadsheet.
+
+## Demo
+
+<video src="CV_creator.mp4" controls width="100%">
+  Your browser can't play this inline — <a href="CV_creator.mp4">download the video</a>.
+</video>
 
 ## Repository layout
 
@@ -14,8 +20,8 @@ Personal job-search workspace: structured resume editing with AI, vacancy target
 
 ## Documentation
 
-- **Backend:** [core-api/README.md](core-api/README.md) — stack, config, schema, full HTTP API
-- **Frontend:** TBD (separate commits)
+- **Backend:** [core-api/README.md](core-api/README.md) — stack, auth, config, schema, full HTTP API
+- **Frontend:** React + Vite SPA in [`frontend/`](frontend/) — resume sheet editor, AI chat panel, vacancy list/detail, ATS match panel
 
 ## Quick start (one command)
 
@@ -24,6 +30,8 @@ Prerequisites: Docker, Java 25, Node **≥ 22.13** (for ATS; frontend works on 1
 ```bash
 cp .env.example .env
 # set OPENROUTER_API_KEY in .env
+# set APP_ADMIN_EMAIL (+ APP_BOOTSTRAP_PASSWORD) — registration is invite-only,
+# this is the account the backend auto-creates as ADMIN on first boot
 # ATS keys: cp tools/ats-screener/.env.example tools/ats-screener/.env
 #   then add GEMINI_API_KEY / GROQ_API_KEY
 
@@ -31,6 +39,8 @@ git submodule update --init --recursive
 npm run setup          # root + frontend + ats deps
 npm run dev            # postgres/s3 + api + web + ats
 ```
+
+Sign in with `APP_ADMIN_EMAIL` / `APP_BOOTSTRAP_PASSWORD`, then mint an invite code for any other account with `POST /api/invite-codes` (admin session required — no UI for this yet, see [core-api/README.md](core-api/README.md#authentication)) — registration always requires one.
 
 | Service | URL |
 |---------|-----|
