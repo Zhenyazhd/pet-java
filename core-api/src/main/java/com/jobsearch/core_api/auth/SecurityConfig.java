@@ -85,7 +85,8 @@ public class SecurityConfig {
 			ApiErrorResponses apiErrorResponses
 	) throws Exception {
 		CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
-		csrfTokenRepository.setCookieCustomizer(cookie -> cookie.sameSite("Lax").path("/"));
+		// Secure: readable by JS (SPA needs the token) but never sent over plain HTTP.
+		csrfTokenRepository.setCookieCustomizer(cookie -> cookie.sameSite("Lax").path("/").secure(true));
 
 		http
 				.csrf(csrf -> csrf

@@ -65,7 +65,8 @@ public class LatexCompileService {
 
 			Path pdf = workDir.resolve("main.pdf");
 			if (!Files.exists(pdf)) {
-				throw new IllegalStateException("Compiler finished but PDF was not produced.\n" + trimLog(result.log()));
+				log.error("LaTeX compiler exited 0 but produced no PDF. Log:\n{}", trimLog(result.log()));
+				throw new IllegalStateException("PDF compilation failed due to a server error. Please try again later.");
 			}
 			byte[] bytes = Files.readAllBytes(pdf);
 			log.info("LaTeX compile succeeded pdfBytes={}", bytes.length);
@@ -112,10 +113,8 @@ public class LatexCompileService {
 			command.add("main.tex");
 			return execute(command, workDir, Map.of());
 		}
-		throw new IllegalStateException(
-				"No LaTeX compiler found. Fast path: brew install tectonic. "
-						+ "Or keep Docker Desktop running (slower on Apple Silicon)."
-		);
+		log.error("No LaTeX compiler found (tectonic/docker missing)");
+		throw new IllegalStateException("PDF compiler is not available on this server. Please try again later.");
 	}
 
 	private CompileResult execute(

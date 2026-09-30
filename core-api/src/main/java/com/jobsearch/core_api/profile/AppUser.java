@@ -36,6 +36,10 @@ public class AppUser {
 	@Column(name = "resume_json", nullable = false, columnDefinition = "TEXT")
 	private String resumeJson = "";
 
+	/** Bumped on every resume save; used for optimistic-concurrency rejection of stale saves. */
+	@Column(name = "resume_version", nullable = false)
+	private int resumeVersion = 0;
+
 	@Column(name = "created_at", nullable = false)
 	private Instant createdAt;
 
@@ -109,6 +113,14 @@ public class AppUser {
 
 	public void setResumeJson(String resumeJson) {
 		this.resumeJson = resumeJson;
+	}
+
+	public int getResumeVersion() {
+		return resumeVersion;
+	}
+
+	public void setResumeVersion(int resumeVersion) {
+		this.resumeVersion = resumeVersion;
 	}
 
 	public Instant getCreatedAt() {

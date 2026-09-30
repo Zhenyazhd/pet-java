@@ -1,8 +1,9 @@
 import { FormEvent, useEffect, useRef, useState } from 'react'
-import { api } from '../api/client'
+import { api, isConflict } from '../api/client'
+import { useAuth } from '../auth/AuthContext'
 import type { ChatItem } from '../components/resume/AiAssistPanel'
 import { readAiModel, writeAiModel } from './aiModels'
-import { clearResumeDraft, readResumeDraft, writeResumeDraft } from './resumeDraft'
+import { clearResumeDraft, pruneLegacyResumeDraft, readResumeDraft, writeResumeDraft } from './resumeDraft'
 import { applyAiProposed } from './resumeEdits'
 import { resolveLocale } from './resumeLocale'
 import {
@@ -27,6 +28,7 @@ function normalizeResume(data: ResumeDocument): ResumeDocument {
 }
 
 export function useResumeEditor() {
+  const { user } = useAuth()
   const [resume, setResume] = useState<ResumeDocument | null>(null)
   const [selected, setSelected] = useState<Selection | null>(null)
   const [chat, setChat] = useState<ChatItem[]>([])
@@ -45,28 +47,35 @@ export function useResumeEditor() {
   const [matching, setMatching] = useState(false)
   const [matchReport, setMatchReport] = useState<MatchResponse | null>(null)
   const [matchError, setMatchError] = useState<string | null>(null)
+  /** Set when the server rejects a save as stale (edited elsewhere) — blocks further saves until reload. */
+  const [conflict, setConflict] = useState(false)
+  /**
+   * True while the resume is being wholesale replaced (vacancy-context commit, or a
+   * conflict reload). Save/preview/chat/match don't block each other — each dedups its
+   * own save (see `saveInFlightRef`) — but none of them may run while the resume itself
+   * is about to be swapped out from under them, and this op must wait for them too.
+   */
+  const [contextBusy, setContextBusy] = useState(false)
   /** Unsaved edits relative to last server sync — drives localStorage draft. */
   const dirtyRef = useRef(false)
   /** Bumped on local edits; in-flight saves must not overwrite newer UI state. */
   const editEpochRef = useRef(0)
-  /** Synchronous mutex — React state alone can miss two clicks in one tick. */
-  const opsLockRef = useRef(false)
+  /** Shared in-flight save so concurrent ops (e.g. chat send + match check) join one
+   *  network call instead of each saving and racing each other's version. */
+  const saveInFlightRef = useRef<Promise<ResumeDocument> | null>(null)
+  /** Synchronous per-action guards — React state alone can miss two clicks in one tick. */
+  const savingRef = useRef(false)
+  const previewingRef = useRef(false)
+  const aiBusyRef = useRef(false)
+  const matchingRef = useRef(false)
+  const structuralLockRef = useRef(false)
 
-  function isOpsLocked() {
-    return opsLockRef.current || saving || previewing || aiBusy || matching
-  }
-
-  function beginOp(): boolean {
-    if (isOpsLocked()) return false
-    opsLockRef.current = true
-    return true
-  }
-
-  function endOp() {
-    opsLockRef.current = false
+  function anyActionBusy(): boolean {
+    return savingRef.current || previewingRef.current || aiBusyRef.current || matchingRef.current
   }
 
   useEffect(() => {
+    pruneLegacyResumeDraft()
     let cancelled = false
     let ackTimer: ReturnType<typeof setTimeout> | undefined
     ;(async () => {
@@ -74,10 +83,10 @@ export function useResumeEditor() {
         const data = await api.getResume()
         if (cancelled) return
         const incomingContext = takePrepareVacancyContext()
-        const cached = readResumeDraft()
+        const cached = readDraft()
         if (incomingContext) {
           dirtyRef.current = false
-          clearResumeDraft()
+          clearDraft()
           setResume(normalizeResume(data))
           setVacancyContext(incomingContext.context)
           setVacancyId(incomingContext.vacancyId)
@@ -92,8 +101,13 @@ export function useResumeEditor() {
           ackTimer = setTimeout(() => acknowledgePrepareVacancyContext(), 0)
         } else if (cached) {
           dirtyRef.current = true
-          setResume(normalizeResume(cached))
-          setStatus('Restored unsaved draft')
+          const staleVersion = cached.version !== data.version
+          setResume(normalizeResume({ ...cached, version: data.version }))
+          setStatus(
+            staleVersion
+              ? 'Restored unsaved draft (aligned to latest server version)'
+              : 'Restored unsaved draft',
+          )
         } else {
           dirtyRef.current = false
           setResume(normalizeResume(data))
@@ -110,8 +124,8 @@ export function useResumeEditor() {
 
   useEffect(() => {
     if (!resume || !dirtyRef.current) return
-    writeResumeDraft(resume)
-  }, [resume])
+    writeDraft(resume)
+  }, [resume, user])
 
   useEffect(() => {
     return () => {
@@ -124,6 +138,20 @@ export function useResumeEditor() {
     writeAiModel(model)
   }
 
+  // Draft persistence is scoped to the logged-in user — an unscoped key would
+  // resurrect a stranger's (or a previous account's) draft on this browser.
+  function readDraft(): ResumeDocument | null {
+    return user ? readResumeDraft(user.id) : null
+  }
+
+  function writeDraft(doc: ResumeDocument): void {
+    if (user) writeResumeDraft(doc, user.id)
+  }
+
+  function clearDraft(): void {
+    if (user) clearResumeDraft(user.id)
+  }
+
   function markDirty() {
     dirtyRef.current = true
     editEpochRef.current += 1
@@ -132,24 +160,71 @@ export function useResumeEditor() {
 
   function markSynced() {
     dirtyRef.current = false
-    clearResumeDraft()
+    clearDraft()
   }
 
   /**
-   * Save `resume`, then report whether it's still current. Every op below
-   * saves before doing its real work; if a newer edit landed meanwhile the
-   * save result is stale and must not overwrite in-flight edits.
+   * Save `resume` if it has unsaved edits, then report whether it's still current.
+   * Every op below saves before doing its real work (previewPdf, sendChat,
+   * checkVacancyMatch), not just save() itself. Two safeguards keep those from
+   * racing each other now that they no longer share one busy flag:
+   *  - if nothing changed since the last sync, skip the network call entirely and
+   *    reuse the already-current `resume` (also avoids a pointless version bump);
+   *  - if a save is already in flight, join that same promise instead of firing a
+   *    second one that would just lose the optimistic-concurrency check.
    */
   async function saveIfCurrent(): Promise<ResumeDocument | null> {
     if (!resume) return null
+    if (!dirtyRef.current) return resume
     const epoch = editEpochRef.current
-    const saved = await api.saveResume(resume)
+    if (!saveInFlightRef.current) {
+      const resumeToSave = resume
+      saveInFlightRef.current = api.saveResume(resumeToSave).finally(() => {
+        saveInFlightRef.current = null
+      })
+    }
+    let saved: ResumeDocument
+    try {
+      saved = await saveInFlightRef.current
+    } catch (err) {
+      if (isConflict(err)) {
+        setConflict(true)
+        throw new Error(
+          'Resume was changed in another tab or session. Reload to get the latest version, then reapply your edits.',
+        )
+      }
+      throw err
+    }
     if (epoch !== editEpochRef.current) {
       dirtyRef.current = true
       return null
     }
     markSynced()
-    return saved
+    setConflict(false)
+    const normalized = normalizeResume(saved)
+    setResume(normalized)
+    return normalized
+  }
+
+  /** Discards local edits and reloads the server's current resume — the only way out of a conflict. */
+  async function reloadResume() {
+    if (structuralLockRef.current || anyActionBusy()) return
+    structuralLockRef.current = true
+    setContextBusy(true)
+    setError(null)
+    try {
+      const data = await api.getResume()
+      setResume(normalizeResume(data))
+      dirtyRef.current = false
+      clearDraft()
+      setConflict(false)
+      setStatus('Reloaded the latest resume from the server — your unsaved edits were discarded')
+    } catch (err) {
+      setError(errorMessage(err, 'Failed to reload resume'))
+    } finally {
+      structuralLockRef.current = false
+      setContextBusy(false)
+    }
   }
 
   function select(section: ResumeSection, itemIndex?: number, e?: { stopPropagation(): void }) {
@@ -168,7 +243,8 @@ export function useResumeEditor() {
   }
 
   async function save() {
-    if (!resume || !beginOp()) return
+    if (!resume || structuralLockRef.current || savingRef.current) return
+    savingRef.current = true
     setSaving(true)
     setError(null)
     try {
@@ -177,18 +253,18 @@ export function useResumeEditor() {
         setStatus('Saved, but you have newer local edits — save again')
         return
       }
-      setResume(normalizeResume(saved))
       setStatus('Saved')
     } catch (err) {
       setError(errorMessage(err, 'Save failed'))
     } finally {
       setSaving(false)
-      endOp()
+      savingRef.current = false
     }
   }
 
   async function previewPdf() {
-    if (!resume || !beginOp()) return
+    if (!resume || structuralLockRef.current || previewingRef.current) return
+    previewingRef.current = true
     setPreviewing(true)
     setError(null)
     try {
@@ -206,7 +282,7 @@ export function useResumeEditor() {
       setError(errorMessage(err, 'Compile failed'))
     } finally {
       setPreviewing(false)
-      endOp()
+      previewingRef.current = false
     }
   }
 
@@ -219,7 +295,8 @@ export function useResumeEditor() {
 
   async function sendChat(e: FormEvent) {
     e.preventDefault()
-    if (!draft.trim() || !resume || !beginOp()) return
+    if (!draft.trim() || !resume || structuralLockRef.current || aiBusyRef.current) return
+    aiBusyRef.current = true
     const instruction = draft.trim()
     setDraft('')
     const history: ChatTurn[] = chat.slice(-12).map((item) => ({
@@ -255,7 +332,7 @@ export function useResumeEditor() {
       setError(errorMessage(err, 'AI request failed'))
     } finally {
       setAiBusy(false)
-      endOp()
+      aiBusyRef.current = false
     }
   }
 
@@ -289,13 +366,15 @@ export function useResumeEditor() {
       setVacancyId(null)
     }
     if (!changed) return
-    if (!beginOp()) return
+    if (structuralLockRef.current || anyActionBusy()) return
+    structuralLockRef.current = true
+    setContextBusy(true)
 
     setChat([])
     setDraft('')
     setMatchReport(null)
     setMatchError(null)
-    clearResumeDraft()
+    clearDraft()
     dirtyRef.current = false
     // Bump the epoch so any save() already in flight sees a stale epoch and
     // refuses to overwrite the resume we're about to reload here.
@@ -304,16 +383,19 @@ export function useResumeEditor() {
     try {
       const data = await api.getResume()
       setResume(normalizeResume(data))
+      setConflict(false)
       setStatus('Vacancy context updated — draft and chat cleared')
     } catch (err) {
       setError(errorMessage(err, 'Failed to reload resume'))
     } finally {
-      endOp()
+      structuralLockRef.current = false
+      setContextBusy(false)
     }
   }
 
   async function checkVacancyMatch() {
-    if (!resume || !vacancyContext.trim() || !beginOp()) return
+    if (!resume || !vacancyContext.trim() || structuralLockRef.current || matchingRef.current) return
+    matchingRef.current = true
     setMatching(true)
     setMatchError(null)
     setMatchReport(null)
@@ -334,11 +416,9 @@ export function useResumeEditor() {
       setStatus(null)
     } finally {
       setMatching(false)
-      endOp()
+      matchingRef.current = false
     }
   }
-
-  const opsLocked = isOpsLocked()
 
   return {
     resume,
@@ -349,9 +429,11 @@ export function useResumeEditor() {
     aiBusy,
     previewing,
     saving,
-    opsLocked,
+    contextBusy,
     error,
     status,
+    conflict,
+    reloadResume,
     pdfUrl,
     vacancyContext,
     contextOpen,

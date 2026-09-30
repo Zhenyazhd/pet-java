@@ -10,7 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -22,7 +21,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Ensures a bootstrap ADMIN always exists (by configured email), so invite codes can be created
  * even on a fresh database without the legacy id=1 seed user.
  *
- * <p>Uses {@link ApplicationRunner} so a missing {@code APP_ADMIN_EMAIL} in {@code prod} aborts startup.
+ * <p>Uses {@link ApplicationRunner} so a missing {@code APP_ADMIN_EMAIL} aborts startup in every
+ * environment — registration is invite-only and only an ADMIN can mint invite codes, so silently
+ * booting without one would permanently lock the deployment out of registration.
  */
 @Component
 public class AuthBootstrap implements ApplicationRunner {
@@ -32,20 +33,17 @@ public class AuthBootstrap implements ApplicationRunner {
 	private final AppProperties appProperties;
 	private final AppUserRepository appUserRepository;
 	private final PasswordEncoder passwordEncoder;
-	private final Environment environment;
 	private final TransactionTemplate requiresNewTx;
 
 	public AuthBootstrap(
 			AppProperties appProperties,
 			AppUserRepository appUserRepository,
 			PasswordEncoder passwordEncoder,
-			Environment environment,
 			PlatformTransactionManager transactionManager
 	) {
 		this.appProperties = appProperties;
 		this.appUserRepository = appUserRepository;
 		this.passwordEncoder = passwordEncoder;
-		this.environment = environment;
 		this.requiresNewTx = new TransactionTemplate(transactionManager);
 		this.requiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 	}
@@ -55,15 +53,11 @@ public class AuthBootstrap implements ApplicationRunner {
 	public void run(ApplicationArguments args) {
 		String adminEmail = Emails.normalize(appProperties.getAdminEmail());
 		if (adminEmail.isBlank()) {
-			if (environment.matchesProfiles("prod", "production")) {
-				throw new IllegalStateException(
-						"APP_ADMIN_EMAIL / app.admin-email is required in production — refusing to start without a bootstrap ADMIN"
-				);
-			}
-			log.error(
-					"app.admin-email is empty — set APP_ADMIN_EMAIL; no ADMIN can be bootstrapped and registration will stay locked"
+			// Fail closed in every environment, not just a guessed "prod"/"production" profile name —
+			// a deployment under any other profile (or none) must not boot into a silent admin-less lockout.
+			throw new IllegalStateException(
+					"APP_ADMIN_EMAIL / app.admin-email is required — refusing to start without a bootstrap ADMIN"
 			);
-			return;
 		}
 
 		AppUser user = appUserRepository.findByEmailIgnoreCase(adminEmail).orElse(null);

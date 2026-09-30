@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,12 +19,19 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Per-user rate limit for expensive external calls: AI suggest, ATS match, vacancy import.
+ * Per-user rate limit for expensive operations: AI suggest, ATS match, vacancy import,
+ * and resume/LaTeX PDF compilation (the compile endpoints each spawn a subprocess or
+ * container per request, making them the costliest unmetered surface if left off this list).
  */
 public class ExpensiveOpsRateLimitFilter extends OncePerRequestFilter {
 
 	private static final Logger log = LoggerFactory.getLogger(ExpensiveOpsRateLimitFilter.class);
 	private static final long WINDOW_MS = TimeUnit.MINUTES.toMillis(1);
+	private static final Set<String> LIMITED_EXACT_PATHS = Set.of(
+			"/api/vacancies/import",
+			"/api/resume/compile",
+			"/api/latex/compile"
+	);
 
 	private final FixedWindowRateLimiter rateLimiter;
 	private final AppProperties appProperties;
@@ -45,7 +53,7 @@ public class ExpensiveOpsRateLimitFilter extends OncePerRequestFilter {
 			return true;
 		}
 		String path = request.getRequestURI();
-		return !path.startsWith("/api/ai/") && !"/api/vacancies/import".equals(path);
+		return !path.startsWith("/api/ai/") && !LIMITED_EXACT_PATHS.contains(path);
 	}
 
 	@Override
@@ -64,7 +72,7 @@ public class ExpensiveOpsRateLimitFilter extends OncePerRequestFilter {
 			apiErrorResponses.write(
 					response,
 					HttpStatus.TOO_MANY_REQUESTS,
-					"Too many AI/ATS requests — try again later",
+					"Too many AI/ATS/compile requests — try again later",
 					Map.of("Retry-After", String.valueOf(retryAfter))
 			);
 			return;

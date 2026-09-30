@@ -19,6 +19,10 @@ export function ResumePage() {
     )
   }
 
+  const structuralBusy = editor.contextBusy
+  const anyResumeOpBusy =
+    structuralBusy || editor.saving || editor.previewing || editor.aiBusy || editor.matching
+
   return (
     <section className="page resume-page">
       <PageHeader
@@ -47,14 +51,14 @@ export function ResumePage() {
               variant="ghost"
               active={Boolean(editor.vacancyContext.trim())}
               onClick={editor.openContextModal}
-              disabled={editor.opsLocked}
+              disabled={structuralBusy}
             >
               {editor.vacancyContext.trim() ? 'Edit context' : 'Add context'}
             </Button>
-            <Button variant="ghost" onClick={editor.previewPdf} disabled={editor.opsLocked}>
+            <Button variant="ghost" onClick={editor.previewPdf} disabled={editor.previewing || structuralBusy}>
               {editor.previewing ? 'Preparing PDF…' : 'Preview PDF'}
             </Button>
-            <Button onClick={editor.save} disabled={editor.opsLocked}>
+            <Button onClick={editor.save} disabled={editor.saving || structuralBusy}>
               {editor.saving ? 'Saving…' : 'Save'}
             </Button>
           </>
@@ -67,7 +71,15 @@ export function ResumePage() {
         </p>
       )}
 
-      {editor.error && <Banner tone="error">{editor.error}</Banner>}
+      {editor.conflict && (
+        <Banner tone="error">
+          <p>{editor.error}</p>
+          <Button variant="ghost" onClick={() => void editor.reloadResume()} disabled={anyResumeOpBusy}>
+            Reload resume
+          </Button>
+        </Banner>
+      )}
+      {editor.error && !editor.conflict && <Banner tone="error">{editor.error}</Banner>}
       {editor.status && !editor.error && <Banner tone="ok">{editor.status}</Banner>}
 
       <div className="resume-layout resume-layout--assist">
@@ -83,7 +95,7 @@ export function ResumePage() {
           selected={editor.selected}
           chat={editor.chat}
           draft={editor.draft}
-          busy={editor.opsLocked}
+          busy={editor.aiBusy || structuralBusy}
           hasVacancyContext={Boolean(editor.vacancyContext.trim())}
           aiModel={editor.aiModel}
           onAiModelChange={editor.setAiModel}
@@ -97,7 +109,7 @@ export function ResumePage() {
       <VacancyMatchPanel
         hasContext={Boolean(editor.vacancyContext.trim())}
         matching={editor.matching}
-        busy={editor.opsLocked}
+        busy={structuralBusy}
         report={editor.matchReport}
         error={editor.matchError}
         onCheck={() => void editor.checkVacancyMatch()}
@@ -109,7 +121,8 @@ export function ResumePage() {
       <VacancyContextModal
         open={editor.contextOpen}
         draft={editor.contextDraft}
-        disabled={editor.opsLocked}
+        disabled={structuralBusy}
+        saving={structuralBusy}
         onDraftChange={editor.setContextDraft}
         onClose={editor.closeContextModal}
         onClear={() => {

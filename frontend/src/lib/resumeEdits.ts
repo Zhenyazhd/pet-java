@@ -55,6 +55,10 @@ export function applyAiProposed(
     return {
       ...next,
       locale: resolveLocale(next.locale ?? resume.locale),
+      // The AI payload is a freshly generated document — it knows nothing about our
+      // optimistic-concurrency token. Always keep the version we're actually editing
+      // from, never whatever (if anything) the model happened to echo back.
+      version: resume.version,
     }
   }
   return applyProposed(

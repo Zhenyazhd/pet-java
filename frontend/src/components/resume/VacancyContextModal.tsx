@@ -6,6 +6,7 @@ type VacancyContextModalProps = {
   open: boolean
   draft: string
   disabled?: boolean
+  saving?: boolean
   onDraftChange: (value: string) => void
   onClose: () => void
   onClear: () => void
@@ -16,6 +17,7 @@ export function VacancyContextModal({
   open,
   draft,
   disabled = false,
+  saving = false,
   onDraftChange,
   onClose,
   onClear,
@@ -68,7 +70,9 @@ export function VacancyContextModal({
             <Button variant="ghost" onClick={onClear} disabled={disabled}>
               Clear
             </Button>
-            <Button onClick={onSave} disabled={disabled}>Save context</Button>
+            <Button onClick={onSave} disabled={disabled}>
+              {saving ? 'Saving…' : 'Save context'}
+            </Button>
           </div>
         </div>
       </div>

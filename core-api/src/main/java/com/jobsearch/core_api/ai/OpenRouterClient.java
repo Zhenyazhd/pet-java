@@ -44,9 +44,8 @@ public class OpenRouterClient {
 	public String chat(String systemPrompt, String userPrompt, String modelOverride) {
 		AppProperties.OpenRouter cfg = appProperties.getOpenRouter();
 		if (cfg.getApiKey() == null || cfg.getApiKey().isBlank()) {
-			throw new IllegalStateException(
-					"OPENROUTER_API_KEY is not set. Add it to your environment or .env and restart the API."
-			);
+			log.error("OPENROUTER_API_KEY is not set");
+			throw new IllegalStateException("AI service is not configured on this server");
 		}
 
 		String model = (modelOverride != null && !modelOverride.isBlank())

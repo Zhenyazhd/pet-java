@@ -100,7 +100,9 @@ export function AiAssistPanel({
           value={draft}
           onChange={(e) => onDraftChange(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+            // Skip IME composition (CJK input): the Enter that commits a candidate
+            // must not also submit the (still-incomplete) draft.
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault()
               if (!busy && draft.trim()) {
                 e.currentTarget.form?.requestSubmit()

@@ -2,7 +2,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:job_search}
     username: ${POSTGRES_USER:zhenya}
-    password: ${POSTGRES_PASSWORD:132435465768798}
+    password: ${POSTGRES_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -15,11 +15,16 @@ spring:
       max-request-size: 12MB
 
 server:
+  # Set to "framework" only when deployed behind a trusted TLS-terminating
+  # reverse proxy (nginx/ALB) that sets X-Forwarded-Proto — otherwise clients
+  # could spoof the scheme. Default "none": safe when reachable directly.
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:none}
   servlet:
     session:
       cookie:
         same-site: lax
         http-only: true
+        secure: true
 
 app:
   admin-email: ${APP_ADMIN_EMAIL:}
@@ -34,7 +39,8 @@ app:
     trust-forwarded-headers: ${APP_AUTH_TRUST_FORWARDED_HEADERS:false}
     trusted-proxies: ${APP_AUTH_TRUSTED_PROXIES:127.0.0.1,::1}
   expensive-ops-rate-limit:
-    # Shared budget for POST /api/ai/** and /api/vacancies/import (per user / minute; 0 = off)
+    # Shared budget for POST /api/ai/**, /api/vacancies/import, /api/resume/compile,
+    # and /api/latex/compile (per user / minute; 0 = off)
     per-user-per-minute: ${APP_EXPENSIVE_OPS_PER_USER_PER_MINUTE:10}
   s3:
     endpoint: ${S3_ENDPOINT:http://localhost:9090}

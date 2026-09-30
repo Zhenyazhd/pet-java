@@ -776,6 +776,7 @@ h1 {
 
 .career-editor:focus {
   outline: none;
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 
 .career-editor:disabled {

@@ -1,9 +1,11 @@
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { ErrorBoundary } from './ErrorBoundary'
 import { Button } from './ui/Button'
 
 export function Layout() {
   const { user, logout } = useAuth()
+  const location = useLocation()
 
   async function onLogout() {
     try {
@@ -35,7 +37,10 @@ export function Layout() {
         </div>
       </header>
       <main className="main">
-        <Outlet />
+        {/* Keyed by route so navigating away from a crashed page clears the error automatically. */}
+        <ErrorBoundary key={location.pathname} hint="This page hit an unexpected error — try another page from the nav above.">
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   )
@@ -43,6 +48,7 @@ export function Layout() {
 
 /** Minimal shell for login / register. */
 export function AuthLayout() {
+  const location = useLocation()
   return (
     <div className="app-shell auth-shell">
       <header className="topbar">
@@ -51,7 +57,9 @@ export function AuthLayout() {
         </Link>
       </header>
       <main className="main">
-        <Outlet />
+        <ErrorBoundary key={location.pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   )

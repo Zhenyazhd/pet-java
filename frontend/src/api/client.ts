@@ -35,6 +35,11 @@ export function isForbidden(error: unknown): boolean {
   return error instanceof ApiError && error.status === 403
 }
 
+/** Optimistic-concurrency rejection (e.g. a stale resume save) — server returns 409. */
+export function isConflict(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 409
+}
+
 type UnauthorizedListener = () => void
 
 let unauthorizedListener: UnauthorizedListener | null = null
@@ -101,25 +106,43 @@ async function readErrorMessage(response: Response): Promise<string> {
   return message
 }
 
-async function request<T>(path: string, init?: RequestInit, options?: RequestOptions): Promise<T> {
-  const method = init?.method ?? 'GET'
+async function buildRequestHeaders(
+  method: string,
+  init: RequestInit | undefined,
+  options: RequestOptions | undefined,
+): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     ...(options?.responseType === 'blob' ? {} : { 'Content-Type': 'application/json' }),
     ...(init?.headers as Record<string, string> | undefined),
   }
-
   if (needsCsrf(method)) {
     const token = await ensureCsrfCookie()
     if (token) {
       headers['X-XSRF-TOKEN'] = token
     }
   }
+  return headers
+}
 
-  const response = await fetch(path, {
+async function request<T>(path: string, init?: RequestInit, options?: RequestOptions): Promise<T> {
+  const method = init?.method ?? 'GET'
+
+  let response = await fetch(path, {
     credentials: 'include',
     ...init,
-    headers,
+    headers: await buildRequestHeaders(method, init, options),
   })
+
+  // Stale/missing CSRF token: any mutation, not just logout, can hit this if the
+  // XSRF cookie expired or was cleared mid-session. Mint a fresh one and retry once.
+  if (response.status === 403 && needsCsrf(method)) {
+    await refreshCsrfCookie()
+    response = await fetch(path, {
+      credentials: 'include',
+      ...init,
+      headers: await buildRequestHeaders(method, init, options),
+    })
+  }
 
   if (response.status === 204) {
     return undefined as T

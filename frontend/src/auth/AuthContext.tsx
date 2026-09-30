@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { api, isForbidden, isUnauthorized, setUnauthorizedListener } from '../api/client'
+import { api, isUnauthorized, setUnauthorizedListener } from '../api/client'
 import type { AuthUser, LoginRequest, RegisterRequest } from '../api/types'
 
 type AuthContextValue = {
@@ -86,17 +86,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isUnauthorized(err)) {
         // Session already gone on the server — mint CSRF for the next login.
         await api.refreshCsrf()
-      } else if (isForbidden(err)) {
-        // Stale CSRF: Spring rejected before invalidate. Refresh and retry once.
-        await api.refreshCsrf()
-        try {
-          await api.logout()
-        } catch (retryErr) {
-          if (!isUnauthorized(retryErr)) throw retryErr
-          await api.refreshCsrf()
-        }
       } else {
-        // Network / 5xx — keep client session so we don't pretend logout succeeded.
+        // A stale-CSRF 403 already gets one refresh-and-retry inside request()
+        // itself now, so anything that still reaches here (a persistent 403,
+        // network error, or 5xx) means the server session might still be
+        // valid — keep the client session so we don't pretend logout succeeded.
         throw err
       }
     }

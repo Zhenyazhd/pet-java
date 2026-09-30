@@ -24,6 +24,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -105,7 +106,10 @@ public class CvService {
 		}
 	}
 
-	@Transactional(readOnly = true)
+	// NOT_SUPPORTED: getOwnedVersion() below runs its own short read-only transaction
+	// (Spring Data JPA repository methods are self-transactional), which closes before
+	// the S3 GetObject call — so no pooled DB connection is held across the network hop.
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	public ResponseEntity<InputStreamResource> download(Long cvVersionId) {
 		CvVersion version = getOwnedVersion(cvVersionId);
 		InputStream stream = objectStorageService.download(version.getStorageKey());
