@@ -2,6 +2,9 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { PageHeader } from '../components/ui/PageHeader'
+import { Button } from '../components/ui/Button'
+import { Banner } from '../components/ui/Banner'
 
 export function RegisterPage() {
   const { register } = useAuth()
@@ -46,15 +49,11 @@ export function RegisterPage() {
 
   return (
     <section className="page narrow auth-page">
-      <div className="page-header">
-        <div>
-          <p className="eyebrow">Invite only</p>
-          <h1>Create account</h1>
-          <p className="page-lead">
-            Registration requires a one-time invite code. Ask the project owner if you do not have one.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Invite only"
+        title="Create account"
+        lead="Registration requires a one-time invite code. Ask the project owner if you do not have one."
+      />
 
       <form className="form" onSubmit={onSubmit}>
         <label>
@@ -99,11 +98,11 @@ export function RegisterPage() {
             spellCheck={false}
           />
         </label>
-        {error && <p className="banner banner--error">{error}</p>}
+        {error && <Banner tone="error">{error}</Banner>}
         <div className="form-actions">
-          <button type="submit" className="button" disabled={pending}>
+          <Button type="submit" disabled={pending}>
             {pending ? 'Creating…' : 'Create account'}
-          </button>
+          </Button>
         </div>
       </form>
 

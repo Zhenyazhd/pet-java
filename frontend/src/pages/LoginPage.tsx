@@ -2,6 +2,9 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { PageHeader } from '../components/ui/PageHeader'
+import { Button } from '../components/ui/Button'
+import { Banner } from '../components/ui/Banner'
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -30,13 +33,11 @@ export function LoginPage() {
 
   return (
     <section className="page narrow auth-page">
-      <div className="page-header">
-        <div>
-          <p className="eyebrow">Welcome back</p>
-          <h1>Sign in</h1>
-          <p className="page-lead">Use your account to open resume, vacancies, and profile.</p>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Welcome back"
+        title="Sign in"
+        lead="Use your account to open resume, vacancies, and profile."
+      />
 
       <form className="form" onSubmit={onSubmit}>
         <label>
@@ -60,11 +61,11 @@ export function LoginPage() {
             minLength={8}
           />
         </label>
-        {error && <p className="banner banner--error">{error}</p>}
+        {error && <Banner tone="error">{error}</Banner>}
         <div className="form-actions">
-          <button type="submit" className="button" disabled={pending}>
+          <Button type="submit" disabled={pending}>
             {pending ? 'Signing in…' : 'Sign in'}
-          </button>
+          </Button>
         </div>
       </form>
 

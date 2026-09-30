@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { Button } from './ui/Button'
 
 export function Layout() {
   const { user, logout } = useAuth()
@@ -8,7 +9,8 @@ export function Layout() {
     try {
       await logout()
     } catch {
-      // session already cleared in auth context
+      // Keep UI logged-in if the server session could not be invalidated.
+      window.alert('Could not log out. Check your connection and try again.')
     }
   }
 
@@ -27,9 +29,9 @@ export function Layout() {
         </nav>
         <div className="topbar__account">
           {user && <span className="topbar__user">{user.displayName || user.email}</span>}
-          <button type="button" className="button button--ghost topbar__logout" onClick={() => void onLogout()}>
+          <Button variant="ghost" className="topbar__logout" onClick={() => void onLogout()}>
             Log out
-          </button>
+          </Button>
         </div>
       </header>
       <main className="main">

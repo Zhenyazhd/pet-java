@@ -47,6 +47,8 @@ export function setUnauthorizedListener(listener: UnauthorizedListener | null): 
 type RequestOptions = {
   /** Do not notify global 401 handler (e.g. GET /api/auth/me while bootstrapping). */
   skipAuthRedirect?: boolean
+  /** Default JSON; use `blob` for binary endpoints (PDF compile). */
+  responseType?: 'json' | 'blob'
 }
 
 function readCookie(name: string): string | null {
@@ -58,14 +60,26 @@ function readXsrfToken(): string | null {
   return readCookie('XSRF-TOKEN')
 }
 
+/** Shared in-flight CSRF mint so parallel mutations don't fan out N GETs. */
+let csrfRefreshInFlight: Promise<void> | null = null
+
 async function refreshCsrfCookie(): Promise<void> {
-  await fetch('/api/auth/csrf', { credentials: 'include' })
+  if (!csrfRefreshInFlight) {
+    csrfRefreshInFlight = fetch('/api/auth/csrf', { credentials: 'include' })
+      .then(() => undefined)
+      .finally(() => {
+        csrfRefreshInFlight = null
+      })
+  }
+  await csrfRefreshInFlight
 }
 
-/** Fetch CSRF cookie only if missing. After logout, call {@link refreshCsrfCookie} instead. */
-async function ensureCsrfCookie(): Promise<void> {
-  if (readXsrfToken()) return
+/** Return the current XSRF token, minting a cookie first only if one is missing. After logout, call {@link refreshCsrfCookie} instead. */
+async function ensureCsrfCookie(): Promise<string | null> {
+  const existing = readXsrfToken()
+  if (existing) return existing
   await refreshCsrfCookie()
+  return readXsrfToken()
 }
 
 function needsCsrf(method: string): boolean {
@@ -90,13 +104,12 @@ async function readErrorMessage(response: Response): Promise<string> {
 async function request<T>(path: string, init?: RequestInit, options?: RequestOptions): Promise<T> {
   const method = init?.method ?? 'GET'
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(options?.responseType === 'blob' ? {} : { 'Content-Type': 'application/json' }),
     ...(init?.headers as Record<string, string> | undefined),
   }
 
   if (needsCsrf(method)) {
-    await ensureCsrfCookie()
-    const token = readXsrfToken()
+    const token = await ensureCsrfCookie()
     if (token) {
       headers['X-XSRF-TOKEN'] = token
     }
@@ -118,6 +131,10 @@ async function request<T>(path: string, init?: RequestInit, options?: RequestOpt
       unauthorizedListener?.()
     }
     throw new ApiError(message, response.status)
+  }
+
+  if (options?.responseType === 'blob') {
+    return (await response.blob()) as T
   }
 
   const text = await response.text()
@@ -218,23 +235,8 @@ export const api = {
       body: JSON.stringify(resume),
     }),
 
-  compileResume: async (): Promise<Blob> => {
-    await ensureCsrfCookie()
-    const headers: Record<string, string> = {}
-    const token = readXsrfToken()
-    if (token) headers['X-XSRF-TOKEN'] = token
-    const response = await fetch('/api/resume/compile', {
-      method: 'POST',
-      credentials: 'include',
-      headers,
-    })
-    if (!response.ok) {
-      const message = await readErrorMessage(response)
-      if (response.status === 401) unauthorizedListener?.()
-      throw new ApiError(message, response.status)
-    }
-    return response.blob()
-  },
+  compileResume: () =>
+    request<Blob>('/api/resume/compile', { method: 'POST' }, { responseType: 'blob' }),
 
   suggestResumeSection: (
     section: AiScope,

@@ -46,7 +46,8 @@ public final class VacancyDtos {
 	public record ApplicationSummaryResponse(
 			Long id,
 			String status,
-			boolean applied
+			boolean applied,
+			String notes
 	) {
 	}
 

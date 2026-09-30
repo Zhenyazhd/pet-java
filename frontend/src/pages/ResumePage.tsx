@@ -47,13 +47,14 @@ export function ResumePage() {
               variant="ghost"
               active={Boolean(editor.vacancyContext.trim())}
               onClick={editor.openContextModal}
+              disabled={editor.opsLocked}
             >
               {editor.vacancyContext.trim() ? 'Edit context' : 'Add context'}
             </Button>
-            <Button variant="ghost" onClick={editor.previewPdf} disabled={editor.previewing}>
+            <Button variant="ghost" onClick={editor.previewPdf} disabled={editor.opsLocked}>
               {editor.previewing ? 'Preparing PDF…' : 'Preview PDF'}
             </Button>
-            <Button onClick={editor.save} disabled={editor.saving}>
+            <Button onClick={editor.save} disabled={editor.opsLocked}>
               {editor.saving ? 'Saving…' : 'Save'}
             </Button>
           </>
@@ -82,7 +83,7 @@ export function ResumePage() {
           selected={editor.selected}
           chat={editor.chat}
           draft={editor.draft}
-          busy={editor.aiBusy}
+          busy={editor.opsLocked}
           hasVacancyContext={Boolean(editor.vacancyContext.trim())}
           aiModel={editor.aiModel}
           onAiModelChange={editor.setAiModel}
@@ -96,7 +97,7 @@ export function ResumePage() {
       <VacancyMatchPanel
         hasContext={Boolean(editor.vacancyContext.trim())}
         matching={editor.matching}
-        busy={editor.aiBusy}
+        busy={editor.opsLocked}
         report={editor.matchReport}
         error={editor.matchError}
         onCheck={() => void editor.checkVacancyMatch()}
@@ -108,6 +109,7 @@ export function ResumePage() {
       <VacancyContextModal
         open={editor.contextOpen}
         draft={editor.contextDraft}
+        disabled={editor.opsLocked}
         onDraftChange={editor.setContextDraft}
         onClose={editor.closeContextModal}
         onClear={() => {

@@ -5,6 +5,7 @@ import { Button } from '../ui/Button'
 type VacancyContextModalProps = {
   open: boolean
   draft: string
+  disabled?: boolean
   onDraftChange: (value: string) => void
   onClose: () => void
   onClear: () => void
@@ -14,6 +15,7 @@ type VacancyContextModalProps = {
 export function VacancyContextModal({
   open,
   draft,
+  disabled = false,
   onDraftChange,
   onClose,
   onClear,
@@ -63,10 +65,10 @@ export function VacancyContextModal({
             autoFocus
           />
           <div className="context-modal__actions">
-            <Button variant="ghost" onClick={onClear}>
+            <Button variant="ghost" onClick={onClear} disabled={disabled}>
               Clear
             </Button>
-            <Button onClick={onSave}>Save context</Button>
+            <Button onClick={onSave} disabled={disabled}>Save context</Button>
           </div>
         </div>
       </div>

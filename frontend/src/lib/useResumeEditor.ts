@@ -38,6 +38,7 @@ export function useResumeEditor() {
   const [status, setStatus] = useState<string | null>(null)
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const [vacancyContext, setVacancyContext] = useState('')
+  const [vacancyId, setVacancyId] = useState<number | null>(null)
   const [contextOpen, setContextOpen] = useState(false)
   const [contextDraft, setContextDraft] = useState('')
   const [aiModel, setAiModelState] = useState(readAiModel)
@@ -46,6 +47,24 @@ export function useResumeEditor() {
   const [matchError, setMatchError] = useState<string | null>(null)
   /** Unsaved edits relative to last server sync — drives localStorage draft. */
   const dirtyRef = useRef(false)
+  /** Bumped on local edits; in-flight saves must not overwrite newer UI state. */
+  const editEpochRef = useRef(0)
+  /** Synchronous mutex — React state alone can miss two clicks in one tick. */
+  const opsLockRef = useRef(false)
+
+  function isOpsLocked() {
+    return opsLockRef.current || saving || previewing || aiBusy || matching
+  }
+
+  function beginOp(): boolean {
+    if (isOpsLocked()) return false
+    opsLockRef.current = true
+    return true
+  }
+
+  function endOp() {
+    opsLockRef.current = false
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -60,8 +79,9 @@ export function useResumeEditor() {
           dirtyRef.current = false
           clearResumeDraft()
           setResume(normalizeResume(data))
-          setVacancyContext(incomingContext)
-          setContextDraft(incomingContext)
+          setVacancyContext(incomingContext.context)
+          setVacancyId(incomingContext.vacancyId)
+          setContextDraft(incomingContext.context)
           setContextOpen(true)
           setChat([])
           setDraft('')
@@ -106,12 +126,30 @@ export function useResumeEditor() {
 
   function markDirty() {
     dirtyRef.current = true
+    editEpochRef.current += 1
     setStatus(null)
   }
 
   function markSynced() {
     dirtyRef.current = false
     clearResumeDraft()
+  }
+
+  /**
+   * Save `resume`, then report whether it's still current. Every op below
+   * saves before doing its real work; if a newer edit landed meanwhile the
+   * save result is stale and must not overwrite in-flight edits.
+   */
+  async function saveIfCurrent(): Promise<ResumeDocument | null> {
+    if (!resume) return null
+    const epoch = editEpochRef.current
+    const saved = await api.saveResume(resume)
+    if (epoch !== editEpochRef.current) {
+      dirtyRef.current = true
+      return null
+    }
+    markSynced()
+    return saved
   }
 
   function select(section: ResumeSection, itemIndex?: number, e?: { stopPropagation(): void }) {
@@ -130,28 +168,34 @@ export function useResumeEditor() {
   }
 
   async function save() {
-    if (!resume) return
+    if (!resume || !beginOp()) return
     setSaving(true)
     setError(null)
     try {
-      const saved = await api.saveResume(resume)
+      const saved = await saveIfCurrent()
+      if (!saved) {
+        setStatus('Saved, but you have newer local edits — save again')
+        return
+      }
       setResume(normalizeResume(saved))
-      markSynced()
       setStatus('Saved')
     } catch (err) {
       setError(errorMessage(err, 'Save failed'))
     } finally {
       setSaving(false)
+      endOp()
     }
   }
 
   async function previewPdf() {
-    if (!resume || previewing) return
+    if (!resume || !beginOp()) return
     setPreviewing(true)
     setError(null)
     try {
-      await api.saveResume(resume)
-      markSynced()
+      const saved = await saveIfCurrent()
+      if (!saved) {
+        setStatus('PDF used a prior save — you have newer local edits')
+      }
       const blob = await api.compileResume()
       const url = URL.createObjectURL(blob)
       setPdfUrl((prev) => {
@@ -162,6 +206,7 @@ export function useResumeEditor() {
       setError(errorMessage(err, 'Compile failed'))
     } finally {
       setPreviewing(false)
+      endOp()
     }
   }
 
@@ -174,7 +219,7 @@ export function useResumeEditor() {
 
   async function sendChat(e: FormEvent) {
     e.preventDefault()
-    if (!draft.trim() || !resume || aiBusy) return
+    if (!draft.trim() || !resume || !beginOp()) return
     const instruction = draft.trim()
     setDraft('')
     const history: ChatTurn[] = chat.slice(-12).map((item) => ({
@@ -187,8 +232,7 @@ export function useResumeEditor() {
     const scope = selected?.section ?? 'all'
     const itemIndex = selected?.itemIndex
     try {
-      await api.saveResume(resume)
-      markSynced()
+      await saveIfCurrent()
       const result: SuggestResponse = await api.suggestResumeSection(
         scope,
         instruction,
@@ -211,6 +255,7 @@ export function useResumeEditor() {
       setError(errorMessage(err, 'AI request failed'))
     } finally {
       setAiBusy(false)
+      endOp()
     }
   }
 
@@ -240,7 +285,11 @@ export function useResumeEditor() {
     setVacancyContext(normalized)
     setContextDraft(normalized)
     setContextOpen(false)
+    if (!normalized) {
+      setVacancyId(null)
+    }
     if (!changed) return
+    if (!beginOp()) return
 
     setChat([])
     setDraft('')
@@ -248,6 +297,9 @@ export function useResumeEditor() {
     setMatchError(null)
     clearResumeDraft()
     dirtyRef.current = false
+    // Bump the epoch so any save() already in flight sees a stale epoch and
+    // refuses to overwrite the resume we're about to reload here.
+    editEpochRef.current += 1
     setError(null)
     try {
       const data = await api.getResume()
@@ -255,19 +307,23 @@ export function useResumeEditor() {
       setStatus('Vacancy context updated — draft and chat cleared')
     } catch (err) {
       setError(errorMessage(err, 'Failed to reload resume'))
+    } finally {
+      endOp()
     }
   }
 
   async function checkVacancyMatch() {
-    if (!resume || !vacancyContext.trim() || matching || aiBusy) return
+    if (!resume || !vacancyContext.trim() || !beginOp()) return
     setMatching(true)
     setMatchError(null)
     setMatchReport(null)
     setStatus(null)
     try {
-      await api.saveResume(resume)
-      markSynced()
-      const result = await api.matchResume(vacancyContext)
+      await saveIfCurrent()
+      const result = await api.matchResume(
+        vacancyContext,
+        vacancyId ?? undefined,
+      )
       setMatchReport(result)
       setMatchError(null)
       setStatus(`Vacancy match: ${result.averageScore}/100`)
@@ -278,8 +334,11 @@ export function useResumeEditor() {
       setStatus(null)
     } finally {
       setMatching(false)
+      endOp()
     }
   }
+
+  const opsLocked = isOpsLocked()
 
   return {
     resume,
@@ -290,6 +349,7 @@ export function useResumeEditor() {
     aiBusy,
     previewing,
     saving,
+    opsLocked,
     error,
     status,
     pdfUrl,

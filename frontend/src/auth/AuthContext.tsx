@@ -83,12 +83,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await api.logout()
     } catch (err) {
-      // 401: session already gone. 403: stale/invalid CSRF — Spring rejects before logout.
-      if (!isUnauthorized(err) && !isForbidden(err)) throw err
-      await api.refreshCsrf()
-    } finally {
-      clearSession()
+      if (isUnauthorized(err)) {
+        // Session already gone on the server — mint CSRF for the next login.
+        await api.refreshCsrf()
+      } else if (isForbidden(err)) {
+        // Stale CSRF: Spring rejected before invalidate. Refresh and retry once.
+        await api.refreshCsrf()
+        try {
+          await api.logout()
+        } catch (retryErr) {
+          if (!isUnauthorized(retryErr)) throw retryErr
+          await api.refreshCsrf()
+        }
+      } else {
+        // Network / 5xx — keep client session so we don't pretend logout succeeded.
+        throw err
+      }
     }
+    // Only clear UI after server logout succeeded or session was already gone (401).
+    clearSession()
   }, [clearSession])
 
   const value = useMemo(

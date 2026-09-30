@@ -3,6 +3,9 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
+import { PageHeader } from '../components/ui/PageHeader'
+import { Button } from '../components/ui/Button'
+import { Banner } from '../components/ui/Banner'
 
 export function VacancyCreatePage() {
   const navigate = useNavigate()
@@ -43,16 +46,11 @@ export function VacancyCreatePage() {
 
   return (
     <section className="page narrow">
-      <div className="page-header">
-        <div>
-          <p className="eyebrow">Capture</p>
-          <h1>Add vacancy</h1>
-          <p className="page-lead">
-            Paste the posting link and text. AI extracts title, company, and description, then saves
-            it as not applied.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Capture"
+        title="Add vacancy"
+        lead="Paste the posting link and text. AI extracts title, company, and description, then saves it as not applied."
+      />
 
       <form className="form" onSubmit={onSubmit}>
         <label>
@@ -78,12 +76,12 @@ export function VacancyCreatePage() {
           />
         </label>
 
-        {formError && <p className="banner banner--error">{formError}</p>}
+        {formError && <Banner tone="error">{formError}</Banner>}
 
         <div className="form-actions">
-          <button type="submit" className="button" disabled={mutation.isPending}>
+          <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? 'Parsing & saving…' : 'Save vacancy'}
-          </button>
+          </Button>
         </div>
       </form>
     </section>

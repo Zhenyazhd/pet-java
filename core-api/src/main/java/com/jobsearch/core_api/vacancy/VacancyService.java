@@ -139,7 +139,8 @@ public class VacancyService {
 			applicationSummary = new ApplicationSummaryResponse(
 					application.getId(),
 					application.getStatus().name(),
-					isApplied(application.getStatus())
+					isApplied(application.getStatus()),
+					application.getNotes()
 			);
 		}
 

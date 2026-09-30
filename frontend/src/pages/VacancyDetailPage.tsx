@@ -4,11 +4,12 @@ import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { APPLICATION_STATUSES, type ApplicationStatus } from '../api/types'
-import {
-  buildVacancyContext,
-  isNotApplied,
-  stashPrepareVacancyContext,
-} from '../lib/vacancyPrepare'
+import { isNotApplied, prepareCvAndNavigate } from '../lib/vacancyPrepare'
+import { invalidateVacancy } from '../lib/vacancyQueries'
+import { formatApplicationStatus } from '../lib/applicationStatus'
+import { PageHeader } from '../components/ui/PageHeader'
+import { Button } from '../components/ui/Button'
+import { Banner } from '../components/ui/Banner'
 
 export function VacancyDetailPage() {
   const { id } = useParams()
@@ -18,6 +19,9 @@ export function VacancyDetailPage() {
   const [status, setStatus] = useState<ApplicationStatus>('APPLIED')
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
+  // Tracks unsaved edits so a background refetch (e.g. refetchOnWindowFocus)
+  // can't silently clobber notes/status the user hasn't submitted yet.
+  const [dirty, setDirty] = useState(false)
 
   const { data, isLoading, isError, error: loadError } = useQuery({
     queryKey: ['vacancies', vacancyId],
@@ -26,15 +30,11 @@ export function VacancyDetailPage() {
   })
 
   useEffect(() => {
-    if (data?.application) {
+    if (data?.application && !dirty) {
       setStatus(data.application.status)
+      setNotes(data.application.notes ?? '')
     }
-  }, [data])
-
-  const invalidate = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['vacancies'] })
-    await queryClient.invalidateQueries({ queryKey: ['vacancies', vacancyId] })
-  }
+  }, [data, dirty])
 
   const applyMutation = useMutation({
     mutationFn: () => {
@@ -46,7 +46,8 @@ export function VacancyDetailPage() {
     },
     onSuccess: async () => {
       setError(null)
-      await invalidate()
+      setDirty(false)
+      await invalidateVacancy(queryClient, vacancyId)
     },
     onError: (err: Error) => setError(err.message),
   })
@@ -55,6 +56,8 @@ export function VacancyDetailPage() {
     mutationFn: () => api.deleteVacancy(vacancyId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['vacancies'] })
+      // Drop detail cache so browser Back cannot briefly show the deleted vacancy.
+      queryClient.removeQueries({ queryKey: ['vacancies', vacancyId] })
       navigate('/vacancies')
     },
     onError: (err: Error) => setError(err.message),
@@ -66,51 +69,42 @@ export function VacancyDetailPage() {
   }
 
   if (!Number.isFinite(vacancyId)) {
-    return <p className="banner banner--error">Invalid vacancy id</p>
+    return <Banner tone="error">Invalid vacancy id</Banner>
   }
 
   if (isLoading) return <p className="muted">Loading…</p>
   if (isError || !data) {
-    return <p className="banner banner--error">{(loadError as Error)?.message ?? 'Not found'}</p>
+    return <Banner tone="error">{(loadError as Error)?.message ?? 'Not found'}</Banner>
   }
 
   return (
     <section className="page">
-      <div className="page-header">
-        <div>
-          <p className="eyebrow">{data.company ?? 'Vacancy'}</p>
-          <h1>{data.title}</h1>
-          <a className="external" href={data.url} target="_blank" rel="noreferrer">
-            Open original posting
-          </a>
-        </div>
-        <div className="header-actions">
-          <span className="match match--lg">
-            {data.matchPercent == null ? '—%' : `${data.matchPercent}%`}
-          </span>
-          {isNotApplied(data) && (
-            <button
-              type="button"
-              className="button"
+      <PageHeader
+        eyebrow={data.company ?? 'Vacancy'}
+        title={data.title}
+        actions={
+          <>
+            <span className="match match--lg">
+              {data.matchPercent == null ? '—%' : `${data.matchPercent}%`}
+            </span>
+            {isNotApplied(data) && (
+              <Button onClick={() => prepareCvAndNavigate(data, navigate)}>Prepare CV</Button>
+            )}
+            <Button
+              className="button--danger"
               onClick={() => {
-                stashPrepareVacancyContext(buildVacancyContext(data))
-                navigate('/')
+                if (confirm('Delete this vacancy?')) deleteMutation.mutate()
               }}
             >
-              Prepare CV
-            </button>
-          )}
-          <button
-            type="button"
-            className="button button--danger"
-            onClick={() => {
-              if (confirm('Delete this vacancy?')) deleteMutation.mutate()
-            }}
-          >
-            Delete
-          </button>
-        </div>
-      </div>
+              Delete
+            </Button>
+          </>
+        }
+      >
+        <a className="external" href={data.url} target="_blank" rel="noreferrer">
+          Open original posting
+        </a>
+      </PageHeader>
 
       {data.description && (
         <div className="panel">
@@ -140,7 +134,7 @@ export function VacancyDetailPage() {
         <p className="muted">
           Current:{' '}
           {data.application
-            ? `${data.application.status.replace(/_/g, ' ')} (${data.application.applied ? 'applied' : 'not applied'})`
+            ? `${formatApplicationStatus(data.application.status)} (${data.application.applied ? 'applied' : 'not applied'})`
             : 'not tracked yet'}
         </p>
 
@@ -149,23 +143,33 @@ export function VacancyDetailPage() {
             Status
             <select
               value={status}
-              onChange={(e) => setStatus(e.target.value as ApplicationStatus)}
+              onChange={(e) => {
+                setStatus(e.target.value as ApplicationStatus)
+                setDirty(true)
+              }}
             >
               {APPLICATION_STATUSES.map((item) => (
                 <option key={item} value={item}>
-                  {item.replace(/_/g, ' ')}
+                  {formatApplicationStatus(item)}
                 </option>
               ))}
             </select>
           </label>
           <label>
             Notes
-            <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <textarea
+              rows={3}
+              value={notes}
+              onChange={(e) => {
+                setNotes(e.target.value)
+                setDirty(true)
+              }}
+            />
           </label>
-          {error && <p className="banner banner--error">{error}</p>}
-          <button type="submit" className="button" disabled={applyMutation.isPending}>
+          {error && <Banner tone="error">{error}</Banner>}
+          <Button type="submit" disabled={applyMutation.isPending}>
             {data.application ? 'Update status' : 'Save application'}
-          </button>
+          </Button>
         </form>
       </div>
 

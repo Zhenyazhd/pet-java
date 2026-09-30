@@ -4,6 +4,10 @@ import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import { APPLICATION_STATUSES, type ApplicationStatus, type Vacancy } from '../api/types'
 import { VacancyRow } from '../components/VacancyRow'
+import { formatApplicationStatus, statusFilterChipClass } from '../lib/applicationStatus'
+import { PageHeader } from '../components/ui/PageHeader'
+import { Button } from '../components/ui/Button'
+import { Banner } from '../components/ui/Banner'
 
 type StatusFilter = 'ALL' | ApplicationStatus
 
@@ -13,13 +17,7 @@ function vacancyStatus(vacancy: Vacancy): ApplicationStatus {
 
 function statusLabel(status: StatusFilter): string {
   if (status === 'ALL') return 'All'
-  return status.replace(/_/g, ' ')
-}
-
-function filterToneClass(status: StatusFilter): string {
-  if (status === 'INTERVIEW') return 'status-filter__chip--interview'
-  if (status === 'REJECTED' || status === 'WITHDRAWN') return 'status-filter__chip--closed'
-  return ''
+  return formatApplicationStatus(status)
 }
 
 function matchesCompany(vacancy: Vacancy, query: string): boolean {
@@ -73,24 +71,24 @@ export function VacancyListPage() {
 
   return (
     <section className="page">
-      <div className="page-header">
-        <div>
-          <p className="eyebrow">Your pipeline</p>
-          <h1>Vacancies</h1>
-        </div>
-        <Link className="button" to="/vacancies/new">
-          Add vacancy
-        </Link>
-      </div>
+      <PageHeader
+        eyebrow="Your pipeline"
+        title="Vacancies"
+        actions={
+          <Link className="button" to="/vacancies/new">
+            Add vacancy
+          </Link>
+        }
+      />
 
       {isLoading && <p className="muted">Loading…</p>}
       {isError && (
-        <div className="banner banner--error">
+        <Banner tone="error">
           <p>{(error as Error).message}</p>
-          <button type="button" className="button button--ghost" onClick={() => refetch()}>
+          <Button variant="ghost" onClick={() => refetch()}>
             Retry
-          </button>
-        </div>
+          </Button>
+        </Banner>
       )}
 
       {data && data.length === 0 && (
@@ -119,7 +117,7 @@ export function VacancyListPage() {
             <div className="status-filter" role="toolbar" aria-label="Filter by status">
               {filterOptions.map((status) => {
                 const active = statusFilter === status
-                const tone = filterToneClass(status)
+                const tone = statusFilterChipClass(status)
                 return (
                   <button
                     key={status}
@@ -144,9 +142,9 @@ export function VacancyListPage() {
                   ? 'Nothing matches this company search and status filter.'
                   : 'Try another status filter or reset to All.'}
               </p>
-              <button type="button" className="button button--ghost" onClick={clearFilters}>
+              <Button variant="ghost" onClick={clearFilters}>
                 Clear filters
-              </button>
+              </Button>
             </div>
           ) : (
             <div className="vacancy-list">

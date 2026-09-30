@@ -7,23 +7,17 @@ import {
   type ApplicationStatus,
   type Vacancy,
 } from '../api/types'
-import {
-  buildVacancyContext,
-  isNotApplied,
-  stashPrepareVacancyContext,
-} from '../lib/vacancyPrepare'
+import { isNotApplied, prepareCvAndNavigate } from '../lib/vacancyPrepare'
+import { invalidateVacancy } from '../lib/vacancyQueries'
+import { formatApplicationStatus, vacancyRowStatusClass } from '../lib/applicationStatus'
+import { Button } from './ui/Button'
 
 export function VacancyRow({ vacancy }: { vacancy: Vacancy }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const canPrepare = isNotApplied(vacancy)
   const currentStatus: ApplicationStatus = vacancy.application?.status ?? 'NOT_APPLIED'
-  const statusTone =
-    currentStatus === 'INTERVIEW'
-      ? 'vacancy-row__status--interview'
-      : currentStatus === 'REJECTED' || currentStatus === 'WITHDRAWN'
-        ? 'vacancy-row__status--closed'
-        : ''
+  const statusTone = vacancyRowStatusClass(currentStatus)
 
   const statusMutation = useMutation({
     mutationFn: (status: ApplicationStatus) => {
@@ -32,16 +26,13 @@ export function VacancyRow({ vacancy }: { vacancy: Vacancy }) {
       }
       return api.createApplication(vacancy.id, status)
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['vacancies'] })
-    },
+    onSuccess: () => invalidateVacancy(queryClient, vacancy.id),
   })
 
   function onPrepareCv(event: MouseEvent) {
     event.preventDefault()
     event.stopPropagation()
-    stashPrepareVacancyContext(buildVacancyContext(vacancy))
-    navigate('/')
+    prepareCvAndNavigate(vacancy, navigate)
   }
 
   function onStatusChange(event: ChangeEvent<HTMLSelectElement>) {
@@ -67,7 +58,7 @@ export function VacancyRow({ vacancy }: { vacancy: Vacancy }) {
           >
             {APPLICATION_STATUSES.map((status) => (
               <option key={status} value={status}>
-                {status.replace(/_/g, ' ')}
+                {formatApplicationStatus(status)}
               </option>
             ))}
           </select>
@@ -76,9 +67,9 @@ export function VacancyRow({ vacancy }: { vacancy: Vacancy }) {
           {vacancy.matchPercent == null ? '—%' : `${vacancy.matchPercent}%`}
         </span>
         {canPrepare && (
-          <button type="button" className="button button--ghost vacancy-row__prepare" onClick={onPrepareCv}>
+          <Button variant="ghost" className="vacancy-row__prepare" onClick={onPrepareCv}>
             Prepare CV
-          </button>
+          </Button>
         )}
         {statusMutation.isError && (
           <p className="vacancy-row__error">{(statusMutation.error as Error).message}</p>

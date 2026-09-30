@@ -16,6 +16,7 @@ export interface ApplicationSummary {
   id: number
   status: ApplicationStatus
   applied: boolean
+  notes: string | null
 }
 
 export interface Vacancy {
