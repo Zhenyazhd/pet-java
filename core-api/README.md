@@ -1,6 +1,6 @@
 # core-api
 
-HTTP API for the Job Search platform: vacancies and applications, CV files in S3, structured resume (JSON → LaTeX → PDF), user profile with career path, and AI section edits via OpenRouter.
+HTTP API for the Job Search platform: invite-only auth, vacancies and applications, CV files in S3, structured resume (JSON → LaTeX → PDF, with optimistic-concurrency versioning), user profile with career path, and AI section edits via OpenRouter.
 
 Listens on `http://localhost:8080` by default. The Vite frontend calls `/api/**` from origins listed in `app.cors.allowed-origins` (default `http://localhost:5173`).
 
@@ -64,23 +64,24 @@ Environment variables come from the shell / IDE / root `.env` (if exported). Mai
 
 | Property / env | Description | Default |
 |----------------|-------------|---------|
-| `app.admin-email` / `APP_ADMIN_EMAIL` | Bootstrap ADMIN created/promoted on startup (**required** in `prod`; no code default) | empty |
+| `app.admin-email` / `APP_ADMIN_EMAIL` | Bootstrap ADMIN created/promoted on startup (**required in every environment** — startup aborts if blank) | empty |
 | `app.bootstrap-password` / `APP_BOOTSTRAP_PASSWORD` | Password set on bootstrap admin if hash missing | empty |
 | `app.cors.allowed-origins` / `APP_CORS_ALLOWED_ORIGINS` | Comma-separated SPA origins (credentials) | `http://localhost:5173` |
 | `app.auth-rate-limit.login-per-minute` / `APP_AUTH_LOGIN_PER_MINUTE` | Max login attempts per IP per minute (`0` = off) | `10` |
 | `app.auth-rate-limit.register-per-minute` / `APP_AUTH_REGISTER_PER_MINUTE` | Max register attempts per IP per minute (`0` = off) | `5` |
 | `app.auth-rate-limit.trust-forwarded-headers` / `APP_AUTH_TRUST_FORWARDED_HEADERS` | Honor `X-Forwarded-For` / `X-Real-IP` only from trusted proxies | `false` |
 | `app.auth-rate-limit.trusted-proxies` / `APP_AUTH_TRUSTED_PROXIES` | Comma-separated peer IPs allowed to set forwarded client IP | `127.0.0.1,::1` |
-| `app.expensive-ops-rate-limit.per-user-per-minute` / `APP_EXPENSIVE_OPS_PER_USER_PER_MINUTE` | Max AI/ATS/import calls per user per minute (`0` = off) | `10` |
+| `app.expensive-ops-rate-limit.per-user-per-minute` / `APP_EXPENSIVE_OPS_PER_USER_PER_MINUTE` | Max AI/ATS/import/**compile** calls per user per minute (`0` = off) | `10` |
 | `app.s3.*` / `S3_*` | Endpoint, region, keys, bucket, path-style | localhost:9090, bucket `job-search-cvs` |
 | `app.open-router.api-key` / `OPENROUTER_API_KEY` | OpenRouter API key | empty |
 | `app.open-router.model` / `OPENROUTER_MODEL` | Chat model | `openai/gpt-4o-mini` |
 | `app.open-router.base-url` | API base URL | `https://openrouter.ai/api/v1` |
 | `app.ats-screener.base-url` / `ATS_SCREENER_BASE_URL` | Local ATS Screener (`tools/ats-screener`) | `http://127.0.0.1:5174` |
 | `app.ats-screener.timeout-seconds` | HTTP read timeout for ATS analyze | `180` |
-| `POSTGRES_*` | JDBC to Postgres | see `application.yml` |
+| `server.forward-headers-strategy` / `SERVER_FORWARD_HEADERS_STRATEGY` | Set to `framework` only behind a trusted TLS-terminating reverse proxy that sets `X-Forwarded-Proto` | `none` |
+| `POSTGRES_*` | JDBC to Postgres (`POSTGRES_PASSWORD` has **no default** — startup fails without it) | see `application.yml` |
 
-Multipart: max file **10MB**, request **12MB**.
+Multipart: max file **10MB**, request **12MB**. Session and CSRF cookies are always `Secure` — the app only works over HTTPS in production (or `localhost`, which browsers treat as secure).
 
 ---
 
@@ -90,6 +91,7 @@ Multipart: max file **10MB**, request **12MB**.
 com.jobsearch.core_api
 ├── ai/              OpenRouter client + AI suggest for resume sections
 ├── ats/             Proxy to local ATS Screener (vacancy match scores)
+├── auth/            Login/register/logout, sessions, invite codes, rate limiting
 ├── common/          NotFoundException, ConflictException, ApiExceptionHandler
 ├── config/          AppProperties, CorsConfig, S3Config
 ├── cv/              CV file versions + sendings linked to vacancies
@@ -98,7 +100,7 @@ com.jobsearch.core_api
 ├── profile/         app_user: name, email, career_path
 ├── resume/          Structured resume JSON, LaTeX render, plain-text, compile
 ├── storage/         ObjectStorageService (S3)
-└── vacancy/         Vacancies and requirements
+└── vacancy/         Vacancies and requirements — owned per user
 ```
 
 Typical Spring layers: **Controller → Service → Repository / external clients**. DTOs are Java `record`s in `*Dtos` classes.
@@ -131,12 +133,56 @@ Migrations: `src/main/resources/db/migration/`.
 - `app_user.resume_json` TEXT — resume document JSON  
   If empty, the API returns the template from `classpath:default-resume.json`.
 
+### V5 — auth
+
+- `app_user.password_hash`, `UNIQUE(email)`, and a real sequence for `id` (the legacy V2 seed row still exists at id `1` but nothing depends on it anymore)
+
+### V6 — invite codes
+
+- **`invite_code`** — `code` (unique), `created_by_user_id`, `used_at` / `used_by_user_id` (both null until redeemed)
+
+### V7 — vacancy ownership and roles
+
+- `app_user.role` (`USER` | `ADMIN`, default `USER`)
+- `vacancy.user_id` (not null) + `UNIQUE(user_id, url)` — vacancies are per-user, not global
+
+### V8 — case-insensitive email
+
+- Emails normalized to lowercase; uniqueness enforced on `lower(email)` instead of the raw column
+
+### V9 — resume optimistic concurrency
+
+- `app_user.resume_version` INTEGER — bumped on every successful `PUT /api/resume`; a save whose `version` doesn't match the current value is rejected with `409` instead of silently overwriting a newer save (e.g. from a second tab)
+
 ---
 
-## Authentication (temporary)
+## Authentication
 
-No auth. Current user = `app.current-user-id` (usually `1`).  
-Profile, resume, and CV versions are scoped to that id. Replace later with a real session/JWT.
+Session cookie + CSRF (double-submit), invite-only registration, two roles.
+
+- **Session**: on login/register, Spring Security issues an `HttpSession` cookie (`HttpOnly`, `SameSite=Lax`, `Secure`). Every `/api/**` route except the ones below requires an authenticated session.
+- **CSRF**: `GET /api/auth/csrf` has no controller mapping (404) but still passes through the security filter chain, which is what sets the `XSRF-TOKEN` cookie — hit it once to get a token, then echo it back as `X-XSRF-TOKEN` on every mutating request. A stale/missing token gets one silent refresh-and-retry inside the frontend's shared `request()` helper.
+- **Registration is invite-only**: `POST /api/auth/register` requires a valid, unused `inviteCode`. There is no self-serve invite flow yet — an `ADMIN` mints codes via `POST /api/invite-codes`.
+- **Bootstrap admin**: on every startup, `AuthBootstrap` finds-or-creates the account for `APP_ADMIN_EMAIL` and promotes it to `ADMIN` (setting its password from `APP_BOOTSTRAP_PASSWORD` if it has none yet). Missing `APP_ADMIN_EMAIL` aborts startup — without an admin nobody can ever mint the first invite code.
+- **Ownership**: vacancies, applications, CV versions, and the resume are all scoped to the authenticated user's id — no shared `app.current-user-id` fallback anymore.
+
+### `/api/auth`
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/auth/me` | session | current user (id, email, displayName, role) |
+| POST | `/api/auth/login` | none | `{ email, password }` → sets session cookie |
+| POST | `/api/auth/register` | none | `{ email, password, displayName?, inviteCode }` → 201, sets session cookie |
+| POST | `/api/auth/logout` | none (CSRF header still required) | clears the session |
+| GET | `/api/auth/csrf` | none | no handler (404 by design) — pokes the filter chain into setting `XSRF-TOKEN` |
+
+### `/api/invite-codes` — `ADMIN` only
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/invite-codes` | list all codes (used + unused) |
+| POST | `/api/invite-codes` | mint a new code |
+| DELETE | `/api/invite-codes/{id}` | delete an unused code |
 
 ---
 
@@ -171,14 +217,18 @@ Structured document (not raw `.tex`):
   "experience": [{ "title", "subtitle", "dates", "bullets": [] }],
   "education": [{ "title", "subtitle", "location", "details" }],
   "achievements": [{ "title", "text" }],
-  "skills": [{ "category", "items" }]
+  "skills": [{ "category", "items" }],
+  "locale": "fr",
+  "version": 3
 }
 ```
+
+`version` is an optimistic-concurrency token (see V9 above): `GET` returns the current value, `PUT` must echo it back and gets `409 Conflict` if it's stale.
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/resume` | load JSON (or default) |
-| PUT | `/api/resume` | persist to `app_user.resume_json` |
+| PUT | `/api/resume` | persist to `app_user.resume_json`; `409` if `version` is stale |
 | GET | `/api/resume/latex` | `{ "source": "<tex>" }` via `ResumeLatexRenderer` |
 | POST | `/api/resume/compile` | current JSON → LaTeX → PDF (`application/pdf`) |
 
@@ -254,7 +304,7 @@ Same `LatexCompileService` as resume compile.
 |--------|------|-------------|
 | GET | `/api/vacancies` | list (newest first) |
 | GET | `/api/vacancies/{id}` | detail + requirements + application summary |
-| POST | `/api/vacancies` | create (url unique) |
+| POST | `/api/vacancies` | create (`url` unique per user, not globally) |
 | PUT | `/api/vacancies/{id}` | update |
 | DELETE | `/api/vacancies/{id}` | delete |
 
@@ -326,7 +376,7 @@ Uniform body:
 | `MethodArgumentNotValidException` | 400 (+ `fields`) |
 | `IllegalArgumentException` | 400 (incl. bad LaTeX / bad section) |
 | `NotFoundException` | 404 |
-| `ConflictException` | 409 (duplicate url, CV linked to sendings, …) |
+| `ConflictException` | 409 (duplicate url, CV linked to sendings, stale resume `version`, duplicate email, …) |
 | `IllegalStateException` | 502 (OpenRouter / S3 / PDF missing / config) |
 | other | 500 (`Internal server error`) |
 
@@ -349,9 +399,10 @@ SLF4J on key services:
 
 ## MVP limitations
 
-- Session cookie auth + CSRF (`XSRF-TOKEN` / `X-XSRF-TOKEN`). After logout the CSRF cookie may be stale — frontend must `GET /api/auth/csrf` again (done in `api.logout` / `api.refreshCsrf`).
-- `POST /api/auth/logout` is `permitAll` (expired sessions can clear state) but still requires a CSRF header.
-- Browsers should talk only to the SPA origin (CORS). Auth rate limits key by IP: by default `remoteAddr` only. Set `APP_AUTH_TRUST_FORWARDED_HEADERS=true` behind Vite/nginx and list proxy IPs in `APP_AUTH_TRUSTED_PROXIES` — never enable trust if clients can reach core-api without that proxy (spoofable `X-Forwarded-For`).
+- **No invite-code admin UI** — minting/listing/deleting codes is API-only (`/api/invite-codes`, see [Authentication](#authentication)).
+- **No password-change flow** — the bootstrap admin keeps `APP_BOOTSTRAP_PASSWORD` forever (it's only applied once, when the account has no password hash yet); there's no self-service reset.
+- **Resume conflicts require a manual redo, not a merge** — `PUT /api/resume` rejects a stale `version` with `409`, and the only recovery is "reload the latest version and reapply your edits" (`reloadResume()` in the frontend). No field-level merge.
+- Auth rate limits key by IP: by default `remoteAddr` only. Set `APP_AUTH_TRUST_FORWARDED_HEADERS=true` behind Vite/nginx and list proxy IPs in `APP_AUTH_TRUSTED_PROXIES` — never enable trust if clients can reach core-api without that proxy (spoofable `X-Forwarded-For`).
 - `vacancyContext` for AI is **not stored** on the backend — sent from the client on each suggest.
 - Resume JSON is a Postgres string (not `jsonb`); validated via DTO on save.
 - No separate AI service: everything lives in `core-api`.
