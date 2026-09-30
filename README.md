@@ -4,8 +4,8 @@ A personal tool that ties together the three things I needed for my own job sear
 
 ## Demo
 
-<video src="CV_creator.mp4" controls width="100%">
-  Your browser can't play this inline — <a href="CV_creator.mp4">download the video</a>.
+<video src="https://github.com/Zhenyazhd/pet-java/raw/main/CV_creator.mp4" controls width="100%">
+  Your browser can't play this inline — <a href="https://github.com/Zhenyazhd/pet-java/raw/main/CV_creator.mp4">download the video</a>.
 </video>
 
 ## Repository layout
