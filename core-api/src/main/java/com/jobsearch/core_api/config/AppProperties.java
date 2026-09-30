@@ -1,21 +1,49 @@
 package com.jobsearch.core_api.config;
 
+import java.util.Arrays;
+import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "app")
 public class AppProperties {
 
-	private long currentUserId = 1L;
+	/** Bootstrap ADMIN email — must be set via {@code APP_ADMIN_EMAIL} (no hardcoded default). */
+	private String adminEmail = "";
+	/** If set and bootstrap admin has no password yet, hash this onto that account on startup. */
+	private String bootstrapPassword = "";
+	private final Cors cors = new Cors();
+	private final AuthRateLimit authRateLimit = new AuthRateLimit();
+	private final ExpensiveOpsRateLimit expensiveOpsRateLimit = new ExpensiveOpsRateLimit();
 	private final S3 s3 = new S3();
 	private final OpenRouter openRouter = new OpenRouter();
 	private final AtsScreener atsScreener = new AtsScreener();
 
-	public long getCurrentUserId() {
-		return currentUserId;
+	public String getAdminEmail() {
+		return adminEmail;
 	}
 
-	public void setCurrentUserId(long currentUserId) {
-		this.currentUserId = currentUserId;
+	public void setAdminEmail(String adminEmail) {
+		this.adminEmail = adminEmail;
+	}
+
+	public String getBootstrapPassword() {
+		return bootstrapPassword;
+	}
+
+	public void setBootstrapPassword(String bootstrapPassword) {
+		this.bootstrapPassword = bootstrapPassword;
+	}
+
+	public Cors getCors() {
+		return cors;
+	}
+
+	public AuthRateLimit getAuthRateLimit() {
+		return authRateLimit;
+	}
+
+	public ExpensiveOpsRateLimit getExpensiveOpsRateLimit() {
+		return expensiveOpsRateLimit;
 	}
 
 	public S3 getS3() {
@@ -28,6 +56,106 @@ public class AppProperties {
 
 	public AtsScreener getAtsScreener() {
 		return atsScreener;
+	}
+
+	public static class ExpensiveOpsRateLimit {
+		/**
+		 * Max combined POST /api/ai/** + /api/vacancies/import calls per authenticated user per minute
+		 * ({@code 0} = disabled).
+		 */
+		private int perUserPerMinute = 10;
+
+		public int getPerUserPerMinute() {
+			return perUserPerMinute;
+		}
+
+		public void setPerUserPerMinute(int perUserPerMinute) {
+			this.perUserPerMinute = perUserPerMinute;
+		}
+	}
+
+	public static class AuthRateLimit {
+		/** Max POST /api/auth/login attempts per client IP per minute (0 = disabled). */
+		private int loginPerMinute = 10;
+		/** Max POST /api/auth/register attempts per client IP per minute (0 = disabled). */
+		private int registerPerMinute = 5;
+		/**
+		 * When true, read client IP from {@code X-Forwarded-For} / {@code X-Real-IP}
+		 * only if {@code request.getRemoteAddr()} is listed in {@link #trustedProxies}.
+		 * Keep false unless the API sits behind a reverse proxy (Vite/nginx) that sets those headers.
+		 * Enabling this without a trusted proxy lets clients spoof IPs and bypass the limit.
+		 */
+		private boolean trustForwardedHeaders = false;
+		/** Comma-separated proxy remote addresses allowed to supply forwarded client IPs. */
+		private String trustedProxies = "127.0.0.1,::1";
+
+		public int getLoginPerMinute() {
+			return loginPerMinute;
+		}
+
+		public void setLoginPerMinute(int loginPerMinute) {
+			this.loginPerMinute = loginPerMinute;
+		}
+
+		public int getRegisterPerMinute() {
+			return registerPerMinute;
+		}
+
+		public void setRegisterPerMinute(int registerPerMinute) {
+			this.registerPerMinute = registerPerMinute;
+		}
+
+		public boolean isTrustForwardedHeaders() {
+			return trustForwardedHeaders;
+		}
+
+		public void setTrustForwardedHeaders(boolean trustForwardedHeaders) {
+			this.trustForwardedHeaders = trustForwardedHeaders;
+		}
+
+		public String getTrustedProxies() {
+			return trustedProxies;
+		}
+
+		public void setTrustedProxies(String trustedProxies) {
+			this.trustedProxies = trustedProxies;
+		}
+
+		public List<String> trustedProxyList() {
+			if (trustedProxies == null || trustedProxies.isBlank()) {
+				return List.of();
+			}
+			return Arrays.stream(trustedProxies.split(","))
+					.map(String::strip)
+					.filter(ip -> !ip.isEmpty())
+					.toList();
+		}
+	}
+
+	public static class Cors {
+		/**
+		 * Comma-separated browser origins for credentialed CORS (SPA).
+		 * Example: {@code http://localhost:5173,https://app.example.com}
+		 */
+		private String allowedOrigins = "http://localhost:5173";
+
+		public String getAllowedOrigins() {
+			return allowedOrigins;
+		}
+
+		public void setAllowedOrigins(String allowedOrigins) {
+			this.allowedOrigins = allowedOrigins;
+		}
+
+		public List<String> allowedOriginList() {
+			if (allowedOrigins == null || allowedOrigins.isBlank()) {
+				return List.of();
+			}
+			return Arrays.stream(allowedOrigins.split(","))
+					.map(String::strip)
+					.filter(origin -> !origin.isEmpty())
+					.toList();
+		}
 	}
 
 	public static class AtsScreener {

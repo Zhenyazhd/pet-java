@@ -2,7 +2,7 @@
 
 HTTP API for the Job Search platform: vacancies and applications, CV files in S3, structured resume (JSON → LaTeX → PDF), user profile with career path, and AI section edits via OpenRouter.
 
-Listens on `http://localhost:8080` by default. The Vite frontend calls `/api/**` from `http://localhost:5173` (CORS allowed).
+Listens on `http://localhost:8080` by default. The Vite frontend calls `/api/**` from origins listed in `app.cors.allowed-origins` (default `http://localhost:5173`).
 
 ---
 
@@ -64,7 +64,14 @@ Environment variables come from the shell / IDE / root `.env` (if exported). Mai
 
 | Property / env | Description | Default |
 |----------------|-------------|---------|
-| `app.current-user-id` / `APP_CURRENT_USER_ID` | Temporary single-user mode: all ops as this `app_user.id` | `1` |
+| `app.admin-email` / `APP_ADMIN_EMAIL` | Bootstrap ADMIN created/promoted on startup (**required** in `prod`; no code default) | empty |
+| `app.bootstrap-password` / `APP_BOOTSTRAP_PASSWORD` | Password set on bootstrap admin if hash missing | empty |
+| `app.cors.allowed-origins` / `APP_CORS_ALLOWED_ORIGINS` | Comma-separated SPA origins (credentials) | `http://localhost:5173` |
+| `app.auth-rate-limit.login-per-minute` / `APP_AUTH_LOGIN_PER_MINUTE` | Max login attempts per IP per minute (`0` = off) | `10` |
+| `app.auth-rate-limit.register-per-minute` / `APP_AUTH_REGISTER_PER_MINUTE` | Max register attempts per IP per minute (`0` = off) | `5` |
+| `app.auth-rate-limit.trust-forwarded-headers` / `APP_AUTH_TRUST_FORWARDED_HEADERS` | Honor `X-Forwarded-For` / `X-Real-IP` only from trusted proxies | `false` |
+| `app.auth-rate-limit.trusted-proxies` / `APP_AUTH_TRUSTED_PROXIES` | Comma-separated peer IPs allowed to set forwarded client IP | `127.0.0.1,::1` |
+| `app.expensive-ops-rate-limit.per-user-per-minute` / `APP_EXPENSIVE_OPS_PER_USER_PER_MINUTE` | Max AI/ATS/import calls per user per minute (`0` = off) | `10` |
 | `app.s3.*` / `S3_*` | Endpoint, region, keys, bucket, path-style | localhost:9090, bucket `job-search-cvs` |
 | `app.open-router.api-key` / `OPENROUTER_API_KEY` | OpenRouter API key | empty |
 | `app.open-router.model` / `OPENROUTER_MODEL` | Chat model | `openai/gpt-4o-mini` |
@@ -257,7 +264,7 @@ Same `LatexCompileService` as resume compile.
 |--------|------|-------------|
 | GET | `/api/applications` | all applications |
 | GET | `/api/applications/{id}` | one |
-| POST | `/api/applications` | create (one per vacancy) |
+| POST | `/api/applications` | upsert by vacancy (create or update status/notes) |
 | PUT | `/api/applications/{id}` | status + notes |
 | DELETE | `/api/applications/{id}` | delete |
 
@@ -342,11 +349,13 @@ SLF4J on key services:
 
 ## MVP limitations
 
-- Single user via `APP_CURRENT_USER_ID`, no login.
+- Session cookie auth + CSRF (`XSRF-TOKEN` / `X-XSRF-TOKEN`). After logout the CSRF cookie may be stale — frontend must `GET /api/auth/csrf` again (done in `api.logout` / `api.refreshCsrf`).
+- `POST /api/auth/logout` is `permitAll` (expired sessions can clear state) but still requires a CSRF header.
+- Browsers should talk only to the SPA origin (CORS). Auth rate limits key by IP: by default `remoteAddr` only. Set `APP_AUTH_TRUST_FORWARDED_HEADERS=true` behind Vite/nginx and list proxy IPs in `APP_AUTH_TRUSTED_PROXIES` — never enable trust if clients can reach core-api without that proxy (spoofable `X-Forwarded-For`).
 - `vacancyContext` for AI is **not stored** on the backend — sent from the client on each suggest.
 - Resume JSON is a Postgres string (not `jsonb`); validated via DTO on save.
 - No separate AI service: everything lives in `core-api`.
-- CORS only for `http://localhost:5173`.
+- CORS origins come from `APP_CORS_ALLOWED_ORIGINS` (set prod SPA URL there).
 
 ---
 

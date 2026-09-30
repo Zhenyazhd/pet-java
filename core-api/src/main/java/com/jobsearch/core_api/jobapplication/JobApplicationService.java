@@ -1,6 +1,6 @@
 package com.jobsearch.core_api.jobapplication;
 
-import com.jobsearch.core_api.common.ConflictException;
+import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.common.NotFoundException;
 import com.jobsearch.core_api.jobapplication.JobApplicationDtos.JobApplicationRequest;
 import com.jobsearch.core_api.jobapplication.JobApplicationDtos.JobApplicationResponse;
@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Tracks application status per vacancy (one application per vacancy). */
+/** Tracks application status per vacancy (scoped to vacancy owner). */
 @Service
 @Transactional
 public class JobApplicationService {
@@ -23,53 +23,87 @@ public class JobApplicationService {
 
 	private final JobApplicationRepository jobApplicationRepository;
 	private final VacancyRepository vacancyRepository;
+	private final CurrentUserService currentUserService;
 
 	public JobApplicationService(
 			JobApplicationRepository jobApplicationRepository,
-			VacancyRepository vacancyRepository
+			VacancyRepository vacancyRepository,
+			CurrentUserService currentUserService
 	) {
 		this.jobApplicationRepository = jobApplicationRepository;
 		this.vacancyRepository = vacancyRepository;
+		this.currentUserService = currentUserService;
 	}
 
 	@Transactional(readOnly = true)
 	public List<JobApplicationResponse> findAll() {
-		return jobApplicationRepository.findAll().stream().map(this::toResponse).toList();
+		long userId = currentUserService.requireUserId();
+		return jobApplicationRepository.findAllByVacancyUserId(userId).stream()
+				.map(this::toResponse)
+				.toList();
 	}
 
 	@Transactional(readOnly = true)
 	public JobApplicationResponse findById(Long id) {
-		return toResponse(getApplication(id));
+		return toResponse(getOwnedApplication(id));
 	}
 
+	/**
+	 * Upsert by vacancy: create if missing, otherwise update status/notes on the existing row.
+	 * Vacancies from import/manual create already have a NOT_APPLIED application.
+	 */
 	public JobApplicationResponse create(JobApplicationRequest request) {
-		if (jobApplicationRepository.existsByVacancyId(request.vacancyId())) {
-			throw new ConflictException("Application for this vacancy already exists");
-		}
-		Vacancy vacancy = vacancyRepository.findById(request.vacancyId())
+		long userId = currentUserService.requireUserId();
+		Vacancy vacancy = vacancyRepository.findByIdAndUserId(request.vacancyId(), userId)
 				.orElseThrow(() -> new NotFoundException("Vacancy not found: " + request.vacancyId()));
 
-		JobApplication application = new JobApplication();
+		JobApplication application = jobApplicationRepository
+				.findByVacancyIdAndUserId(request.vacancyId(), userId)
+				.orElse(null);
+		if (application != null) {
+			applyStatus(application, request.status());
+			if (request.notes() != null) {
+				application.setNotes(blankToNull(request.notes()));
+			}
+			log.info(
+					"Updated existing application id={} vacancyId={} userId={} status={}",
+					application.getId(),
+					request.vacancyId(),
+					userId,
+					application.getStatus()
+			);
+			return toResponse(application);
+		}
+
+		application = new JobApplication();
 		application.setVacancy(vacancy);
 		applyStatus(application, request.status());
 		application.setNotes(blankToNull(request.notes()));
 		vacancy.setApplication(application);
 
 		JobApplication saved = jobApplicationRepository.save(application);
-		log.info("Created application id={} vacancyId={} status={}", saved.getId(), request.vacancyId(), saved.getStatus());
+		log.info(
+				"Created application id={} vacancyId={} userId={} status={}",
+				saved.getId(),
+				request.vacancyId(),
+				userId,
+				saved.getStatus()
+		);
 		return toResponse(saved);
 	}
 
 	public JobApplicationResponse update(Long id, JobApplicationUpdateRequest request) {
-		JobApplication application = getApplication(id);
+		JobApplication application = getOwnedApplication(id);
 		applyStatus(application, request.status());
-		application.setNotes(blankToNull(request.notes()));
+		if (request.notes() != null) {
+			application.setNotes(blankToNull(request.notes()));
+		}
 		log.info("Updated application id={} status={}", id, application.getStatus());
 		return toResponse(application);
 	}
 
 	public void delete(Long id) {
-		JobApplication application = getApplication(id);
+		JobApplication application = getOwnedApplication(id);
 		Vacancy vacancy = application.getVacancy();
 		if (vacancy != null) {
 			vacancy.setApplication(null);
@@ -78,8 +112,9 @@ public class JobApplicationService {
 		log.info("Deleted application id={}", id);
 	}
 
-	private JobApplication getApplication(Long id) {
-		return jobApplicationRepository.findById(id)
+	private JobApplication getOwnedApplication(Long id) {
+		long userId = currentUserService.requireUserId();
+		return jobApplicationRepository.findByIdAndVacancyUserId(id, userId)
 				.orElseThrow(() -> new NotFoundException("Application not found: " + id));
 	}
 

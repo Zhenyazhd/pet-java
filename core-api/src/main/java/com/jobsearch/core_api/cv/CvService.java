@@ -1,8 +1,8 @@
 package com.jobsearch.core_api.cv;
 
+import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.common.ConflictException;
 import com.jobsearch.core_api.common.NotFoundException;
-import com.jobsearch.core_api.config.AppProperties;
 import com.jobsearch.core_api.cv.CvDtos.ApplicationCvResponse;
 import com.jobsearch.core_api.cv.CvDtos.CvVersionResponse;
 import com.jobsearch.core_api.cv.CvDtos.SendCvRequest;
@@ -12,16 +12,19 @@ import com.jobsearch.core_api.storage.ObjectStorageService.StoredObject;
 import com.jobsearch.core_api.vacancy.Vacancy;
 import com.jobsearch.core_api.vacancy.VacancyRepository;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -32,6 +35,9 @@ public class CvService {
 
 	private static final Logger log = LoggerFactory.getLogger(CvService.class);
 
+	static final long MAX_FILE_BYTES = 10L * 1024 * 1024;
+	static final int MAX_LABEL_LENGTH = 255;
+
 	private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
 			".pdf",
 			".doc",
@@ -39,7 +45,7 @@ public class CvService {
 			".tex"
 	);
 
-	private final AppProperties appProperties;
+	private final CurrentUserService currentUserService;
 	private final ObjectStorageService objectStorageService;
 	private final CvVersionRepository cvVersionRepository;
 	private final ApplicationCvRepository applicationCvRepository;
@@ -47,14 +53,14 @@ public class CvService {
 	private final JobApplicationRepository jobApplicationRepository;
 
 	public CvService(
-			AppProperties appProperties,
+			CurrentUserService currentUserService,
 			ObjectStorageService objectStorageService,
 			CvVersionRepository cvVersionRepository,
 			ApplicationCvRepository applicationCvRepository,
 			VacancyRepository vacancyRepository,
 			JobApplicationRepository jobApplicationRepository
 	) {
-		this.appProperties = appProperties;
+		this.currentUserService = currentUserService;
 		this.objectStorageService = objectStorageService;
 		this.cvVersionRepository = cvVersionRepository;
 		this.applicationCvRepository = applicationCvRepository;
@@ -70,60 +76,85 @@ public class CvService {
 	}
 
 	public CvVersionResponse upload(String label, MultipartFile file) {
+		String normalizedLabel = requireLabel(label);
 		if (file == null || file.isEmpty()) {
 			throw new IllegalArgumentException("File is required");
+		}
+		if (file.getSize() > MAX_FILE_BYTES) {
+			throw new IllegalArgumentException("File exceeds maximum size of 10 MB");
 		}
 		if (!isAllowedFile(file)) {
 			throw new IllegalArgumentException("Only PDF, Word (.doc/.docx) or TeX (.tex) files are allowed");
 		}
 
 		StoredObject stored = objectStorageService.upload(currentUserId(), file);
-		CvVersion version = new CvVersion();
-		version.setUserId(currentUserId());
-		version.setLabel(label.trim());
-		version.setOriginalFilename(stored.originalFilename());
-		version.setContentType(resolveContentType(file));
-		version.setStorageKey(stored.storageKey());
-		version.setSizeBytes(stored.sizeBytes());
-		CvVersion saved = cvVersionRepository.save(version);
-		log.info("Uploaded CV version id={} label={}", saved.getId(), saved.getLabel());
-		return toVersionResponse(saved);
+		try {
+			CvVersion version = new CvVersion();
+			version.setUserId(currentUserId());
+			version.setLabel(normalizedLabel);
+			version.setOriginalFilename(stored.originalFilename());
+			version.setContentType(resolveContentType(file));
+			version.setStorageKey(stored.storageKey());
+			version.setSizeBytes(stored.sizeBytes());
+			CvVersion saved = cvVersionRepository.saveAndFlush(version);
+			log.info("Uploaded CV version id={} label={}", saved.getId(), saved.getLabel());
+			return toVersionResponse(saved);
+		}
+		catch (RuntimeException ex) {
+			cleanupUploadedObject(stored.storageKey());
+			throw ex;
+		}
 	}
 
-	@Transactional(readOnly = true)
+	// NOT_SUPPORTED: getOwnedVersion() below runs its own short read-only transaction
+	// (Spring Data JPA repository methods are self-transactional), which closes before
+	// the S3 GetObject call — so no pooled DB connection is held across the network hop.
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	public ResponseEntity<InputStreamResource> download(Long cvVersionId) {
 		CvVersion version = getOwnedVersion(cvVersionId);
 		InputStream stream = objectStorageService.download(version.getStorageKey());
+		ContentDisposition disposition = ContentDisposition.attachment()
+				.filename(version.getOriginalFilename(), StandardCharsets.UTF_8)
+				.build();
 		return ResponseEntity.ok()
-				.header(HttpHeaders.CONTENT_DISPOSITION,
-						"attachment; filename=\"" + version.getOriginalFilename() + "\"")
+				.header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
 				.contentType(MediaType.parseMediaType(version.getContentType()))
 				.contentLength(version.getSizeBytes())
 				.body(new InputStreamResource(stream));
 	}
 
 	public void deleteVersion(Long cvVersionId) {
+		long userId = currentUserId();
 		CvVersion version = getOwnedVersion(cvVersionId);
-		if (applicationCvRepository.existsByCvVersionId(cvVersionId)) {
+		if (applicationCvRepository.existsByCvVersionIdAndUserId(cvVersionId, userId)) {
 			throw new ConflictException("CV version is linked to vacancy sendings and cannot be deleted");
 		}
-		objectStorageService.delete(version.getStorageKey());
+		String storageKey = version.getStorageKey();
+		// DB first so a failed S3 delete cannot leave a live row pointing at a missing object.
 		cvVersionRepository.delete(version);
+		cvVersionRepository.flush();
+		try {
+			objectStorageService.delete(storageKey);
+		}
+		catch (RuntimeException ex) {
+			log.warn("CV version id={} removed from DB but S3 cleanup failed key={}", cvVersionId, storageKey, ex);
+		}
 		log.info("Deleted CV version id={}", cvVersionId);
 	}
 
 	public ApplicationCvResponse sendToVacancy(Long vacancyId, SendCvRequest request) {
-		Vacancy vacancy = vacancyRepository.findById(vacancyId)
+		long userId = currentUserId();
+		Vacancy vacancy = vacancyRepository.findByIdAndUserId(vacancyId, userId)
 				.orElseThrow(() -> new NotFoundException("Vacancy not found: " + vacancyId));
 		CvVersion version = getOwnedVersion(request.cvVersionId());
 
 		ApplicationCv sending = new ApplicationCv();
-		sending.setUserId(currentUserId());
+		sending.setUserId(userId);
 		sending.setVacancyId(vacancy.getId());
 		sending.setCvVersionId(version.getId());
 		sending.setCompany(vacancy.getCompany());
 		sending.setNotes(blankToNull(request.notes()));
-		jobApplicationRepository.findByVacancyId(vacancyId)
+		jobApplicationRepository.findByVacancyIdAndUserId(vacancyId, userId)
 				.ifPresent(application -> sending.setJobApplicationId(application.getId()));
 
 		ApplicationCv saved = applicationCvRepository.save(sending);
@@ -133,7 +164,7 @@ public class CvService {
 
 	@Transactional(readOnly = true)
 	public List<ApplicationCvResponse> listSendingsForVacancy(Long vacancyId) {
-		if (!vacancyRepository.existsById(vacancyId)) {
+		if (!vacancyRepository.existsByIdAndUserId(vacancyId, currentUserId())) {
 			throw new NotFoundException("Vacancy not found: " + vacancyId);
 		}
 		return applicationCvRepository.findByVacancyIdAndUserIdOrderBySentAtDesc(vacancyId, currentUserId())
@@ -149,13 +180,23 @@ public class CvService {
 				.toList();
 	}
 
+	private void cleanupUploadedObject(String storageKey) {
+		try {
+			objectStorageService.delete(storageKey);
+			log.warn("Cleaned up orphan S3 object after CV DB save failure key={}", storageKey);
+		}
+		catch (RuntimeException cleanupEx) {
+			log.error("Failed to clean up S3 object after CV DB save failure key={}", storageKey, cleanupEx);
+		}
+	}
+
 	private CvVersion getOwnedVersion(Long cvVersionId) {
 		return cvVersionRepository.findByIdAndUserId(cvVersionId, currentUserId())
 				.orElseThrow(() -> new NotFoundException("CV version not found: " + cvVersionId));
 	}
 
 	private long currentUserId() {
-		return appProperties.getCurrentUserId();
+		return currentUserService.requireUserId();
 	}
 
 	private CvVersionResponse toVersionResponse(CvVersion version) {
@@ -179,6 +220,17 @@ public class CvService {
 				sending.getNotes(),
 				sending.getSentAt().toString()
 		);
+	}
+
+	private static String requireLabel(String label) {
+		if (label == null || label.isBlank()) {
+			throw new IllegalArgumentException("Label is required");
+		}
+		String trimmed = label.trim();
+		if (trimmed.length() > MAX_LABEL_LENGTH) {
+			throw new IllegalArgumentException("Label must be at most " + MAX_LABEL_LENGTH + " characters");
+		}
+		return trimmed;
 	}
 
 	private static String blankToNull(String value) {

@@ -92,6 +92,9 @@ public class ResumeAiService {
 			- Do not reply with only "OK".
 			""";
 
+	private static final int MAX_HISTORY_TURNS = 20;
+	private static final int MAX_HISTORY_CHARS = 8_000;
+
 	private final OpenRouterClient openRouterClient;
 	private final ResumeService resumeService;
 	private final ProfileService profileService;
@@ -133,6 +136,7 @@ public class ResumeAiService {
 				? SCOPE_ALL
 				: (itemIndex == null ? section : section + "[" + itemIndex + "]");
 
+		List<ChatTurn> history = capHistory(request.history());
 		log.info(
 				"AI suggest section={} itemIndex={} model={} hasCareerPath={} hasVacancy={} historyTurns={}",
 				scope,
@@ -140,12 +144,11 @@ public class ResumeAiService {
 				resolveModel(request.model()),
 				hasCareerPath,
 				hasVacancy,
-				request.history() == null ? 0 : request.history().size()
+				history.size()
 		);
 
 		StringBuilder historyBlock = new StringBuilder();
-		List<ChatTurn> history = request.history();
-		if (history != null && !history.isEmpty()) {
+		if (!history.isEmpty()) {
 			historyBlock.append("Recent conversation (same ongoing chat):\n");
 			for (ChatTurn turn : history) {
 				historyBlock.append("- ")
@@ -233,6 +236,33 @@ public class ResumeAiService {
 
 		log.info("AI suggest done section={} hasProposed={}", scope, proposed != null);
 		return new SuggestResponse(wholeResume ? SCOPE_ALL : section, itemIndex, message, proposed);
+	}
+
+	/**
+	 * Keeps the newest turns only: at most {@link #MAX_HISTORY_TURNS}, then drop oldest
+	 * until total role+content chars ≤ {@link #MAX_HISTORY_CHARS}.
+	 */
+	static List<ChatTurn> capHistory(List<ChatTurn> history) {
+		if (history == null || history.isEmpty()) {
+			return List.of();
+		}
+		List<ChatTurn> turns = history.stream()
+				.filter(t -> t != null && t.role() != null && t.content() != null)
+				.toList();
+		if (turns.size() > MAX_HISTORY_TURNS) {
+			turns = turns.subList(turns.size() - MAX_HISTORY_TURNS, turns.size());
+		}
+		int total = 0;
+		for (ChatTurn turn : turns) {
+			total += turn.role().length() + turn.content().length();
+		}
+		int from = 0;
+		while (from < turns.size() && total > MAX_HISTORY_CHARS) {
+			ChatTurn drop = turns.get(from);
+			total -= drop.role().length() + drop.content().length();
+			from++;
+		}
+		return from == 0 ? List.copyOf(turns) : List.copyOf(turns.subList(from, turns.size()));
 	}
 
 	private String resolveModel(String requested) {

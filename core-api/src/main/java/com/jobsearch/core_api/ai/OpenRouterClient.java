@@ -44,9 +44,8 @@ public class OpenRouterClient {
 	public String chat(String systemPrompt, String userPrompt, String modelOverride) {
 		AppProperties.OpenRouter cfg = appProperties.getOpenRouter();
 		if (cfg.getApiKey() == null || cfg.getApiKey().isBlank()) {
-			throw new IllegalStateException(
-					"OPENROUTER_API_KEY is not set. Add it to your environment or .env and restart the API."
-			);
+			log.error("OPENROUTER_API_KEY is not set");
+			throw new IllegalStateException("AI service is not configured on this server");
 		}
 
 		String model = (modelOverride != null && !modelOverride.isBlank())
@@ -72,11 +71,11 @@ public class OpenRouterClient {
 					.body(body)
 					.retrieve()
 					.body(String.class);
-		}
-		catch (RestClientResponseException ex) {
-			log.error("OpenRouter HTTP {} body={}", ex.getStatusCode().value(), ex.getResponseBodyAsString());
+		}catch (RestClientResponseException ex) {
+			String upstreamBody = ex.getResponseBodyAsString();
+			log.error("OpenRouter HTTP {} body={}", ex.getStatusCode().value(), upstreamBody);
 			throw new IllegalStateException(
-					"OpenRouter error " + ex.getStatusCode().value() + ": " + ex.getResponseBodyAsString(),
+					"OpenRouter error " + ex.getStatusCode().value() + ": " + truncateForClient(upstreamBody),
 					ex
 			);
 		}
@@ -89,10 +88,25 @@ public class OpenRouterClient {
 		String content = root.path("choices").path(0).path("message").path("content").asString("");
 		if (content.isBlank()) {
 			log.error("OpenRouter response missing content: {}", raw);
-			throw new IllegalStateException("OpenRouter response missing message content: " + raw);
+			throw new IllegalStateException(
+					"OpenRouter response missing message content: " + truncateForClient(raw)
+			);
 		}
 		log.debug("OpenRouter response chars={}", content.length());
 		return stripCodeFences(content);
+	}
+
+	/** Keep full upstream payloads in logs; expose only a short snippet to API clients. */
+	private static String truncateForClient(String body) {
+		if (body == null || body.isBlank()) {
+			return "(empty)";
+		}
+		String trimmed = body.strip();
+		int max = 400;
+		if (trimmed.length() <= max) {
+			return trimmed;
+		}
+		return trimmed.substring(0, max) + "…";
 	}
 
 	/** Models sometimes wrap JSON in ``` fences despite json_object mode. */

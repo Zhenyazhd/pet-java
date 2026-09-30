@@ -9,8 +9,13 @@ public final class AtsDtos {
 	}
 
 	public record MatchRequest(
-			@NotBlank String vacancyContext
+			@NotBlank String vacancyContext,
+			/** When set, persist {@code averageScore} onto this owned vacancy's {@code matchPercent}. */
+			Long vacancyId
 	) {
+		public MatchRequest(String vacancyContext) {
+			this(vacancyContext, null);
+		}
 	}
 
 	public record PlatformScore(

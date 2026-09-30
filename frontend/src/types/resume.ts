@@ -36,6 +36,8 @@ export type ResumeDocument = {
   skills: SkillItem[]
   /** Section heading language on the sheet / PDF. */
   locale: 'fr' | 'en'
+  /** Optimistic-concurrency token — echoed back on save; the server rejects a stale one. */
+  version: number
 }
 
 export type ResumeSection =

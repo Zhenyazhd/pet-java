@@ -29,6 +29,13 @@ public final class VacancyDtos {
 	) {
 	}
 
+	/** URL + raw job posting paste; LLM extracts title / company / description. */
+	public record VacancyImportRequest(
+			@NotBlank String url,
+			@NotBlank @Size(max = 50_000) String pastedText
+	) {
+	}
+
 	public record RequirementResponse(
 			Long id,
 			String name,
@@ -39,7 +46,8 @@ public final class VacancyDtos {
 	public record ApplicationSummaryResponse(
 			Long id,
 			String status,
-			boolean applied
+			boolean applied,
+			String notes
 	) {
 	}
 

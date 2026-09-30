@@ -1,5 +1,6 @@
 package com.jobsearch.core_api.vacancy;
 
+import com.jobsearch.core_api.vacancy.VacancyDtos.VacancyImportRequest;
 import com.jobsearch.core_api.vacancy.VacancyDtos.VacancyRequest;
 import com.jobsearch.core_api.vacancy.VacancyDtos.VacancyResponse;
 import jakarta.validation.Valid;
@@ -21,14 +22,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class VacancyController {
 
 	private final VacancyService vacancyService;
+	private final VacancyImportService vacancyImportService;
 
-	public VacancyController(VacancyService vacancyService) {
+	public VacancyController(VacancyService vacancyService, VacancyImportService vacancyImportService) {
 		this.vacancyService = vacancyService;
+		this.vacancyImportService = vacancyImportService;
 	}
 
 	@GetMapping
 	public List<VacancyResponse> list() {
 		return vacancyService.findAll();
+	}
+
+	@PostMapping("/import")
+	@ResponseStatus(HttpStatus.CREATED)
+	public VacancyResponse importFromPaste(@Valid @RequestBody VacancyImportRequest request) {
+		return vacancyImportService.importFromPaste(request);
 	}
 
 	@GetMapping("/{id}")

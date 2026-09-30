@@ -30,20 +30,31 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
         <CvField
           className="cv-name"
           value={resume.name}
+          label="Full name"
           onChange={(name) => onPatch((r) => ({ ...r, name }))}
         />
         <CvField
           className="cv-headline"
           value={resume.headline}
+          label="Headline"
           onChange={(headline) => onPatch((r) => ({ ...r, headline }))}
         />
         <div className="cv-contacts">
-          <CvField value={resume.phone} onChange={(phone) => onPatch((r) => ({ ...r, phone }))} />
+          <CvField
+            value={resume.phone}
+            label="Phone"
+            onChange={(phone) => onPatch((r) => ({ ...r, phone }))}
+          />
           <span>|</span>
-          <CvField value={resume.email} onChange={(email) => onPatch((r) => ({ ...r, email }))} />
+          <CvField
+            value={resume.email}
+            label="Email"
+            onChange={(email) => onPatch((r) => ({ ...r, email }))}
+          />
           <span>|</span>
           <CvField
             value={resume.linkedinLabel}
+            label="LinkedIn"
             onChange={(linkedinLabel) => onPatch((r) => ({ ...r, linkedinLabel }))}
           />
         </div>
@@ -58,6 +69,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
           multiline
           className="cv-body"
           value={resume.profile}
+          label="Profile summary"
           onChange={(profile) => onPatch((r) => ({ ...r, profile }))}
         />
       </CvSection>
@@ -81,6 +93,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
               <CvField
                 className="cv-entry__title"
                 value={job.title}
+                label={`Job ${index + 1} title`}
                 onChange={(title) =>
                   onPatch((r) => ({
                     ...r,
@@ -91,6 +104,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
               <CvField
                 className="cv-entry__dates"
                 value={job.dates}
+                label={`Job ${index + 1} dates`}
                 onChange={(dates) =>
                   onPatch((r) => ({
                     ...r,
@@ -102,6 +116,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
             <CvField
               className="cv-entry__sub"
               value={job.subtitle}
+              label={`Job ${index + 1} company / location`}
               onChange={(subtitle) =>
                 onPatch((r) => ({
                   ...r,
@@ -116,6 +131,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
                     multiline
                     className="cv-body"
                     value={bullet}
+                    label={`Job ${index + 1} bullet ${bIndex + 1}`}
                     onChange={(text) =>
                       onPatch((r) => ({
                         ...r,
@@ -129,6 +145,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
                     type="button"
                     className="cv-icon-btn"
                     title="Remove bullet"
+                    aria-label={`Remove job ${index + 1} bullet ${bIndex + 1}`}
                     onClick={(e) => {
                       e.stopPropagation()
                       onPatch((r) => ({
@@ -190,6 +207,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
               <CvField
                 className="cv-entry__title"
                 value={edu.title}
+                label={`School ${index + 1} name`}
                 onChange={(title) =>
                   onPatch((r) => ({
                     ...r,
@@ -200,6 +218,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
               <CvField
                 className="cv-entry__dates"
                 value={edu.location}
+                label={`School ${index + 1} location`}
                 onChange={(location) =>
                   onPatch((r) => ({
                     ...r,
@@ -211,6 +230,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
             <CvField
               className="cv-entry__sub"
               value={edu.subtitle}
+              label={`School ${index + 1} degree / field`}
               onChange={(subtitle) =>
                 onPatch((r) => ({
                   ...r,
@@ -222,6 +242,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
               multiline
               className="cv-body cv-body--small"
               value={edu.details}
+              label={`School ${index + 1} details`}
               onChange={(details) =>
                 onPatch((r) => ({
                   ...r,
@@ -261,6 +282,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
                 <CvField
                   className="cv-entry__title"
                   value={item.title}
+                  label={`Achievement ${index + 1} title`}
                   onChange={(title) =>
                     onPatch((r) => ({
                       ...r,
@@ -272,6 +294,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
                   multiline
                   className="cv-body"
                   value={item.text}
+                  label={`Achievement ${index + 1} description`}
                   onChange={(text) =>
                     onPatch((r) => ({
                       ...r,
@@ -284,6 +307,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
                 type="button"
                 className="cv-icon-btn"
                 title="Remove"
+                aria-label={`Remove achievement ${index + 1}`}
                 onClick={(e) => {
                   e.stopPropagation()
                   onPatch((r) => ({
@@ -324,6 +348,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
                 <CvField
                   className="cv-entry__title"
                   value={skill.category}
+                  label={`Skill group ${index + 1} category`}
                   onChange={(category) =>
                     onPatch((r) => ({
                       ...r,
@@ -334,6 +359,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
                 <CvField
                   className="cv-body"
                   value={skill.items}
+                  label={`Skill group ${index + 1} items`}
                   onChange={(items) =>
                     onPatch((r) => ({
                       ...r,
@@ -346,6 +372,7 @@ export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: C
                 type="button"
                 className="cv-icon-btn"
                 title="Remove"
+                aria-label={`Remove skill group ${index + 1}`}
                 onClick={(e) => {
                   e.stopPropagation()
                   onPatch((r) => ({

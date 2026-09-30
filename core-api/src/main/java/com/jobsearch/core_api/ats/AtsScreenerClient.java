@@ -39,11 +39,8 @@ public class AtsScreenerClient {
 		String baseUrl = cfg.getBaseUrl();
 		int timeoutSeconds = cfg.getTimeoutSeconds();
 		if (baseUrl == null || baseUrl.isBlank()) {
-			throw new IllegalStateException(
-					"ATS_SCREENER_BASE_URL is not set. Start tools/ats-screener "
-							+ "(pnpm exec vite dev --host 127.0.0.1 --port 5174) "
-							+ "and set ATS_SCREENER_BASE_URL=http://127.0.0.1:5174"
-			);
+			log.error("ATS_SCREENER_BASE_URL is not set");
+			throw new IllegalStateException("ATS Screener is not configured on this server");
 		}
 
 		Map<String, Object> body = new LinkedHashMap<>();
@@ -68,15 +65,13 @@ public class AtsScreenerClient {
 					.body(body)
 					.retrieve()
 					.body(String.class);
-		}
-		catch (RestClientResponseException ex) {
+		} catch (RestClientResponseException ex) {
 			log.error("ATS Screener HTTP {} body={}", ex.getStatusCode().value(), ex.getResponseBodyAsString());
 			throw new IllegalStateException(
 					"ATS Screener error " + ex.getStatusCode().value() + ": " + summarizeError(ex.getResponseBodyAsString()),
 					ex
 			);
-		}
-		catch (Exception ex) {
+		} catch (Exception ex) {
 			if (isTimeout(ex)) {
 				log.error("ATS Screener timed out after {}s at {}", timeoutSeconds, baseUrl);
 				throw new IllegalStateException(
@@ -86,11 +81,7 @@ public class AtsScreenerClient {
 				);
 			}
 			log.error("ATS Screener unreachable at {}: {}", baseUrl, ex.getMessage());
-			throw new IllegalStateException(
-					"ATS Screener unreachable at " + baseUrl
-							+ ". Keep `pnpm exec vite dev --host 127.0.0.1 --port 5174` running.",
-					ex
-			);
+			throw new IllegalStateException("ATS Screener is currently unavailable. Please try again later.", ex);
 		}
 
 		if (raw == null || raw.isBlank()) {

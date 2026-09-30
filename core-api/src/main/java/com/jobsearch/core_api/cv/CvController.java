@@ -4,11 +4,14 @@ import com.jobsearch.core_api.cv.CvDtos.ApplicationCvResponse;
 import com.jobsearch.core_api.cv.CvDtos.CvVersionResponse;
 import com.jobsearch.core_api.cv.CvDtos.SendCvRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,6 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 /** CV file upload/download and linking versions to vacancies. */
 @RestController
 @RequestMapping("/api")
+@Validated
 public class CvController {
 
 	private final CvService cvService;
@@ -39,7 +43,7 @@ public class CvController {
 	@PostMapping(value = "/cvs", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	@ResponseStatus(HttpStatus.CREATED)
 	public CvVersionResponse upload(
-			@RequestPart("label") String label,
+			@RequestPart("label") @NotBlank @Size(max = CvService.MAX_LABEL_LENGTH) String label,
 			@RequestPart("file") MultipartFile file
 	) {
 		return cvService.upload(label, file);

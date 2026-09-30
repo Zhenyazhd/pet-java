@@ -2,7 +2,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:job_search}
     username: ${POSTGRES_USER:zhenya}
-    password: ${POSTGRES_PASSWORD:132435465768798}
+    password: ${POSTGRES_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -14,8 +14,34 @@ spring:
       max-file-size: 10MB
       max-request-size: 12MB
 
+server:
+  # Set to "framework" only when deployed behind a trusted TLS-terminating
+  # reverse proxy (nginx/ALB) that sets X-Forwarded-Proto — otherwise clients
+  # could spoof the scheme. Default "none": safe when reachable directly.
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:none}
+  servlet:
+    session:
+      cookie:
+        same-site: lax
+        http-only: true
+        secure: true
+
 app:
-  current-user-id: ${APP_CURRENT_USER_ID:1}
+  admin-email: ${APP_ADMIN_EMAIL:}
+  bootstrap-password: ${APP_BOOTSTRAP_PASSWORD:}
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  auth-rate-limit:
+    login-per-minute: ${APP_AUTH_LOGIN_PER_MINUTE:10}
+    register-per-minute: ${APP_AUTH_REGISTER_PER_MINUTE:5}
+    # Only honor X-Forwarded-For / X-Real-IP when peer ∈ trusted-proxies (Vite/nginx).
+    # false = always use remoteAddr (safe if API is reachable without a reverse proxy).
+    trust-forwarded-headers: ${APP_AUTH_TRUST_FORWARDED_HEADERS:false}
+    trusted-proxies: ${APP_AUTH_TRUSTED_PROXIES:127.0.0.1,::1}
+  expensive-ops-rate-limit:
+    # Shared budget for POST /api/ai/**, /api/vacancies/import, /api/resume/compile,
+    # and /api/latex/compile (per user / minute; 0 = off)
+    per-user-per-minute: ${APP_EXPENSIVE_OPS_PER_USER_PER_MINUTE:10}
   s3:
     endpoint: ${S3_ENDPOINT:http://localhost:9090}
     region: ${S3_REGION:us-east-1}

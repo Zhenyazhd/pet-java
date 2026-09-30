@@ -42,6 +42,9 @@ public class Vacancy {
 	@JdbcTypeCode(SqlTypes.SMALLINT)
 	private Integer matchPercent;
 
+	@Column(name = "user_id", nullable = false)
+	private Long userId;
+
 	@Column(name = "created_at", nullable = false)
 	private Instant createdAt;
 
@@ -118,6 +121,14 @@ public class Vacancy {
 
 	public void setMatchPercent(Integer matchPercent) {
 		this.matchPercent = matchPercent;
+	}
+
+	public Long getUserId() {
+		return userId;
+	}
+
+	public void setUserId(Long userId) {
+		this.userId = userId;
 	}
 
 	public Instant getCreatedAt() {
