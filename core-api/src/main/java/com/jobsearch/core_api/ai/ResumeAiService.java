@@ -48,13 +48,6 @@ public class ResumeAiService {
 			"deepseek/deepseek-chat"
 	);
 
-	private static final Set<String> INDEXABLE = Set.of(
-			"experience",
-			"education",
-			"achievements",
-			"skills"
-	);
-
 	private static final String SYSTEM = """
 			You are a helpful resume assistant in a single ongoing chat about the user's CV.
 			Return ONLY a JSON object with exactly these keys:
@@ -137,11 +130,12 @@ public class ResumeAiService {
 				: (itemIndex == null ? section : section + "[" + itemIndex + "]");
 
 		List<ChatTurn> history = capHistory(request.history());
+		String model = resolveModel(request.model());
 		log.info(
 				"AI suggest section={} itemIndex={} model={} hasCareerPath={} hasVacancy={} historyTurns={}",
 				scope,
 				itemIndex,
-				resolveModel(request.model()),
+				model,
 				hasCareerPath,
 				hasVacancy,
 				history.size()
@@ -221,7 +215,7 @@ public class ResumeAiService {
 				request.instruction().strip()
 		);
 
-		String content = openRouterClient.chat(SYSTEM, userPrompt, resolveModel(request.model()));
+		String content = openRouterClient.chat(SYSTEM, userPrompt, model);
 		JsonNode parsed = objectMapper.readTree(content);
 		String message = parsed.path("message").asString("").strip();
 		if (message.isBlank()) {
@@ -279,45 +273,34 @@ public class ResumeAiService {
 	}
 
 	private JsonNode sectionValue(ResumeDocument resume, String section, Integer itemIndex) {
-		if (itemIndex != null) {
-			if (!INDEXABLE.contains(section)) {
-				throw new IllegalArgumentException("itemIndex is only supported for: " + INDEXABLE);
-			}
-			List<?> list = listFor(resume, section);
-			if (itemIndex < 0 || itemIndex >= list.size()) {
-				throw new IllegalArgumentException(
-						"itemIndex out of range for " + section + ": " + itemIndex
-				);
-			}
-			return objectMapper.valueToTree(list.get(itemIndex));
-		}
-
-		return switch (section) {
-			case "header" -> objectMapper.valueToTree(Map.of(
+		Object value = switch (section) {
+			case "header" -> Map.of(
 					"name", resume.name(),
 					"headline", resume.headline(),
 					"phone", resume.phone(),
 					"email", resume.email(),
 					"linkedinUrl", resume.linkedinUrl(),
 					"linkedinLabel", resume.linkedinLabel()
-			));
-			case "profile" -> objectMapper.valueToTree(resume.profile());
-			case "experience" -> objectMapper.valueToTree(resume.experience());
-			case "education" -> objectMapper.valueToTree(resume.education());
-			case "achievements" -> objectMapper.valueToTree(resume.achievements());
-			case "skills" -> objectMapper.valueToTree(resume.skills());
-			default -> throw new IllegalArgumentException("Unknown section: " + section);
-		};
-	}
-
-	private static List<?> listFor(ResumeDocument resume, String section) {
-		return switch (section) {
+			);
+			case "profile" -> resume.profile();
 			case "experience" -> resume.experience();
 			case "education" -> resume.education();
 			case "achievements" -> resume.achievements();
 			case "skills" -> resume.skills();
-			default -> throw new IllegalArgumentException("Not a list section: " + section);
+			default -> throw new IllegalArgumentException("Unknown section: " + section);
 		};
+		if (itemIndex != null) {
+			if (!(value instanceof List<?> list)) {
+				throw new IllegalArgumentException(
+						"itemIndex is only supported for: experience, education, achievements, skills"
+				);
+			}
+			if (itemIndex < 0 || itemIndex >= list.size()) {
+				throw new IllegalArgumentException("itemIndex out of range for " + section + ": " + itemIndex);
+			}
+			value = list.get(itemIndex);
+		}
+		return objectMapper.valueToTree(value);
 	}
 
 	private static String blankToNone(String value) {

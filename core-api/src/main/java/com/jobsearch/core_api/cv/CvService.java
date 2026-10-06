@@ -3,6 +3,7 @@ package com.jobsearch.core_api.cv;
 import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.common.ConflictException;
 import com.jobsearch.core_api.common.NotFoundException;
+import com.jobsearch.core_api.common.Strings;
 import com.jobsearch.core_api.cv.CvDtos.ApplicationCvResponse;
 import com.jobsearch.core_api.cv.CvDtos.CvVersionResponse;
 import com.jobsearch.core_api.cv.CvDtos.SendCvRequest;
@@ -153,7 +154,7 @@ public class CvService {
 		sending.setVacancyId(vacancy.getId());
 		sending.setCvVersionId(version.getId());
 		sending.setCompany(vacancy.getCompany());
-		sending.setNotes(blankToNull(request.notes()));
+		sending.setNotes(Strings.blankToNull(request.notes()));
 		jobApplicationRepository.findByVacancyIdAndUserId(vacancyId, userId)
 				.ifPresent(application -> sending.setJobApplicationId(application.getId()));
 
@@ -231,13 +232,6 @@ public class CvService {
 			throw new IllegalArgumentException("Label must be at most " + MAX_LABEL_LENGTH + " characters");
 		}
 		return trimmed;
-	}
-
-	private static String blankToNull(String value) {
-		if (value == null || value.isBlank()) {
-			return null;
-		}
-		return value.trim();
 	}
 
 	private static boolean isAllowedFile(MultipartFile file) {

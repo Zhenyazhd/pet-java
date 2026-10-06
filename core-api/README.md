@@ -93,10 +93,10 @@ com.jobsearch.core_api
 ├── ats/             Proxy to local ATS Screener (vacancy match scores)
 ├── auth/            Login/register/logout, sessions, invite codes, rate limiting
 ├── common/          NotFoundException, ConflictException, ApiExceptionHandler
-├── config/          AppProperties, CorsConfig, S3Config
+├── config/          AppProperties, S3Config
 ├── cv/              CV file versions + sendings linked to vacancies
 ├── jobapplication/  Application status (1:1 with vacancy)
-├── latex/           Compile arbitrary LaTeX → PDF
+├── latex/           LaTeX → PDF compiler (tectonic / Docker)
 ├── profile/         app_user: name, email, career_path
 ├── resume/          Structured resume JSON, LaTeX render, plain-text, compile
 ├── storage/         ObjectStorageService (S3)
@@ -196,8 +196,6 @@ Base prefix: `/api`. Errors use a uniform JSON body (see below).
 |--------|------|-------------|
 | GET | `/api/profile` | `displayName`, `email`, `careerPath` |
 | PUT | `/api/profile` | save all fields |
-| GET | `/api/profile/career-path` | career path only |
-| PUT | `/api/profile/career-path` | career path only |
 
 Career path is the AI’s **primary factual source** (employers, dates, skills) — the model must not invent a biography.
 
@@ -229,7 +227,6 @@ Structured document (not raw `.tex`):
 |--------|------|-------------|
 | GET | `/api/resume` | load JSON (or default) |
 | PUT | `/api/resume` | persist to `app_user.resume_json`; `409` if `version` is stale |
-| GET | `/api/resume/latex` | `{ "source": "<tex>" }` via `ResumeLatexRenderer` |
 | POST | `/api/resume/compile` | current JSON → LaTeX → PDF (`application/pdf`) |
 
 ### AI — `/api/ai`
@@ -290,14 +287,6 @@ Uses the **saved** resume (JSON → plain text) + vacancy context → ATS `POST 
 
 Flow: `AtsMatchController` → `AtsMatchService` → `AtsScreenerClient` → `tools/ats-screener`.
 
-### LaTeX (raw) — `/api/latex`
-
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/latex/compile` | body `{ "source": "..." }` → PDF |
-
-Same `LatexCompileService` as resume compile.
-
 ### Vacancies — `/api/vacancies`
 
 | Method | Path | Description |
@@ -312,11 +301,8 @@ Same `LatexCompileService` as resume compile.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/applications` | all applications |
-| GET | `/api/applications/{id}` | one |
 | POST | `/api/applications` | upsert by vacancy (create or update status/notes) |
 | PUT | `/api/applications/{id}` | status + notes |
-| DELETE | `/api/applications/{id}` | delete |
 
 When status ≠ `NOT_APPLIED`, `appliedAt` is set if missing.
 

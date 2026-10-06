@@ -56,8 +56,7 @@ public class AuthService {
 	@Transactional(readOnly = true)
 	public AuthUserResponse me() {
 		AppUser user = currentUserService.requireUser();
-		UserRole role = AppUserDetailsService.parseRole(user.getRole());
-		return new AuthUserResponse(user.getId(), user.getEmail(), user.getDisplayName(), role.name());
+		return new AuthUserResponse(user.getId(), user.getEmail(), user.getDisplayName(), user.getRole().name());
 	}
 
 	@Transactional(readOnly = true)
@@ -97,9 +96,6 @@ public class AuthService {
 		user.setEmail(email);
 		user.setDisplayName(displayName);
 		user.setPasswordHash(passwordEncoder.encode(request.password()));
-		user.setCareerPath("");
-		user.setResumeJson("");
-		user.setRole(UserRole.USER.name());
 		AppUser saved = UniqueConstraint.onConflict(
 				"Email already registered",
 				() -> appUserRepository.saveAndFlush(user),
@@ -122,7 +118,7 @@ public class AuthService {
 		);
 		establishSession(authentication, httpRequest, httpResponse);
 		log.info("Registered userId={} email={}", saved.getId(), saved.getEmail());
-		return new AuthUserResponse(saved.getId(), saved.getEmail(), saved.getDisplayName(), UserRole.USER.name());
+		return toResponse(principal);
 	}
 
 	public void logout(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {

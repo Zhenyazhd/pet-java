@@ -6,7 +6,6 @@ import java.util.Map;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
@@ -20,17 +19,14 @@ public class OpenRouterConfig {
 		JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory();
 		requestFactory.setReadTimeout(java.time.Duration.ofSeconds(90));
 
-		RestClient.Builder builder = RestClient.builder()
+		return RestClient.builder()
 				.baseUrl(cfg.getBaseUrl())
 				.requestFactory(requestFactory)
-				.defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
 				.defaultHeader("HTTP-Referer", cfg.getSiteUrl())
-				.defaultHeader("X-Title", cfg.getSiteName());
-
-		if (cfg.getApiKey() != null && !cfg.getApiKey().isBlank()) {
-			builder.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + cfg.getApiKey());
-		}
-		return builder.build();
+				.defaultHeader("X-Title", cfg.getSiteName())
+				// OpenRouterClient refuses to call out when the key is blank.
+				.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + cfg.getApiKey())
+				.build();
 	}
 
 	public record ChatMessage(String role, String content) {

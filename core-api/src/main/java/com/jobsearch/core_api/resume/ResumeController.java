@@ -1,7 +1,6 @@
 package com.jobsearch.core_api.resume;
 
 import com.jobsearch.core_api.latex.LatexCompileService;
-import com.jobsearch.core_api.resume.ResumeDtos.LatexResponse;
 import com.jobsearch.core_api.resume.ResumeDtos.ResumeDocument;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
@@ -14,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Structured resume CRUD, LaTeX preview, and PDF compile. */
+/** Structured resume CRUD and PDF compile. */
 @RestController
 @RequestMapping("/api/resume")
 public class ResumeController {
@@ -35,11 +34,6 @@ public class ResumeController {
 	@PutMapping
 	public ResumeDocument save(@Valid @RequestBody ResumeDocument resume) {
 		return resumeService.save(resume);
-	}
-
-	@GetMapping("/latex")
-	public LatexResponse latex() {
-		return new LatexResponse(resumeService.toLatex());
 	}
 
 	@PostMapping(value = "/compile", produces = MediaType.APPLICATION_PDF_VALUE)

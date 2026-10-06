@@ -22,10 +22,4 @@ public final class ProfileDtos {
 			@NotNull String careerPath
 	) {
 	}
-
-	public record CareerPathResponse(String careerPath) {
-	}
-
-	public record CareerPathRequest(@NotNull String careerPath) {
-	}
 }

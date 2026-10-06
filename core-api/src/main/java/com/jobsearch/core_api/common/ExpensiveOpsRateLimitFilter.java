@@ -20,8 +20,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Per-user rate limit for expensive operations: AI suggest, ATS match, vacancy import,
- * and resume/LaTeX PDF compilation (the compile endpoints each spawn a subprocess or
- * container per request, making them the costliest unmetered surface if left off this list).
+ * and resume PDF compilation (each compile spawns a subprocess or container).
  */
 public class ExpensiveOpsRateLimitFilter extends OncePerRequestFilter {
 
@@ -29,8 +28,7 @@ public class ExpensiveOpsRateLimitFilter extends OncePerRequestFilter {
 	private static final long WINDOW_MS = TimeUnit.MINUTES.toMillis(1);
 	private static final Set<String> LIMITED_EXACT_PATHS = Set.of(
 			"/api/vacancies/import",
-			"/api/resume/compile",
-			"/api/latex/compile"
+			"/api/resume/compile"
 	);
 
 	private final FixedWindowRateLimiter rateLimiter;

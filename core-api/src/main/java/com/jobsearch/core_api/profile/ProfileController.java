@@ -1,7 +1,5 @@
 package com.jobsearch.core_api.profile;
 
-import com.jobsearch.core_api.profile.ProfileDtos.CareerPathRequest;
-import com.jobsearch.core_api.profile.ProfileDtos.CareerPathResponse;
 import com.jobsearch.core_api.profile.ProfileDtos.ProfileRequest;
 import com.jobsearch.core_api.profile.ProfileDtos.ProfileResponse;
 import jakarta.validation.Valid;
@@ -11,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** User profile (name, email, career path) for the current temporary user. */
+/** User profile (name, email, career path) for the authenticated user. */
 @RestController
 @RequestMapping("/api/profile")
 public class ProfileController {
@@ -30,15 +28,5 @@ public class ProfileController {
 	@PutMapping
 	public ProfileResponse saveProfile(@Valid @RequestBody ProfileRequest request) {
 		return profileService.saveProfile(request);
-	}
-
-	@GetMapping("/career-path")
-	public CareerPathResponse getCareerPath() {
-		return profileService.getCareerPath();
-	}
-
-	@PutMapping("/career-path")
-	public CareerPathResponse saveCareerPath(@Valid @RequestBody CareerPathRequest request) {
-		return profileService.saveCareerPath(request);
 	}
 }

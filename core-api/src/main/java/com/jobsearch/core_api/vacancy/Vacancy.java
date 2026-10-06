@@ -69,9 +69,12 @@ public class Vacancy {
 		updatedAt = Instant.now();
 	}
 
-	public void addRequirement(VacancyRequirement requirement) {
-		requirements.add(requirement);
+	public void addRequirement(String name, boolean required) {
+		VacancyRequirement requirement = new VacancyRequirement();
+		requirement.setName(name);
+		requirement.setRequired(required);
 		requirement.setVacancy(this);
+		requirements.add(requirement);
 	}
 
 	public void clearRequirements() {

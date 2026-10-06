@@ -106,10 +106,6 @@ public class ApplicationCv {
 		return sentAt;
 	}
 
-	public void setSentAt(Instant sentAt) {
-		this.sentAt = sentAt;
-	}
-
 	public Instant getCreatedAt() {
 		return createdAt;
 	}

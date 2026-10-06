@@ -1,10 +1,9 @@
 package com.jobsearch.core_api.vacancy;
 
 import com.jobsearch.core_api.auth.CurrentUserService;
-import com.jobsearch.core_api.common.ConflictException;
 import com.jobsearch.core_api.common.NotFoundException;
+import com.jobsearch.core_api.common.Strings;
 import com.jobsearch.core_api.common.UniqueConstraint;
-import com.jobsearch.core_api.jobapplication.ApplicationStatus;
 import com.jobsearch.core_api.jobapplication.JobApplication;
 import com.jobsearch.core_api.vacancy.VacancyDtos.ApplicationSummaryResponse;
 import com.jobsearch.core_api.vacancy.VacancyDtos.RequirementRequest;
@@ -47,15 +46,10 @@ public class VacancyService {
 
 	public VacancyResponse create(VacancyRequest request) {
 		long userId = currentUserService.requireUserId();
-		if (vacancyRepository.existsByUserIdAndUrl(userId, request.url())) {
-			throw new ConflictException("Vacancy with this URL already exists");
-		}
 		Vacancy vacancy = new Vacancy();
 		vacancy.setUserId(userId);
 		applyRequest(vacancy, request);
-		JobApplication application = new JobApplication();
-		application.setStatus(ApplicationStatus.NOT_APPLIED);
-		vacancy.setApplication(application);
+		vacancy.setApplication(new JobApplication());
 		Vacancy saved = UniqueConstraint.onConflict(
 				"Vacancy with this URL already exists",
 				() -> vacancyRepository.saveAndFlush(vacancy),
@@ -73,10 +67,6 @@ public class VacancyService {
 	public VacancyResponse update(Long id, VacancyRequest request) {
 		long userId = currentUserService.requireUserId();
 		Vacancy vacancy = getOwnedVacancy(id);
-		if (!vacancy.getUrl().equals(request.url())
-				&& vacancyRepository.existsByUserIdAndUrl(userId, request.url())) {
-			throw new ConflictException("Vacancy with this URL already exists");
-		}
 		applyRequest(vacancy, request);
 		Vacancy saved = UniqueConstraint.onConflict(
 				"Vacancy with this URL already exists",
@@ -105,8 +95,8 @@ public class VacancyService {
 	private void applyRequest(Vacancy vacancy, VacancyRequest request) {
 		vacancy.setUrl(request.url().trim());
 		vacancy.setTitle(request.title().trim());
-		vacancy.setCompany(blankToNull(request.company()));
-		vacancy.setDescription(blankToNull(request.description()));
+		vacancy.setCompany(Strings.blankToNull(request.company()));
+		vacancy.setDescription(Strings.blankToNull(request.description()));
 		vacancy.setMatchPercent(request.matchPercent());
 
 		vacancy.clearRequirements();
@@ -119,11 +109,8 @@ public class VacancyService {
 							Boolean.TRUE.equals(item.required())
 					))
 					.toList();
-			for (VacancyRequirements.Item item : VacancyRequirements.dedupe(items)) {
-				VacancyRequirement requirement = new VacancyRequirement();
-				requirement.setName(item.name());
-				requirement.setRequired(item.required());
-				vacancy.addRequirement(requirement);
+			for (VacancyRequirements.Item item : VacancyRequirements.dedupe(items, Integer.MAX_VALUE)) {
+				vacancy.addRequirement(item.name(), item.required());
 			}
 		}
 	}
@@ -139,7 +126,7 @@ public class VacancyService {
 			applicationSummary = new ApplicationSummaryResponse(
 					application.getId(),
 					application.getStatus().name(),
-					isApplied(application.getStatus()),
+					application.getStatus().isApplied(),
 					application.getNotes()
 			);
 		}
@@ -156,16 +143,5 @@ public class VacancyService {
 				vacancy.getCreatedAt().toString(),
 				vacancy.getUpdatedAt().toString()
 		);
-	}
-
-	private static boolean isApplied(ApplicationStatus status) {
-		return status != ApplicationStatus.NOT_APPLIED;
-	}
-
-	private static String blankToNull(String value) {
-		if (value == null || value.isBlank()) {
-			return null;
-		}
-		return value.trim();
 	}
 }
