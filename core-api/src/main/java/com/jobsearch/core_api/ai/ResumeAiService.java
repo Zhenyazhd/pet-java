@@ -236,7 +236,7 @@ public class ResumeAiService {
 	 * Keeps the newest turns only: at most {@link #MAX_HISTORY_TURNS}, then drop oldest
 	 * until total role+content chars ≤ {@link #MAX_HISTORY_CHARS}.
 	 */
-	static List<ChatTurn> capHistory(List<ChatTurn> history) {
+	private static List<ChatTurn> capHistory(List<ChatTurn> history) {
 		if (history == null || history.isEmpty()) {
 			return List.of();
 		}

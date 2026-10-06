@@ -32,10 +32,6 @@ public class VacancyRequirement {
 		return id;
 	}
 
-	public Vacancy getVacancy() {
-		return vacancy;
-	}
-
 	public void setVacancy(Vacancy vacancy) {
 		this.vacancy = vacancy;
 	}

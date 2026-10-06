@@ -1,8 +1,6 @@
 package com.jobsearch.core_api.ai;
 
 import com.jobsearch.core_api.config.AppProperties;
-import java.util.List;
-import java.util.Map;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -27,15 +25,5 @@ public class OpenRouterConfig {
 				// OpenRouterClient refuses to call out when the key is blank.
 				.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + cfg.getApiKey())
 				.build();
-	}
-
-	public record ChatMessage(String role, String content) {
-	}
-
-	public record ChatRequest(
-			String model,
-			List<ChatMessage> messages,
-			Map<String, Object> response_format
-	) {
 	}
 }

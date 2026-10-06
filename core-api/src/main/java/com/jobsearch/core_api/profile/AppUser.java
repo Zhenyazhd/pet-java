@@ -113,8 +113,4 @@ public class AppUser {
 		this.resumeVersion = resumeVersion;
 	}
 
-	public Instant getCreatedAt() {
-		return createdAt;
-	}
-
 }

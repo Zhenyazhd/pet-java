@@ -86,7 +86,7 @@ public class VacancyService {
 		log.info("Deleted vacancy id={} userId={}", id, userId);
 	}
 
-	Vacancy getOwnedVacancy(Long id) {
+	private Vacancy getOwnedVacancy(Long id) {
 		long userId = currentUserService.requireUserId();
 		return vacancyRepository.findDetailedByIdAndUserId(id, userId)
 				.orElseThrow(() -> new NotFoundException("Vacancy not found: " + id));

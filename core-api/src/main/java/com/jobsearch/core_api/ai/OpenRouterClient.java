@@ -1,7 +1,5 @@
 package com.jobsearch.core_api.ai;
 
-import com.jobsearch.core_api.ai.OpenRouterConfig.ChatMessage;
-import com.jobsearch.core_api.ai.OpenRouterConfig.ChatRequest;
 import com.jobsearch.core_api.common.Strings;
 import com.jobsearch.core_api.config.AppProperties;
 import java.util.List;
@@ -107,5 +105,15 @@ public class OpenRouterClient {
 			return trimmed.substring(firstNl + 1, lastFence).strip();
 		}
 		return trimmed;
+	}
+
+	record ChatMessage(String role, String content) {
+	}
+
+	record ChatRequest(
+			String model,
+			List<ChatMessage> messages,
+			Map<String, Object> response_format
+	) {
 	}
 }
