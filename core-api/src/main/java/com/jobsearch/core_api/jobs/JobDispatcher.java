@@ -44,7 +44,15 @@ public class JobDispatcher {
 	void poll() {
 		for (Lane lane : lanes.values()) {
 			while (Instant.now().isAfter(lane.pausedUntil) && lane.slots.tryAcquire()) {
-				Optional<Job> claimed = jobRepository.claimNext(lane.handler.type().name(), lane.handler.lease().toSeconds());
+				Optional<Job> claimed;
+				try {
+					claimed = jobRepository.claimNext(lane.handler.type().name(), lane.handler.lease().toSeconds());
+				}
+				catch (RuntimeException ex) {
+					lane.slots.release();
+					log.error("Job claim failed type={}", lane.handler.type(), ex);
+					break;
+				}
 				if (claimed.isEmpty()) {
 					lane.slots.release();
 					break;

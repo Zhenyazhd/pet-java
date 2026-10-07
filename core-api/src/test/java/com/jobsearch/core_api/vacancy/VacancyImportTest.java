@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.jobsearch.core_api.TestSupport;
@@ -105,14 +106,30 @@ class VacancyImportTest {
 	}
 
 	@Test
-	void urlSavedWhileQueuedFailsTheJob() {
-		when(openRouterClient.chat(anyString(), anyString(), any())).thenReturn(EXTRACTED);
+	void vacancySavedBeforeTheJobRunsIsTheResultWithoutCallingTheLlm() {
 		service.enqueue(new VacancyImportRequest(URL, "posting"));
-		saveVacancy(URL);
+		// Saved by an earlier attempt whose outcome was lost, or by the user while the job waited.
+		long savedId = saveVacancy(URL);
 
-		JobOutcome.Failed outcome = assertInstanceOf(JobOutcome.Failed.class, handler.run(claim()));
+		JobOutcome.Succeeded outcome = assertInstanceOf(JobOutcome.Succeeded.class, handler.run(claim()));
 
-		assertEquals("duplicate_url", outcome.code());
+		assertEquals(savedId, objectMapper.readTree(outcome.result()).path("vacancyId").asLong());
+		verifyNoInteractions(openRouterClient);
+	}
+
+	@Test
+	void vacancySavedWhileTheLlmAnswersIsTheResult() {
+		service.enqueue(new VacancyImportRequest(URL, "posting"));
+		long[] savedDuringLlmCall = new long[1];
+		when(openRouterClient.chat(anyString(), anyString(), any())).thenAnswer(call -> {
+			savedDuringLlmCall[0] = saveVacancy(URL);
+			return EXTRACTED;
+		});
+
+		JobOutcome.Succeeded outcome = assertInstanceOf(JobOutcome.Succeeded.class, handler.run(claim()));
+
+		assertEquals(savedDuringLlmCall[0], objectMapper.readTree(outcome.result()).path("vacancyId").asLong());
+		assertEquals(1, vacancyRepository.findAllByUserIdOrderByCreatedAtDesc(userId).size());
 	}
 
 	@Test
@@ -168,11 +185,11 @@ class VacancyImportTest {
 		return jobRepository.claimNext(JobType.VACANCY_IMPORT.name(), 60).orElseThrow();
 	}
 
-	private void saveVacancy(String url) {
+	private long saveVacancy(String url) {
 		Vacancy vacancy = new Vacancy();
 		vacancy.setUserId(userId);
 		vacancy.setUrl(url);
 		vacancy.setTitle("Saved by hand");
-		vacancyRepository.save(vacancy);
+		return vacancyRepository.save(vacancy).getId();
 	}
 }

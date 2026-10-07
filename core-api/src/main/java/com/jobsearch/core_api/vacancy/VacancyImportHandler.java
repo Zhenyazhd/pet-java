@@ -110,15 +110,26 @@ public class VacancyImportHandler implements JobHandler {
 		return LEASE;
 	}
 
+	/**
+	 * Makes sure the user has a vacancy for the URL and returns its id. Safe to run again: a vacancy
+	 * that already exists (saved by an earlier attempt whose outcome was lost, or by the user while the
+	 * job waited) is the result, without another paid LLM call.
+	 */
 	@Override
 	public JobOutcome run(Job job) {
+		VacancyImportPayload payload = objectMapper.readValue(job.getPayload(), VacancyImportPayload.class);
+		Vacancy existing = vacancyRepository.findByUserIdAndUrl(job.getUserId(), payload.url()).orElse(null);
+		if (existing != null) {
+			log.info("Vacancy import jobId={} found vacancyId={} for the URL, nothing to import",
+					job.getId(), existing.getId());
+			return succeeded(existing.getId());
+		}
 		// OpenRouterClient's own check throws a plain IllegalStateException that classify() would retry.
 		String apiKey = appProperties.getOpenRouter().getApiKey();
 		if (apiKey == null || apiKey.isBlank()) {
 			log.error("Vacancy import jobId={} cannot run: OPENROUTER_API_KEY is not set", job.getId());
 			return new JobOutcome.Failed("ai_unavailable", AI_UNAVAILABLE_MESSAGE);
 		}
-		VacancyImportPayload payload = objectMapper.readValue(job.getPayload(), VacancyImportPayload.class);
 		String answer;
 		try {
 			answer = openRouterClient.chat(SYSTEM_PROMPT, userPrompt(payload), null);
@@ -128,13 +139,17 @@ public class VacancyImportHandler implements JobHandler {
 		}
 		ParsedVacancy parsed = parse(answer, payload.pastedText());
 		try {
-			long vacancyId = saveVacancy(job.getUserId(), payload.url(), parsed);
-			return new JobOutcome.Succeeded(objectMapper.writeValueAsString(Map.of("vacancyId", vacancyId)));
+			return succeeded(saveVacancy(job.getUserId(), payload.url(), parsed));
 		}
 		catch (ConflictException ex) {
-			// The user saved a vacancy with this URL while the job was in the queue.
-			return new JobOutcome.Failed("duplicate_url", ex.getMessage());
+			return vacancyRepository.findByUserIdAndUrl(job.getUserId(), payload.url())
+					.map(vacancy -> succeeded(vacancy.getId()))
+					.orElseGet(() -> new JobOutcome.Retry("vacancy for the URL was deleted after the conflict"));
 		}
+	}
+
+	private JobOutcome succeeded(long vacancyId) {
+		return new JobOutcome.Succeeded(objectMapper.writeValueAsString(Map.of("vacancyId", vacancyId)));
 	}
 
 	/**
@@ -175,7 +190,7 @@ public class VacancyImportHandler implements JobHandler {
 
 	private long saveVacancy(long userId, String url, ParsedVacancy parsed) {
 		return UniqueConstraint.onConflict(
-				"Vacancy with this URL already exists",
+				"vacancy URL conflict",
 				() -> transactionTemplate.execute(status -> {
 					Vacancy vacancy = new Vacancy();
 					vacancy.setUserId(userId);
