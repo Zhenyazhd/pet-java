@@ -34,14 +34,15 @@ public class VacancyImportHandler implements JobHandler {
 
 	private static final Logger log = LoggerFactory.getLogger(VacancyImportHandler.class);
 	private static final int MAX_REQUIREMENTS = 40;
-	/** How long to pause imports when OpenRouter rate-limits us without saying for how long. */
-	private static final Duration DEFAULT_RATE_LIMIT_PAUSE = Duration.ofSeconds(10);
-	private static final String AI_UNAVAILABLE_MESSAGE = "The AI service is not available right now. Please try again later.";
-	private static final String AI_REJECTED_MESSAGE = "The AI could not process this posting. Try a shorter or cleaner text.";
 	/** Keeps the prompt affordable; the request itself allows up to 50,000 chars. */
 	private static final int MAX_PROMPT_PASTE_CHARS = 40_000;
 	/** OpenRouterConfig waits up to 90s for an answer; the slack covers saving the vacancy. */
 	private static final Duration LEASE = Duration.ofSeconds(90 + 30);
+
+	/** How long to pause imports when OpenRouter rate-limits us without saying for how long. */
+	private static final Duration DEFAULT_RATE_LIMIT_PAUSE = Duration.ofSeconds(10);
+	private static final String AI_UNAVAILABLE_MESSAGE = "The AI service is not available right now. Please try again later.";
+	private static final String AI_REJECTED_MESSAGE = "The AI could not process this posting. Try a shorter or cleaner text.";
 
 	private static final String SYSTEM_PROMPT = """
 			You extract structured job-posting fields from messy pasted text.
@@ -111,6 +112,7 @@ public class VacancyImportHandler implements JobHandler {
 
 	@Override
 	public JobOutcome run(Job job) {
+		// OpenRouterClient's own check throws a plain IllegalStateException that classify() would retry.
 		String apiKey = appProperties.getOpenRouter().getApiKey();
 		if (apiKey == null || apiKey.isBlank()) {
 			log.error("Vacancy import jobId={} cannot run: OPENROUTER_API_KEY is not set", job.getId());
@@ -122,7 +124,7 @@ public class VacancyImportHandler implements JobHandler {
 			answer = openRouterClient.chat(SYSTEM_PROMPT, userPrompt(payload), null);
 		}
 		catch (RuntimeException ex) {
-			return classify(ex);
+			return classify(job, ex);
 		}
 		ParsedVacancy parsed = parse(answer, payload.pastedText());
 		try {
@@ -136,29 +138,35 @@ public class VacancyImportHandler implements JobHandler {
 	}
 
 	/**
-	 * OpenRouterClient reports every failure as an exception, keeping OpenRouter's HTTP error as the cause.
+	 * OpenRouterClient throws for every failure; only an HTTP error carries OpenRouter's response as the cause.
 	 * Only failures that can pass on a second try are retried; each try is a paid LLM call.
 	 */
-	private JobOutcome classify(RuntimeException ex) {
+	private JobOutcome classify(Job job, RuntimeException ex) {
 		if (!(ex.getCause() instanceof RestClientResponseException http)) {
 			return new JobOutcome.Retry(ex.toString()); // timeout, network error, empty answer
 		}
 		int status = http.getStatusCode().value();
 		return switch (status) {
-			case 429 -> new JobOutcome.Busy(retryAfter(http.getResponseHeaders()));
+			case 429 -> {
+				HttpHeaders headers = http.getResponseHeaders();
+				yield new JobOutcome.Busy(retryAfter(headers == null ? null : headers.getFirst(HttpHeaders.RETRY_AFTER)));
+			}
 			case 400, 413 -> new JobOutcome.Failed("ai_rejected", AI_REJECTED_MESSAGE);
 			case 401, 402, 403 -> {
-				log.error("OpenRouter refused the API key or account status={}; fix the key or credits", status);
+				log.error("Vacancy import jobId={}: OpenRouter refused the API key or account status={}; fix the key or credits",
+						job.getId(), status);
 				yield new JobOutcome.Failed("ai_unavailable", AI_UNAVAILABLE_MESSAGE);
 			}
 			default -> new JobOutcome.Retry("OpenRouter HTTP " + status);
 		};
 	}
 
-	private static Duration retryAfter(HttpHeaders headers) {
-		String value = headers == null ? null : headers.getFirst(HttpHeaders.RETRY_AFTER);
+	private static Duration retryAfter(String header) {
+		if (header == null) {
+			return DEFAULT_RATE_LIMIT_PAUSE;
+		}
 		try {
-			return value == null ? DEFAULT_RATE_LIMIT_PAUSE : Duration.ofSeconds(Math.max(1, Long.parseLong(value.strip())));
+			return Duration.ofSeconds(Math.max(1, Long.parseLong(header.strip())));
 		}
 		catch (NumberFormatException ex) {
 			return DEFAULT_RATE_LIMIT_PAUSE;

@@ -30,10 +30,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
-import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientResponseException;
 import tools.jackson.databind.ObjectMapper;
 
 /** Queueing an import and running it through {@link VacancyImportHandler}, with a mocked LLM. */
@@ -161,9 +159,8 @@ class VacancyImportTest {
 		if (retryAfter != null) {
 			headers.set(HttpHeaders.RETRY_AFTER, retryAfter);
 		}
-		HttpStatusCodeException http = status.is4xxClientError()
-				? HttpClientErrorException.create(status, status.getReasonPhrase(), headers, new byte[0], null)
-				: HttpServerErrorException.create(status, status.getReasonPhrase(), headers, new byte[0], null);
+		RestClientResponseException http = new RestClientResponseException(
+				"OpenRouter error", status, status.getReasonPhrase(), headers, new byte[0], null);
 		return new IllegalStateException("OpenRouter error " + status.value(), http);
 	}
 
