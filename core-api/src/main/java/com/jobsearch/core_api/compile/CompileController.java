@@ -13,15 +13,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Queue a PDF build of the current resume, poll its status, download the result.
- *
- * <p>Lives at {@code /compile-jobs} until the frontend switches over; then it takes the
- * {@code /api/resume/compile} path from the synchronous {@code ResumeController.compile()}
- * (tools/latex-worker/SPEC.md §8).
- */
+/** Queue a PDF build of the current resume, poll its status, download the result. */
 @RestController
-@RequestMapping("/api/resume/compile-jobs")
+@RequestMapping("/api/resume/compile")
 public class CompileController {
 
 	private final CompileJobService compileJobService;

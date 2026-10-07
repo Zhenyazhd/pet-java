@@ -3,6 +3,7 @@ import { api, isConflict } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import type { ChatItem } from '../components/resume/AiAssistPanel'
 import { readAiModel, writeAiModel } from './aiModels'
+import { compileResume } from './compileResume'
 import { clearResumeDraft, pruneLegacyResumeDraft, readResumeDraft, writeResumeDraft } from './resumeDraft'
 import { applyAiProposed } from './resumeEdits'
 import { resolveLocale } from './resumeLocale'
@@ -272,7 +273,7 @@ export function useResumeEditor() {
       if (!saved) {
         setStatus('PDF used a prior save — you have newer local edits')
       }
-      const blob = await api.compileResume()
+      const blob = await compileResume()
       const url = URL.createObjectURL(blob)
       setPdfUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev)

@@ -1,6 +1,7 @@
 import type {
   ApplicationStatus,
   AuthUser,
+  CompileJob,
   JobApplication,
   LoginRequest,
   RegisterRequest,
@@ -52,7 +53,7 @@ export function setUnauthorizedListener(listener: UnauthorizedListener | null): 
 type RequestOptions = {
   /** Do not notify global 401 handler (e.g. GET /api/auth/me while bootstrapping). */
   skipAuthRedirect?: boolean
-  /** Default JSON; use `blob` for binary endpoints (PDF compile). */
+  /** Default JSON; use `blob` for binary endpoints (compiled PDF). */
   responseType?: 'json' | 'blob'
 }
 
@@ -258,8 +259,12 @@ export const api = {
       body: JSON.stringify(resume),
     }),
 
-  compileResume: () =>
-    request<Blob>('/api/resume/compile', { method: 'POST' }, { responseType: 'blob' }),
+  startCompile: () => request<CompileJob>('/api/resume/compile', { method: 'POST' }),
+
+  getCompileJob: (jobId: string) => request<CompileJob>(`/api/resume/compile/${jobId}`),
+
+  getCompiledPdf: (jobId: string) =>
+    request<Blob>(`/api/resume/compile/${jobId}/pdf`, undefined, { responseType: 'blob' }),
 
   suggestResumeSection: (
     section: AiScope,

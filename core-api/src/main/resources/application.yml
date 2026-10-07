@@ -35,7 +35,7 @@ app:
     trust-forwarded-headers: ${APP_AUTH_TRUST_FORWARDED_HEADERS:false}
     trusted-proxies: ${APP_AUTH_TRUSTED_PROXIES:127.0.0.1,::1}
   expensive-ops-rate-limit:
-    # Shared budget for POST /api/ai/**, /api/vacancies/import, /api/resume/compile and /api/resume/compile-jobs
+    # Shared budget for POST /api/ai/**, /api/vacancies/import and /api/resume/compile
     # (per user / minute; 0 = off)
     per-user-per-minute: ${APP_EXPENSIVE_OPS_PER_USER_PER_MINUTE:10}
   open-router:
