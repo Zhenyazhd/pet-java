@@ -1,6 +1,11 @@
 spring:
   application:
     name: core-api
+  threads:
+    # Requests waiting on slow upstreams (OpenRouter) park a virtual thread instead of holding one of
+    # Tomcat's ~200 platform threads. Outbound concurrency is capped per client, see open-router below.
+    virtual:
+      enabled: true
   datasource:
     url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:job_search}
     username: ${POSTGRES_USER:zhenya}
@@ -44,6 +49,9 @@ app:
     model: ${OPENROUTER_MODEL:openai/gpt-4o-mini}
     site-url: ${OPENROUTER_SITE_URL:http://localhost:5173}
     site-name: ${OPENROUTER_SITE_NAME:Job Search}
+    read-timeout-seconds: ${OPENROUTER_READ_TIMEOUT_SECONDS:90}
+    max-concurrent-requests: ${OPENROUTER_MAX_CONCURRENT_REQUESTS:20}
+    max-tokens: ${OPENROUTER_MAX_TOKENS:8000}
   ats-screener:
     base-url: ${ATS_SCREENER_BASE_URL:http://127.0.0.1:5174}
     timeout-seconds: ${ATS_SCREENER_TIMEOUT_SECONDS:180}

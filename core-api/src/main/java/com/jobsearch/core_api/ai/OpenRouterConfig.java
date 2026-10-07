@@ -1,6 +1,8 @@
 package com.jobsearch.core_api.ai;
 
 import com.jobsearch.core_api.config.AppProperties;
+import java.net.http.HttpClient;
+import java.time.Duration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -14,8 +16,11 @@ public class OpenRouterConfig {
 	@Bean
 	RestClient openRouterRestClient(AppProperties appProperties) {
 		AppProperties.OpenRouter cfg = appProperties.getOpenRouter();
-		JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory();
-		requestFactory.setReadTimeout(java.time.Duration.ofSeconds(90));
+		HttpClient httpClient = HttpClient.newBuilder()
+				.connectTimeout(Duration.ofSeconds(cfg.getConnectTimeoutSeconds()))
+				.build();
+		JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+		requestFactory.setReadTimeout(Duration.ofSeconds(cfg.getReadTimeoutSeconds()));
 
 		return RestClient.builder()
 				.baseUrl(cfg.getBaseUrl())

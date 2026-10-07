@@ -7,6 +7,7 @@ import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -63,6 +64,16 @@ public class ApiExceptionHandler {
 		log.error("Upstream/runtime failure: {}", ex.getMessage(), ex);
 		return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
 				.body(apiErrorResponses.body(HttpStatus.BAD_GATEWAY, ex.getMessage()));
+	}
+
+	@ExceptionHandler(ServiceUnavailableException.class)
+	public ResponseEntity<Map<String, Object>> handleServiceUnavailable(ServiceUnavailableException ex) {
+		log.warn("Service unavailable: {}", ex.getMessage());
+		ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE);
+		if (ex.getRetryAfter() != null) {
+			response.header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfter().toSeconds()));
+		}
+		return response.body(apiErrorResponses.body(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage()));
 	}
 
 	@ExceptionHandler(UnauthorizedException.class)
