@@ -264,6 +264,11 @@ public class AppProperties {
 		private String model = "openai/gpt-4o-mini";
 		private String siteUrl = "http://localhost:5173";
 		private String siteName = "Job Search";
+		private int connectTimeoutSeconds = 5;
+		/** How long to wait for a model's answer; long prompts on slow models need tens of seconds. */
+		private int readTimeoutSeconds = 90;
+		/** AI chat calls ({@code OpenRouterClient.complete}) one instance sends at once; more are answered "busy". */
+		private int maxConcurrentRequests = 20;
 
 		public String getApiKey() {
 			return apiKey;
@@ -303,6 +308,30 @@ public class AppProperties {
 
 		public void setSiteName(String siteName) {
 			this.siteName = siteName;
+		}
+
+		public int getConnectTimeoutSeconds() {
+			return connectTimeoutSeconds;
+		}
+
+		public void setConnectTimeoutSeconds(int connectTimeoutSeconds) {
+			this.connectTimeoutSeconds = connectTimeoutSeconds;
+		}
+
+		public int getReadTimeoutSeconds() {
+			return readTimeoutSeconds;
+		}
+
+		public void setReadTimeoutSeconds(int readTimeoutSeconds) {
+			this.readTimeoutSeconds = readTimeoutSeconds;
+		}
+
+		public int getMaxConcurrentRequests() {
+			return maxConcurrentRequests;
+		}
+
+		public void setMaxConcurrentRequests(int maxConcurrentRequests) {
+			this.maxConcurrentRequests = maxConcurrentRequests;
 		}
 	}
 

@@ -3,9 +3,11 @@ package com.jobsearch.core_api.ai;
 import com.jobsearch.core_api.ai.AiDtos.ChatTurn;
 import com.jobsearch.core_api.ai.AiDtos.SuggestRequest;
 import com.jobsearch.core_api.ai.AiDtos.SuggestResponse;
+import com.jobsearch.core_api.common.ServiceUnavailableException;
 import com.jobsearch.core_api.profile.ProfileService;
 import com.jobsearch.core_api.resume.ResumeDtos.ResumeDocument;
 import com.jobsearch.core_api.resume.ResumeService;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -215,7 +217,18 @@ public class ResumeAiService {
 				request.instruction().strip()
 		);
 
-		String content = openRouterClient.chat(SYSTEM, userPrompt, model);
+		// The client has already logged failure details for the operator; users get a plain message.
+		String content = switch (openRouterClient.complete(SYSTEM, userPrompt, model)) {
+			case ChatResult.Answer(String answer) -> answer;
+			case ChatResult.Busy(Duration retryAfter) -> throw new ServiceUnavailableException(
+					"The AI is busy right now. Try again in " + retryAfter.toSeconds() + " seconds.", retryAfter);
+			case ChatResult.Rejected _ -> throw new IllegalArgumentException(
+					"The AI could not process this request. Try a shorter message or focus on one section.");
+			case ChatResult.Misconfigured _ -> throw new ServiceUnavailableException(
+					"The AI is not available right now. Please try again later.", null);
+			case ChatResult.Unavailable _ -> throw new ServiceUnavailableException(
+					"The AI did not answer. Please try again.", null);
+		};
 		JsonNode parsed = objectMapper.readTree(content);
 		String message = parsed.path("message").asString("").strip();
 		if (message.isBlank()) {
