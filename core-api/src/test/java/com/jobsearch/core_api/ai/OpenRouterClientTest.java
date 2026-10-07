@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.client.ExpectedCount.manyTimes;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
@@ -31,6 +32,11 @@ class OpenRouterClientTest {
 			{"choices": [{"message": {"content": "```json\\n{\\"message\\": \\"hi\\"}\\n```"}}]}
 			""";
 
+	private static final String CUT_OFF_ANSWER = """
+			{"choices": [{"message": {"content": "{\\"message\\": \\"Here is your rew"}, "finish_reason": "length"}],
+			 "usage": {"prompt_tokens": 900, "completion_tokens": 8000, "total_tokens": 8900}}
+			""";
+
 	private final AppProperties appProperties = new AppProperties();
 	private MockRestServiceServer openRouter;
 	private OpenRouterClient client;
@@ -48,6 +54,24 @@ class OpenRouterClientTest {
 		ChatResult.Answer answer = assertInstanceOf(ChatResult.Answer.class, client.complete("system", "user", null));
 
 		assertEquals("{\"message\": \"hi\"}", answer.content());
+	}
+
+	@Test
+	void requestCarriesMaxTokens() {
+		appProperties.getOpenRouter().setMaxTokens(1234);
+		openRouter.expect(requestTo(COMPLETIONS))
+				.andExpect(jsonPath("$.max_tokens").value(1234))
+				.andRespond(withSuccess(ANSWER, MediaType.APPLICATION_JSON));
+
+		assertInstanceOf(ChatResult.Answer.class, client.complete("system", "user", null));
+		openRouter.verify();
+	}
+
+	@Test
+	void answerCutOffAtMaxTokensIsRejected() {
+		openRouter.expect(requestTo(COMPLETIONS)).andRespond(withSuccess(CUT_OFF_ANSWER, MediaType.APPLICATION_JSON));
+
+		assertInstanceOf(ChatResult.Rejected.class, client.complete("system", "user", null));
 	}
 
 	@Test

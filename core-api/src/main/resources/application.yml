@@ -51,6 +51,7 @@ app:
     site-name: ${OPENROUTER_SITE_NAME:Job Search}
     read-timeout-seconds: ${OPENROUTER_READ_TIMEOUT_SECONDS:90}
     max-concurrent-requests: ${OPENROUTER_MAX_CONCURRENT_REQUESTS:20}
+    max-tokens: ${OPENROUTER_MAX_TOKENS:8000}
   ats-screener:
     base-url: ${ATS_SCREENER_BASE_URL:http://127.0.0.1:5174}
     timeout-seconds: ${ATS_SCREENER_TIMEOUT_SECONDS:180}

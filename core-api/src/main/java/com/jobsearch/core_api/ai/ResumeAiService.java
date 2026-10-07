@@ -223,7 +223,7 @@ public class ResumeAiService {
 			case ChatResult.Busy(Duration retryAfter) -> throw new ServiceUnavailableException(
 					"The AI is busy right now. Try again in " + retryAfter.toSeconds() + " seconds.", retryAfter);
 			case ChatResult.Rejected _ -> throw new IllegalArgumentException(
-					"The AI could not process this request. Try a shorter message or focus on one section.");
+					"The AI could not handle a change this big. Try a shorter message or one section at a time.");
 			case ChatResult.Misconfigured _ -> throw new ServiceUnavailableException(
 					"The AI is not available right now. Please try again later.", null);
 			case ChatResult.Unavailable _ -> throw new ServiceUnavailableException(

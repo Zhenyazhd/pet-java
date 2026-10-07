@@ -13,7 +13,7 @@ public sealed interface ChatResult {
 	record Busy(Duration retryAfter) implements ChatResult {
 	}
 
-	/** OpenRouter refused the request itself (too long, malformed); the same request will fail again. */
+	/** OpenRouter refused the request (too long, malformed), or the answer was cut off at max_tokens; the same request will fail again. */
 	record Rejected(String reason) implements ChatResult {
 	}
 

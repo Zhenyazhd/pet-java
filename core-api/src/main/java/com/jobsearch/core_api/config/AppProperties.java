@@ -269,6 +269,8 @@ public class AppProperties {
 		private int readTimeoutSeconds = 90;
 		/** AI chat calls ({@code OpenRouterClient.complete}) one instance sends at once; more are answered "busy". */
 		private int maxConcurrentRequests = 20;
+		/** Caps one answer's length and cost; a full-resume edit in the AI chat needs several thousand tokens. */
+		private int maxTokens = 8000;
 
 		public String getApiKey() {
 			return apiKey;
@@ -332,6 +334,14 @@ public class AppProperties {
 
 		public void setMaxConcurrentRequests(int maxConcurrentRequests) {
 			this.maxConcurrentRequests = maxConcurrentRequests;
+		}
+
+		public int getMaxTokens() {
+			return maxTokens;
+		}
+
+		public void setMaxTokens(int maxTokens) {
+			this.maxTokens = maxTokens;
 		}
 	}
 

@@ -16,6 +16,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Thin HTTP client for OpenRouter Chat Completions (OpenAI-compatible). */
@@ -70,8 +71,9 @@ public class OpenRouterClient {
 
 	/**
 	 * Older contract: throws {@link IllegalStateException} for every failure, keeping OpenRouter's HTTP
-	 * error as the cause. Not counted against {@code max-concurrent-requests}. Kept for the vacancy import
-	 * until it moves to {@link #complete}.
+	 * error as the cause. Not counted against {@code max-concurrent-requests}. Answers are capped at
+	 * {@code max-tokens} like everywhere else, but a cut-off answer is returned as-is. Kept for the vacancy
+	 * import until it moves to {@link #complete}.
 	 */
 	public String chat(String systemPrompt, String userPrompt, String modelOverride) {
 		if (!hasApiKey()) {
@@ -93,7 +95,7 @@ public class OpenRouterClient {
 		if (raw == null || raw.isBlank()) {
 			throw new IllegalStateException("OpenRouter returned an empty response");
 		}
-		String content = contentOf(raw);
+		String content = parse(raw).content();
 		if (content == null) {
 			log.error("OpenRouter response missing content: {}", Strings.abbreviate(raw, 400));
 			throw new IllegalStateException("OpenRouter response missing message content: " + Strings.abbreviate(raw, 400));
@@ -123,12 +125,17 @@ public class OpenRouterClient {
 			return new ChatResult.Unavailable(ex.toString());
 		}
 
-		String content = contentOrNull(raw);
-		if (content == null) {
+		Completion completion = parseOrNull(raw);
+		if (completion == null || completion.content() == null) {
 			log.error("OpenRouter answer has no message content: {}", Strings.abbreviate(raw, 400));
 			return new ChatResult.Unavailable("OpenRouter answer has no message content");
 		}
-		return new ChatResult.Answer(content);
+		if (completion.cutOff()) {
+			// The JSON is incomplete, and the same request would be cut off again.
+			log.warn("OpenRouter answer cut off at max_tokens={}", appProperties.getOpenRouter().getMaxTokens());
+			return new ChatResult.Rejected("answer cut off at max_tokens");
+		}
+		return new ChatResult.Answer(completion.content());
 	}
 
 	private ChatRequest request(String systemPrompt, String userPrompt, String modelOverride) {
@@ -139,7 +146,8 @@ public class OpenRouterClient {
 						new ChatMessage("system", systemPrompt),
 						new ChatMessage("user", userPrompt)
 				),
-				Map.of("type", "json_object")
+				Map.of("type", "json_object"),
+				appProperties.getOpenRouter().getMaxTokens()
 		);
 	}
 
@@ -153,27 +161,42 @@ public class OpenRouterClient {
 				.body(String.class);
 	}
 
-	/** The assistant's message with code fences stripped, or null when the answer has none. */
-	private String contentOf(String raw) {
+	/** Reads a non-blank answer body and logs its token usage; throws if it is not JSON. */
+	private Completion parse(String raw) {
+		JsonNode root = objectMapper.readTree(raw);
+		logUsage(root);
+		JsonNode choice = root.path("choices").path(0);
+		String content = choice.path("message").path("content").asString("");
+		return new Completion(
+				content.isBlank() ? null : stripCodeFences(content),
+				"length".equals(choice.path("finish_reason").asString(""))
+		);
+	}
+
+	/** Like {@link #parse}, but an empty or unreadable answer gives null. */
+	private Completion parseOrNull(String raw) {
 		if (raw == null || raw.isBlank()) {
 			return null;
 		}
-		String content = objectMapper.readTree(raw).path("choices").path(0).path("message").path("content").asString("");
-		if (content.isBlank()) {
-			return null;
-		}
-		log.debug("OpenRouter response chars={}", content.length());
-		return stripCodeFences(content);
-	}
-
-	/** Like {@link #contentOf}, but an unreadable answer counts as "no content" too. */
-	private String contentOrNull(String raw) {
 		try {
-			return contentOf(raw);
+			return parse(raw);
 		}
 		catch (JacksonException ex) {
 			return null;
 		}
+	}
+
+	/** One line per answer, so spend can be traced per model; {@code model} is the one that actually answered. */
+	private static void logUsage(JsonNode root) {
+		JsonNode usage = root.path("usage");
+		if (usage.isMissingNode()) {
+			return;
+		}
+		log.info("OpenRouter usage model={} promptTokens={} completionTokens={} totalTokens={}",
+				root.path("model").asString(""),
+				usage.path("prompt_tokens").asInt(0),
+				usage.path("completion_tokens").asInt(0),
+				usage.path("total_tokens").asInt(0));
 	}
 
 	private boolean hasApiKey() {
@@ -214,7 +237,12 @@ public class OpenRouterClient {
 	record ChatRequest(
 			String model,
 			List<ChatMessage> messages,
-			Map<String, Object> response_format
+			Map<String, Object> response_format,
+			int max_tokens
 	) {
+	}
+
+	/** {@code content} is null when the answer has none; {@code cutOff} when it stopped at max_tokens. */
+	private record Completion(String content, boolean cutOff) {
 	}
 }
