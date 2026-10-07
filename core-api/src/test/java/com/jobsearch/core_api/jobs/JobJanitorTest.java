@@ -42,7 +42,8 @@ class JobJanitorTest {
 
 	@BeforeEach
 	void setUp() {
-		TestSupport.clearJobsAndPdfCache(jobRepository, cacheRepository);
+		TestSupport.clearJobs(jobRepository);
+		TestSupport.clearPdfCache(cacheRepository);
 		userId = TestSupport.signInNewUser(userRepository);
 	}
 

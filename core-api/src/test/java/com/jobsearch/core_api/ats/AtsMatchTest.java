@@ -11,14 +11,11 @@ import com.jobsearch.core_api.TestSupport;
 import com.jobsearch.core_api.TestcontainersConfiguration;
 import com.jobsearch.core_api.ats.AtsDtos.MatchRequest;
 import com.jobsearch.core_api.common.NotFoundException;
-import com.jobsearch.core_api.compile.ResumePdfCacheRepository;
 import com.jobsearch.core_api.jobs.Job;
 import com.jobsearch.core_api.jobs.JobOutcome;
 import com.jobsearch.core_api.jobs.JobRepository;
 import com.jobsearch.core_api.jobs.JobType;
-import com.jobsearch.core_api.profile.AppUser;
 import com.jobsearch.core_api.profile.AppUserRepository;
-import java.util.UUID;
 import com.jobsearch.core_api.vacancy.Vacancy;
 import com.jobsearch.core_api.vacancy.VacancyRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -53,8 +50,6 @@ class AtsMatchTest {
 	@Autowired
 	private JobRepository jobRepository;
 	@Autowired
-	private ResumePdfCacheRepository cacheRepository;
-	@Autowired
 	private VacancyRepository vacancyRepository;
 	@Autowired
 	private AppUserRepository userRepository;
@@ -67,7 +62,7 @@ class AtsMatchTest {
 
 	@BeforeEach
 	void setUp() {
-		TestSupport.clearJobsAndPdfCache(jobRepository, cacheRepository);
+		TestSupport.clearJobs(jobRepository);
 		userId = TestSupport.signInNewUser(userRepository);
 	}
 
@@ -103,7 +98,7 @@ class AtsMatchTest {
 
 	@Test
 	void anotherUsersVacancyIsRejectedAtEnqueue() {
-		long strangersVacancy = newVacancy(newUserId());
+		long strangersVacancy = newVacancy(TestSupport.newUser(userRepository));
 
 		assertThrows(NotFoundException.class,
 				() -> service.enqueue(new MatchRequest("Backend engineer", strangersVacancy)));
@@ -117,7 +112,7 @@ class AtsMatchTest {
 		service.enqueue(new MatchRequest("Backend engineer", vacancyId));
 		// The vacancy changes hands while the job waits in the queue.
 		Vacancy vacancy = vacancyRepository.findById(vacancyId).orElseThrow();
-		vacancy.setUserId(newUserId());
+		vacancy.setUserId(TestSupport.newUser(userRepository));
 		vacancyRepository.save(vacancy);
 
 		handler.run(claim());
@@ -130,8 +125,9 @@ class AtsMatchTest {
 		service.enqueue(new MatchRequest("Backend engineer", null));
 		Job job = claim();
 
-		when(screenerClient.fullScore(anyString(), anyString())).thenReturn(new ScreenerResult.Failed("quota"));
-		assertEquals(new JobOutcome.Failed("ats_failed", "quota"), handler.run(job));
+		String message = "ATS Screener could not score this resume. Please try again later.";
+		when(screenerClient.fullScore(anyString(), anyString())).thenReturn(new ScreenerResult.Failed(message));
+		assertEquals(new JobOutcome.Failed("ats_failed", message), handler.run(job));
 
 		when(screenerClient.fullScore(anyString(), anyString())).thenReturn(new ScreenerResult.Unavailable("refused"));
 		assertInstanceOf(JobOutcome.Retry.class, handler.run(job));
@@ -139,14 +135,6 @@ class AtsMatchTest {
 
 	private Job claim() {
 		return jobRepository.claimNext(JobType.ATS_MATCH.name(), 60).orElseThrow();
-	}
-
-	/** A user who exists but is not signed in. */
-	private long newUserId() {
-		AppUser user = new AppUser();
-		user.setEmail(UUID.randomUUID() + "@test.local");
-		user.setDisplayName("Someone else");
-		return userRepository.save(user).getId();
 	}
 
 	private long newVacancy(long ownerId) {

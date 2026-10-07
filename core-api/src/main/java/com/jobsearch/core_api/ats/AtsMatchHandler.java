@@ -101,7 +101,7 @@ public class AtsMatchHandler implements JobHandler {
 							vacancy.setMatchPercent(averageScore);
 							vacancyRepository.save(vacancy);
 						},
-						() -> log.info("ATS match vacancy gone, matchPercent not saved vacancyId={} userId={}", vacancyId, userId)
+						() -> log.info("ATS match vacancy not found for job owner, matchPercent not saved vacancyId={} userId={}", vacancyId, userId)
 				));
 	}
 

@@ -40,7 +40,8 @@ class CompileServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		TestSupport.clearJobsAndPdfCache(jobRepository, cacheRepository);
+		TestSupport.clearJobs(jobRepository);
+		TestSupport.clearPdfCache(cacheRepository);
 		TestSupport.signInNewUser(userRepository);
 	}
 

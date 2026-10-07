@@ -15,26 +15,35 @@ public final class TestSupport {
 	private TestSupport() {
 	}
 
-	/** Creates a user and makes it the authenticated user of the current thread; returns its id. */
-	public static long signInNewUser(AppUserRepository userRepository) {
+	/** A user who exists but is not signed in; returns its id. */
+	public static long newUser(AppUserRepository userRepository) {
 		AppUser user = new AppUser();
 		user.setEmail(UUID.randomUUID() + "@test.local");
 		user.setDisplayName("Test User");
-		AppUser saved = userRepository.save(user);
+		return userRepository.save(user).getId();
+	}
+
+	/** Creates a user and makes it the authenticated user of the current thread; returns its id. */
+	public static long signInNewUser(AppUserRepository userRepository) {
+		long userId = newUser(userRepository);
+		AppUser user = userRepository.findById(userId).orElseThrow();
 		AppUserPrincipal principal = new AppUserPrincipal(
-				saved.getId(), saved.getEmail(), saved.getDisplayName(), "unused", UserRole.USER);
+				userId, user.getEmail(), user.getDisplayName(), "unused", UserRole.USER);
 		SecurityContextHolder.getContext().setAuthentication(
 				new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
-		return saved.getId();
+		return userId;
+	}
+
+	/** Jobs left by one test would be claimed by the next. */
+	public static void clearJobs(JobRepository jobRepository) {
+		jobRepository.deleteAll();
 	}
 
 	/**
 	 * Every new user has the same default resume and so the same LaTeX hash: a PDF cached by one
-	 * test would turn the next test's compile into a cache hit. Jobs left by one test would be
-	 * claimed by the next.
+	 * test would turn the next test's compile into a cache hit.
 	 */
-	public static void clearJobsAndPdfCache(JobRepository jobRepository, ResumePdfCacheRepository cacheRepository) {
-		jobRepository.deleteAll();
+	public static void clearPdfCache(ResumePdfCacheRepository cacheRepository) {
 		cacheRepository.deleteAll();
 	}
 }

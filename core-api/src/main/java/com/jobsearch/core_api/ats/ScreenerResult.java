@@ -5,6 +5,7 @@ import tools.jackson.databind.JsonNode;
 /** What {@link AtsScreenerClient} got back from ATS Screener; {@link AtsMatchHandler} maps it to a JobOutcome. */
 public sealed interface ScreenerResult {
 
+	/** The screener scored the resume; {@code root} is its raw JSON answer. */
 	record Report(JsonNode root) implements ScreenerResult {
 	}
 
