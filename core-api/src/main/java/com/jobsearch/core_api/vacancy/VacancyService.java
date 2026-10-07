@@ -115,7 +115,7 @@ public class VacancyService {
 		}
 	}
 
-	VacancyResponse toResponse(Vacancy vacancy) {
+	private VacancyResponse toResponse(Vacancy vacancy) {
 		List<RequirementResponse> requirements = vacancy.getRequirements().stream()
 				.map(item -> new RequirementResponse(item.getId(), item.getName(), item.isRequired()))
 				.toList();

@@ -1,6 +1,8 @@
 package com.jobsearch.core_api.compile;
 
-import com.jobsearch.core_api.compile.CompileDtos.CompileJobResponse;
+import com.jobsearch.core_api.jobs.JobDtos.JobResponse;
+import com.jobsearch.core_api.jobs.JobService;
+import com.jobsearch.core_api.jobs.JobType;
 import java.util.UUID;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -18,21 +20,23 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/resume/compile")
 public class CompileController {
 
-	private final CompileJobService compileJobService;
+	private final CompileService compileService;
+	private final JobService jobService;
 
-	public CompileController(CompileJobService compileJobService) {
-		this.compileJobService = compileJobService;
+	public CompileController(CompileService compileService, JobService jobService) {
+		this.compileService = compileService;
+		this.jobService = jobService;
 	}
 
 	@PostMapping
 	@ResponseStatus(HttpStatus.ACCEPTED)
-	public CompileJobResponse enqueue() {
-		return compileJobService.enqueue();
+	public JobResponse enqueue() {
+		return compileService.enqueue();
 	}
 
 	@GetMapping("/{jobId}")
-	public CompileJobResponse get(@PathVariable UUID jobId) {
-		return compileJobService.get(jobId);
+	public JobResponse get(@PathVariable UUID jobId) {
+		return jobService.get(jobId, JobType.RESUME_PDF);
 	}
 
 	@GetMapping("/{jobId}/pdf")
@@ -40,6 +44,6 @@ public class CompileController {
 		return ResponseEntity.ok()
 				.header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"resume.pdf\"")
 				.contentType(MediaType.APPLICATION_PDF)
-				.body(compileJobService.pdf(jobId));
+				.body(compileService.pdf(jobId));
 	}
 }
