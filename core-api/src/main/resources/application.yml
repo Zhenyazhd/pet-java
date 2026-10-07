@@ -35,7 +35,7 @@ app:
     trust-forwarded-headers: ${APP_AUTH_TRUST_FORWARDED_HEADERS:false}
     trusted-proxies: ${APP_AUTH_TRUSTED_PROXIES:127.0.0.1,::1}
   expensive-ops-rate-limit:
-    # Shared budget for POST /api/ai/**, /api/vacancies/import and /api/resume/compile
+    # Shared budget for POST /api/ai/**, /api/vacancies/import, /api/resume/compile and /api/resume/compile-jobs
     # (per user / minute; 0 = off)
     per-user-per-minute: ${APP_EXPENSIVE_OPS_PER_USER_PER_MINUTE:10}
   open-router:
@@ -47,3 +47,9 @@ app:
   ats-screener:
     base-url: ${ATS_SCREENER_BASE_URL:http://127.0.0.1:5174}
     timeout-seconds: ${ATS_SCREENER_TIMEOUT_SECONDS:180}
+  latex-worker:
+    # tools/latex-worker — compiles resume PDFs; the token must match its WORKER_TOKEN
+    base-url: ${LATEX_WORKER_BASE_URL:http://127.0.0.1:8090}
+    token: ${LATEX_WORKER_TOKEN:}
+    # must exceed the worker's own 60s compile timeout
+    read-timeout-seconds: ${LATEX_WORKER_READ_TIMEOUT_SECONDS:75}

@@ -17,6 +17,7 @@ public class AppProperties {
 	private final S3 s3 = new S3();
 	private final OpenRouter openRouter = new OpenRouter();
 	private final AtsScreener atsScreener = new AtsScreener();
+	private final LatexWorker latexWorker = new LatexWorker();
 
 	public String getAdminEmail() {
 		return adminEmail;
@@ -58,9 +59,13 @@ public class AppProperties {
 		return atsScreener;
 	}
 
+	public LatexWorker getLatexWorker() {
+		return latexWorker;
+	}
+
 	public static class ExpensiveOpsRateLimit {
 		/**
-		 * Max combined POST /api/ai/**, /api/vacancies/import and /api/resume/compile calls
+		 * Max combined POST /api/ai/**, /api/vacancies/import, /api/resume/compile and /api/resume/compile-jobs calls
 		 * per authenticated user per minute ({@code 0} = disabled).
 		 */
 		private int perUserPerMinute = 10;
@@ -178,6 +183,78 @@ public class AppProperties {
 
 		public void setTimeoutSeconds(int timeoutSeconds) {
 			this.timeoutSeconds = timeoutSeconds;
+		}
+	}
+
+	public static class LatexWorker {
+		/** Base URL of tools/latex-worker. */
+		private String baseUrl = "http://127.0.0.1:8090";
+		/** Shared secret sent as X-Worker-Token; required (core-api refuses to start without it). */
+		private String token = "";
+		private int connectTimeoutSeconds = 3;
+		/** Must be longer than the worker's own compile timeout (60s by default). */
+		private int readTimeoutSeconds = 75;
+		/** Jobs this instance sends to workers at once. */
+		private int dispatchConcurrency = 4;
+		/** Tries per job before it fails with worker_unavailable; a busy worker does not count. */
+		private int maxAttempts = 3;
+		/** A job still queued after this long fails with queue_timeout — the user has stopped waiting. */
+		private int queueMaxAgeSeconds = 300;
+
+		public String getBaseUrl() {
+			return baseUrl;
+		}
+
+		public void setBaseUrl(String baseUrl) {
+			this.baseUrl = baseUrl;
+		}
+
+		public String getToken() {
+			return token;
+		}
+
+		public void setToken(String token) {
+			this.token = token;
+		}
+
+		public int getConnectTimeoutSeconds() {
+			return connectTimeoutSeconds;
+		}
+
+		public void setConnectTimeoutSeconds(int connectTimeoutSeconds) {
+			this.connectTimeoutSeconds = connectTimeoutSeconds;
+		}
+
+		public int getReadTimeoutSeconds() {
+			return readTimeoutSeconds;
+		}
+
+		public void setReadTimeoutSeconds(int readTimeoutSeconds) {
+			this.readTimeoutSeconds = readTimeoutSeconds;
+		}
+
+		public int getDispatchConcurrency() {
+			return dispatchConcurrency;
+		}
+
+		public void setDispatchConcurrency(int dispatchConcurrency) {
+			this.dispatchConcurrency = dispatchConcurrency;
+		}
+
+		public int getMaxAttempts() {
+			return maxAttempts;
+		}
+
+		public void setMaxAttempts(int maxAttempts) {
+			this.maxAttempts = maxAttempts;
+		}
+
+		public int getQueueMaxAgeSeconds() {
+			return queueMaxAgeSeconds;
+		}
+
+		public void setQueueMaxAgeSeconds(int queueMaxAgeSeconds) {
+			this.queueMaxAgeSeconds = queueMaxAgeSeconds;
 		}
 	}
 
