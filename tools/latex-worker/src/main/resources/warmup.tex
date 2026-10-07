@@ -1,0 +1,58 @@
+% Same preamble as core-api ResumeLatexRenderer. Compiling this fills the tectonic cache with
+% every package the resume template needs; keep it in sync when the template's packages change.
+\documentclass[10pt]{extarticle}
+
+\usepackage[margin=1.2cm, top=0.8cm, bottom=0.75cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{mathpazo}
+\usepackage[fontsize=9.7pt]{fontsize}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{microtype}
+\emergencystretch=2em
+\sloppy
+
+\definecolor{accent}{HTML}{1F3B57}
+\definecolor{soft}{HTML}{5A5A5A}
+\definecolor{rule}{HTML}{1F3B57}
+
+\hypersetup{colorlinks=true, urlcolor=accent, linkcolor=accent}
+
+\setlength{\parindent}{0pt}
+\pagestyle{empty}
+\setlength{\tabcolsep}{0pt}
+\linespread{0.96}
+
+\titleformat{\section}
+  {\bfseries\color{accent}\fontsize{11.5}{11}\selectfont}
+  {}{0em}{}
+  [{\color{rule}\titlerule[0.9pt]}]
+\titlespacing*{\section}{0pt}{6pt}{3pt}
+
+\newcommand{\role}[3]{%
+  \textbf{#1} \hfill {\color{soft}\small #3}\\[-1pt]
+  {\itshape\small #2}\par
+}
+
+\newlist{tightlist}{itemize}{1}
+\setlist[tightlist]{leftmargin=12pt, itemsep=2pt, topsep=2.5pt, parsep=0pt, label=\textbullet, font=\color{soft}}
+
+\begin{document}
+
+\begin{center}
+    {\fontsize{18}{18}\selectfont\bfseries\color{accent} Warm-up}\\[3pt]
+    {\footnotesize \href{mailto:warmup@example.com}{warmup@example.com}}
+\end{center}
+
+\section{Expérience professionnelle}
+
+\role{Engineer}{Company}{2020 -- 2026}
+
+\begin{tightlist}
+    \item Café, naïve, Zürich — accented text exercises the T1 fonts.
+\end{tightlist}
+
+\end{document}
