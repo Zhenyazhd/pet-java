@@ -237,7 +237,7 @@ public class AppProperties {
 		private int connectTimeoutSeconds = 5;
 		/** How long to wait for a model's answer; long prompts on slow models need tens of seconds. */
 		private int readTimeoutSeconds = 90;
-		/** AI chat calls ({@code OpenRouterClient.complete}) one instance sends at once; more are answered "busy". */
+		/** OpenRouter calls (AI chat and vacancy import) one instance sends at once; more are answered "busy". */
 		private int maxConcurrentRequests = 20;
 		/** Caps one answer's length and cost; a full-resume edit in the AI chat needs several thousand tokens. */
 		private int maxTokens = 8000;

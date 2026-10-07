@@ -69,40 +69,6 @@ public class OpenRouterClient {
 		}
 	}
 
-	/**
-	 * Older contract: throws {@link IllegalStateException} for every failure, keeping OpenRouter's HTTP
-	 * error as the cause. Not counted against {@code max-concurrent-requests}. Answers are capped at
-	 * {@code max-tokens} like everywhere else, but a cut-off answer is returned as-is. Kept for the vacancy
-	 * import until it moves to {@link #complete}.
-	 */
-	public String chat(String systemPrompt, String userPrompt, String modelOverride) {
-		if (!hasApiKey()) {
-			log.error("OPENROUTER_API_KEY is not set");
-			throw new IllegalStateException("AI service is not configured on this server");
-		}
-		String raw;
-		try {
-			raw = post(request(systemPrompt, userPrompt, modelOverride));
-		}
-		catch (RestClientResponseException ex) {
-			String upstreamBody = ex.getResponseBodyAsString();
-			log.error("OpenRouter HTTP {} body={}", ex.getStatusCode().value(), upstreamBody);
-			throw new IllegalStateException(
-					"OpenRouter error " + ex.getStatusCode().value() + ": " + Strings.abbreviate(upstreamBody, 400),
-					ex
-			);
-		}
-		if (raw == null || raw.isBlank()) {
-			throw new IllegalStateException("OpenRouter returned an empty response");
-		}
-		String content = parse(raw).content();
-		if (content == null) {
-			log.error("OpenRouter response missing content: {}", Strings.abbreviate(raw, 400));
-			throw new IllegalStateException("OpenRouter response missing message content: " + Strings.abbreviate(raw, 400));
-		}
-		return content;
-	}
-
 	private ChatResult send(String systemPrompt, String userPrompt, String modelOverride) {
 		String raw;
 		try {
@@ -125,7 +91,7 @@ public class OpenRouterClient {
 			return new ChatResult.Unavailable(ex.toString());
 		}
 
-		Completion completion = parseOrNull(raw);
+		Completion completion = parse(raw);
 		if (completion == null || completion.content() == null) {
 			log.error("OpenRouter answer has no message content: {}", Strings.abbreviate(raw, 400));
 			return new ChatResult.Unavailable("OpenRouter answer has no message content");
@@ -161,9 +127,18 @@ public class OpenRouterClient {
 				.body(String.class);
 	}
 
-	/** Reads a non-blank answer body and logs its token usage; throws if it is not JSON. */
+	/** Reads the answer body and logs its token usage; null when the body is empty or not JSON. */
 	private Completion parse(String raw) {
-		JsonNode root = objectMapper.readTree(raw);
+		if (raw == null || raw.isBlank()) {
+			return null;
+		}
+		JsonNode root;
+		try {
+			root = objectMapper.readTree(raw);
+		}
+		catch (JacksonException ex) {
+			return null;
+		}
 		logUsage(root);
 		JsonNode choice = root.path("choices").path(0);
 		String content = choice.path("message").path("content").asString("");
@@ -171,19 +146,6 @@ public class OpenRouterClient {
 				content.isBlank() ? null : stripCodeFences(content),
 				"length".equals(choice.path("finish_reason").asString(""))
 		);
-	}
-
-	/** Like {@link #parse}, but an empty or unreadable answer gives null. */
-	private Completion parseOrNull(String raw) {
-		if (raw == null || raw.isBlank()) {
-			return null;
-		}
-		try {
-			return parse(raw);
-		}
-		catch (JacksonException ex) {
-			return null;
-		}
 	}
 
 	/** One line per answer, so spend can be traced per model; {@code model} is the one that actually answered. */

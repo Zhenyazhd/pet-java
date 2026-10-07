@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import com.jobsearch.core_api.TestSupport;
 import com.jobsearch.core_api.TestcontainersConfiguration;
+import com.jobsearch.core_api.ai.ChatResult;
 import com.jobsearch.core_api.ai.OpenRouterClient;
 import com.jobsearch.core_api.common.ConflictException;
 import com.jobsearch.core_api.jobs.Job;
@@ -26,13 +27,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.RestClientResponseException;
 import tools.jackson.databind.ObjectMapper;
 
 /** Queueing an import and running it through {@link VacancyImportHandler}, with a mocked LLM. */
@@ -78,7 +75,7 @@ class VacancyImportTest {
 
 	@Test
 	void extractedVacancyIsSavedAndItsIdIsTheResult() {
-		when(openRouterClient.chat(anyString(), anyString(), any())).thenReturn(EXTRACTED);
+		when(openRouterClient.complete(anyString(), anyString(), any())).thenReturn(new ChatResult.Answer(EXTRACTED));
 		service.enqueue(new VacancyImportRequest(URL, "Backend Engineer at Acme ..."));
 
 		JobOutcome.Succeeded outcome = assertInstanceOf(JobOutcome.Succeeded.class, handler.run(claim()));
@@ -121,9 +118,9 @@ class VacancyImportTest {
 	void vacancySavedWhileTheLlmAnswersIsTheResult() {
 		service.enqueue(new VacancyImportRequest(URL, "posting"));
 		long[] savedDuringLlmCall = new long[1];
-		when(openRouterClient.chat(anyString(), anyString(), any())).thenAnswer(call -> {
+		when(openRouterClient.complete(anyString(), anyString(), any())).thenAnswer(call -> {
 			savedDuringLlmCall[0] = saveVacancy(URL);
-			return EXTRACTED;
+			return new ChatResult.Answer(EXTRACTED);
 		});
 
 		JobOutcome.Succeeded outcome = assertInstanceOf(JobOutcome.Succeeded.class, handler.run(claim()));
@@ -133,52 +130,35 @@ class VacancyImportTest {
 	}
 
 	@Test
-	void openRouterServerErrorIsRetried() {
-		assertInstanceOf(JobOutcome.Retry.class, runWithLlmFailure(openRouterError(HttpStatus.BAD_GATEWAY, null)));
+	void unavailableLlmIsRetried() {
+		assertInstanceOf(JobOutcome.Retry.class, runWithLlmResult(new ChatResult.Unavailable("OpenRouter HTTP 502")));
 	}
 
 	@Test
-	void timeoutIsRetried() {
-		assertInstanceOf(JobOutcome.Retry.class,
-				runWithLlmFailure(new ResourceAccessException("I/O error: request timed out")));
-	}
-
-	@Test
-	void rateLimitPausesImportsWithoutUsingAnAttempt() {
-		JobOutcome outcome = runWithLlmFailure(openRouterError(HttpStatus.TOO_MANY_REQUESTS, "30"));
+	void busyLlmPausesImportsWithoutUsingAnAttempt() {
+		JobOutcome outcome = runWithLlmResult(new ChatResult.Busy(Duration.ofSeconds(30)));
 
 		assertEquals(Duration.ofSeconds(30), assertInstanceOf(JobOutcome.Busy.class, outcome).retryAfter());
 	}
 
 	@Test
-	void rejectedApiKeyFailsWithoutRetry() {
-		JobOutcome outcome = runWithLlmFailure(openRouterError(HttpStatus.UNAUTHORIZED, null));
+	void misconfiguredLlmFailsWithoutRetry() {
+		JobOutcome outcome = runWithLlmResult(new ChatResult.Misconfigured("OpenRouter HTTP 401"));
 
 		assertEquals("ai_unavailable", assertInstanceOf(JobOutcome.Failed.class, outcome).code());
 	}
 
 	@Test
-	void rejectedRequestFailsWithoutRetry() {
-		JobOutcome outcome = runWithLlmFailure(openRouterError(HttpStatus.BAD_REQUEST, null));
+	void rejectedLlmFailsWithoutRetry() {
+		JobOutcome outcome = runWithLlmResult(new ChatResult.Rejected("answer cut off at max_tokens"));
 
 		assertEquals("ai_rejected", assertInstanceOf(JobOutcome.Failed.class, outcome).code());
 	}
 
-	private JobOutcome runWithLlmFailure(RuntimeException failure) {
-		when(openRouterClient.chat(anyString(), anyString(), any())).thenThrow(failure);
+	private JobOutcome runWithLlmResult(ChatResult result) {
+		when(openRouterClient.complete(anyString(), anyString(), any())).thenReturn(result);
 		service.enqueue(new VacancyImportRequest(URL, "posting"));
 		return handler.run(claim());
-	}
-
-	/** What OpenRouterClient throws for an HTTP error: its own exception with OpenRouter's response as the cause. */
-	private static IllegalStateException openRouterError(HttpStatus status, String retryAfter) {
-		HttpHeaders headers = new HttpHeaders();
-		if (retryAfter != null) {
-			headers.set(HttpHeaders.RETRY_AFTER, retryAfter);
-		}
-		RestClientResponseException http = new RestClientResponseException(
-				"OpenRouter error", status, status.getReasonPhrase(), headers, new byte[0], null);
-		return new IllegalStateException("OpenRouter error " + status.value(), http);
 	}
 
 	private Job claim() {

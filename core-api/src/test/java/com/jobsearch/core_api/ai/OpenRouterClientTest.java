@@ -2,7 +2,6 @@ package com.jobsearch.core_api.ai;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.client.ExpectedCount.manyTimes;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -22,7 +21,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientResponseException;
 import tools.jackson.databind.json.JsonMapper;
 
 class OpenRouterClientTest {
@@ -152,16 +150,6 @@ class OpenRouterClientTest {
 
 		assertInstanceOf(ChatResult.Busy.class, second);
 		assertInstanceOf(ChatResult.Answer.class, first.get());
-	}
-
-	/** The vacancy import still relies on chat() throwing with OpenRouter's HTTP error as the cause. */
-	@Test
-	void chatKeepsItsOlderExceptionContract() {
-		openRouter.expect(requestTo(COMPLETIONS)).andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
-
-		IllegalStateException ex = assertThrows(IllegalStateException.class, () -> client.chat("system", "user", null));
-
-		assertEquals(429, assertInstanceOf(RestClientResponseException.class, ex.getCause()).getStatusCode().value());
 	}
 
 	private OpenRouterClient newClient() {

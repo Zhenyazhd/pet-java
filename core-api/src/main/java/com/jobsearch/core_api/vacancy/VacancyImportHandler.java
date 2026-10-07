@@ -1,5 +1,6 @@
 package com.jobsearch.core_api.vacancy;
 
+import com.jobsearch.core_api.ai.ChatResult;
 import com.jobsearch.core_api.ai.OpenRouterClient;
 import com.jobsearch.core_api.common.ConflictException;
 import com.jobsearch.core_api.common.UniqueConstraint;
@@ -15,11 +16,9 @@ import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.web.client.RestClientResponseException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -36,11 +35,7 @@ public class VacancyImportHandler implements JobHandler {
 	private static final int MAX_REQUIREMENTS = 40;
 	/** Keeps the prompt affordable; the request itself allows up to 50,000 chars. */
 	private static final int MAX_PROMPT_PASTE_CHARS = 40_000;
-	/** OpenRouterConfig waits up to 90s for an answer; the slack covers saving the vacancy. */
-	private static final Duration LEASE = Duration.ofSeconds(90 + 30);
 
-	/** How long to pause imports when OpenRouter rate-limits us without saying for how long. */
-	private static final Duration DEFAULT_RATE_LIMIT_PAUSE = Duration.ofSeconds(10);
 	private static final String AI_UNAVAILABLE_MESSAGE = "The AI service is not available right now. Please try again later.";
 	private static final String AI_REJECTED_MESSAGE = "The AI could not process this posting. Try a shorter or cleaner text.";
 
@@ -73,7 +68,7 @@ public class VacancyImportHandler implements JobHandler {
 	private final OpenRouterClient openRouterClient;
 	private final ObjectMapper objectMapper;
 	private final TransactionTemplate transactionTemplate;
-	private final AppProperties appProperties;
+	private final Duration lease;
 
 	public VacancyImportHandler(
 			VacancyRepository vacancyRepository,
@@ -86,7 +81,8 @@ public class VacancyImportHandler implements JobHandler {
 		this.openRouterClient = openRouterClient;
 		this.objectMapper = objectMapper;
 		this.transactionTemplate = new TransactionTemplate(transactionManager);
-		this.appProperties = appProperties;
+		// The OpenRouter call may take the whole read timeout; the slack covers saving the vacancy.
+		this.lease = Duration.ofSeconds(appProperties.getOpenRouter().getReadTimeoutSeconds() + 30);
 	}
 
 	@Override
@@ -107,7 +103,7 @@ public class VacancyImportHandler implements JobHandler {
 
 	@Override
 	public Duration lease() {
-		return LEASE;
+		return lease;
 	}
 
 	/**
@@ -124,24 +120,24 @@ public class VacancyImportHandler implements JobHandler {
 					job.getId(), existing.getId());
 			return succeeded(existing.getId());
 		}
-		// OpenRouterClient's own check throws a plain IllegalStateException that classify() would retry.
-		String apiKey = appProperties.getOpenRouter().getApiKey();
-		if (apiKey == null || apiKey.isBlank()) {
-			log.error("Vacancy import jobId={} cannot run: OPENROUTER_API_KEY is not set", job.getId());
-			return new JobOutcome.Failed("ai_unavailable", AI_UNAVAILABLE_MESSAGE);
-		}
-		String answer;
-		try {
-			answer = openRouterClient.chat(SYSTEM_PROMPT, userPrompt(payload), null);
-		}
-		catch (RuntimeException ex) {
-			return classify(job, ex);
-		}
-		ParsedVacancy parsed = parse(answer, payload.pastedText());
+		// Each try is a paid LLM call; only failures that can pass on a second try are retried.
+		return switch (openRouterClient.complete(SYSTEM_PROMPT, userPrompt(payload), null)) {
+			case ChatResult.Answer(String answer) -> save(job, payload, parse(answer, payload.pastedText()));
+			case ChatResult.Busy(Duration retryAfter) -> new JobOutcome.Busy(retryAfter);
+			// A posting too long for the model, or an answer cut off at max_tokens: the same text fails again, and
+			// a vacancy built from a truncated extraction is worse than asking for a shorter paste.
+			case ChatResult.Rejected _ -> new JobOutcome.Failed("ai_rejected", AI_REJECTED_MESSAGE);
+			case ChatResult.Misconfigured _ -> new JobOutcome.Failed("ai_unavailable", AI_UNAVAILABLE_MESSAGE);
+			case ChatResult.Unavailable(String reason) -> new JobOutcome.Retry(reason);
+		};
+	}
+
+	private JobOutcome save(Job job, VacancyImportPayload payload, ParsedVacancy parsed) {
 		try {
 			return succeeded(saveVacancy(job.getUserId(), payload.url(), parsed));
 		}
 		catch (ConflictException ex) {
+			// The same URL was saved while the LLM was answering; that vacancy is the result.
 			return vacancyRepository.findByUserIdAndUrl(job.getUserId(), payload.url())
 					.map(vacancy -> succeeded(vacancy.getId()))
 					.orElseGet(() -> new JobOutcome.Retry("vacancy for the URL was deleted after the conflict"));
@@ -150,42 +146,6 @@ public class VacancyImportHandler implements JobHandler {
 
 	private JobOutcome succeeded(long vacancyId) {
 		return new JobOutcome.Succeeded(objectMapper.writeValueAsString(Map.of("vacancyId", vacancyId)));
-	}
-
-	/**
-	 * OpenRouterClient throws for every failure; only an HTTP error carries OpenRouter's response as the cause.
-	 * Only failures that can pass on a second try are retried; each try is a paid LLM call.
-	 */
-	private JobOutcome classify(Job job, RuntimeException ex) {
-		if (!(ex.getCause() instanceof RestClientResponseException http)) {
-			return new JobOutcome.Retry(ex.toString()); // timeout, network error, empty answer
-		}
-		int status = http.getStatusCode().value();
-		return switch (status) {
-			case 429 -> {
-				HttpHeaders headers = http.getResponseHeaders();
-				yield new JobOutcome.Busy(retryAfter(headers == null ? null : headers.getFirst(HttpHeaders.RETRY_AFTER)));
-			}
-			case 400, 413 -> new JobOutcome.Failed("ai_rejected", AI_REJECTED_MESSAGE);
-			case 401, 402, 403 -> {
-				log.error("Vacancy import jobId={}: OpenRouter refused the API key or account status={}; fix the key or credits",
-						job.getId(), status);
-				yield new JobOutcome.Failed("ai_unavailable", AI_UNAVAILABLE_MESSAGE);
-			}
-			default -> new JobOutcome.Retry("OpenRouter HTTP " + status);
-		};
-	}
-
-	private static Duration retryAfter(String header) {
-		if (header == null) {
-			return DEFAULT_RATE_LIMIT_PAUSE;
-		}
-		try {
-			return Duration.ofSeconds(Math.max(1, Long.parseLong(header.strip())));
-		}
-		catch (NumberFormatException ex) {
-			return DEFAULT_RATE_LIMIT_PAUSE;
-		}
 	}
 
 	private long saveVacancy(long userId, String url, ParsedVacancy parsed) {
