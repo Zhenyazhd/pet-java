@@ -20,10 +20,6 @@ final class VacancyRequirements {
 	record Item(String name, boolean required) {
 	}
 
-	static List<Item> dedupe(Iterable<Item> items) {
-		return dedupe(items, Integer.MAX_VALUE);
-	}
-
 	static List<Item> dedupe(Iterable<Item> items, int maxSize) {
 		Map<String, Item> unique = new LinkedHashMap<>();
 		for (Item item : items) {

@@ -17,18 +17,5 @@ services:
       timeout: 5s
       retries: 5
 
-  s3:
-    image: adobe/s3mock:4.1.1
-    container_name: job-search-s3
-    restart: unless-stopped
-    ports:
-      - "${S3_PORT:-9090}:9090"
-    environment:
-      initialBuckets: ${S3_BUCKET:-job-search-cvs}
-      COM_ADOBE_TESTING_S3MOCK_STORE_RETAIN_FILES_ON_EXIT: "true"
-    volumes:
-      - s3_data:/tmp/s3-mock
-
 volumes:
   postgres_data:
-  s3_data:

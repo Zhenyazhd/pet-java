@@ -78,7 +78,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 	 * {@code trust-forwarded-headers=true} <em>and</em> the peer is in {@code trusted-proxies}
 	 * (so a direct client cannot spoof {@code X-Forwarded-For}).
 	 */
-	static String clientIp(HttpServletRequest request, AppProperties.AuthRateLimit limits) {
+	private static String clientIp(HttpServletRequest request, AppProperties.AuthRateLimit limits) {
 		String remote = request.getRemoteAddr() == null ? "unknown" : request.getRemoteAddr();
 		if (!limits.isTrustForwardedHeaders() || !isTrustedProxy(remote, limits.trustedProxyList())) {
 			return remote;

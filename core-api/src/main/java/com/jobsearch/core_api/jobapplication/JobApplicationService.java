@@ -2,13 +2,13 @@ package com.jobsearch.core_api.jobapplication;
 
 import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.common.NotFoundException;
+import com.jobsearch.core_api.common.Strings;
 import com.jobsearch.core_api.jobapplication.JobApplicationDtos.JobApplicationRequest;
 import com.jobsearch.core_api.jobapplication.JobApplicationDtos.JobApplicationResponse;
 import com.jobsearch.core_api.jobapplication.JobApplicationDtos.JobApplicationUpdateRequest;
 import com.jobsearch.core_api.vacancy.Vacancy;
 import com.jobsearch.core_api.vacancy.VacancyRepository;
 import java.time.Instant;
-import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -35,19 +35,6 @@ public class JobApplicationService {
 		this.currentUserService = currentUserService;
 	}
 
-	@Transactional(readOnly = true)
-	public List<JobApplicationResponse> findAll() {
-		long userId = currentUserService.requireUserId();
-		return jobApplicationRepository.findAllByVacancyUserId(userId).stream()
-				.map(this::toResponse)
-				.toList();
-	}
-
-	@Transactional(readOnly = true)
-	public JobApplicationResponse findById(Long id) {
-		return toResponse(getOwnedApplication(id));
-	}
-
 	/**
 	 * Upsert by vacancy: create if missing, otherwise update status/notes on the existing row.
 	 * Vacancies from import/manual create already have a NOT_APPLIED application.
@@ -57,33 +44,21 @@ public class JobApplicationService {
 		Vacancy vacancy = vacancyRepository.findByIdAndUserId(request.vacancyId(), userId)
 				.orElseThrow(() -> new NotFoundException("Vacancy not found: " + request.vacancyId()));
 
-		JobApplication application = jobApplicationRepository
-				.findByVacancyIdAndUserId(request.vacancyId(), userId)
-				.orElse(null);
-		if (application != null) {
-			applyStatus(application, request.status());
-			if (request.notes() != null) {
-				application.setNotes(blankToNull(request.notes()));
-			}
-			log.info(
-					"Updated existing application id={} vacancyId={} userId={} status={}",
-					application.getId(),
-					request.vacancyId(),
-					userId,
-					application.getStatus()
-			);
-			return toResponse(application);
+		JobApplication application = vacancy.getApplication();
+		boolean created = application == null;
+		if (created) {
+			application = new JobApplication();
+			vacancy.setApplication(application);
 		}
-
-		application = new JobApplication();
-		application.setVacancy(vacancy);
 		applyStatus(application, request.status());
-		application.setNotes(blankToNull(request.notes()));
-		vacancy.setApplication(application);
+		if (request.notes() != null) {
+			application.setNotes(Strings.blankToNull(request.notes()));
+		}
 
 		JobApplication saved = jobApplicationRepository.save(application);
 		log.info(
-				"Created application id={} vacancyId={} userId={} status={}",
+				"{} application id={} vacancyId={} userId={} status={}",
+				created ? "Created" : "Updated existing",
 				saved.getId(),
 				request.vacancyId(),
 				userId,
@@ -96,20 +71,10 @@ public class JobApplicationService {
 		JobApplication application = getOwnedApplication(id);
 		applyStatus(application, request.status());
 		if (request.notes() != null) {
-			application.setNotes(blankToNull(request.notes()));
+			application.setNotes(Strings.blankToNull(request.notes()));
 		}
 		log.info("Updated application id={} status={}", id, application.getStatus());
 		return toResponse(application);
-	}
-
-	public void delete(Long id) {
-		JobApplication application = getOwnedApplication(id);
-		Vacancy vacancy = application.getVacancy();
-		if (vacancy != null) {
-			vacancy.setApplication(null);
-		}
-		jobApplicationRepository.delete(application);
-		log.info("Deleted application id={}", id);
 	}
 
 	private JobApplication getOwnedApplication(Long id) {
@@ -133,18 +98,11 @@ public class JobApplicationService {
 				application.getId(),
 				application.getVacancy().getId(),
 				application.getStatus().name(),
-				application.getStatus() != ApplicationStatus.NOT_APPLIED,
+				application.getStatus().isApplied(),
 				application.getAppliedAt() == null ? null : application.getAppliedAt().toString(),
 				application.getNotes(),
 				application.getCreatedAt().toString(),
 				application.getUpdatedAt().toString()
 		);
-	}
-
-	private static String blankToNull(String value) {
-		if (value == null || value.isBlank()) {
-			return null;
-		}
-		return value.trim();
 	}
 }

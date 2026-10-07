@@ -1,8 +1,8 @@
 package com.jobsearch.core_api.ats;
 
+import com.jobsearch.core_api.common.Strings;
 import com.jobsearch.core_api.config.AppProperties;
 import java.net.http.HttpTimeoutException;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,22 +38,16 @@ public class AtsScreenerClient {
 		AppProperties.AtsScreener cfg = appProperties.getAtsScreener();
 		String baseUrl = cfg.getBaseUrl();
 		int timeoutSeconds = cfg.getTimeoutSeconds();
-		if (baseUrl == null || baseUrl.isBlank()) {
-			log.error("ATS_SCREENER_BASE_URL is not set");
-			throw new IllegalStateException("ATS Screener is not configured on this server");
-		}
-
-		Map<String, Object> body = new LinkedHashMap<>();
-		body.put("mode", "full-score");
-		body.put("resumeText", resumeText);
-		if (jobDescription != null && !jobDescription.isBlank()) {
-			body.put("jobDescription", jobDescription.strip());
-		}
+		Map<String, Object> body = Map.of(
+				"mode", "full-score",
+				"resumeText", resumeText,
+				"jobDescription", jobDescription
+		);
 
 		log.info(
 				"ATS Screener full-score resumeChars={} jdChars={} timeoutSec={}",
 				resumeText.length(),
-				jobDescription == null ? 0 : jobDescription.length(),
+				jobDescription.length(),
 				timeoutSeconds
 		);
 
@@ -68,7 +62,7 @@ public class AtsScreenerClient {
 		} catch (RestClientResponseException ex) {
 			log.error("ATS Screener HTTP {} body={}", ex.getStatusCode().value(), ex.getResponseBodyAsString());
 			throw new IllegalStateException(
-					"ATS Screener error " + ex.getStatusCode().value() + ": " + summarizeError(ex.getResponseBodyAsString()),
+					"ATS Screener error " + ex.getStatusCode().value() + ": " + Strings.abbreviate(ex.getResponseBodyAsString(), 400),
 					ex
 			);
 		} catch (Exception ex) {
@@ -109,13 +103,5 @@ public class AtsScreenerClient {
 			}
 		}
 		return false;
-	}
-
-	private static String summarizeError(String body) {
-		if (body == null || body.isBlank()) {
-			return "(empty body)";
-		}
-		String trimmed = body.strip();
-		return trimmed.length() > 400 ? trimmed.substring(0, 400) + "…" : trimmed;
 	}
 }

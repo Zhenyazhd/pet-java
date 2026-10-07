@@ -10,10 +10,10 @@ A personal tool that ties together the three things I needed for my own job sear
 
 | Path | Role |
 |------|------|
-| [`core-api/`](core-api/) | Spring Boot HTTP API (Postgres, S3, OpenRouter, LaTeX → PDF) |
+| [`core-api/`](core-api/) | Spring Boot HTTP API (Postgres, OpenRouter, LaTeX → PDF) |
 | [`frontend/`](frontend/) | React + Vite UI |
 | [`tools/ats-screener/`](tools/ats-screener/) | ATS Screener (git submodule) — local scanner on `:5174` |
-| [`docker-compose.yml`](docker-compose.yml) | Local Postgres + S3Mock |
+| [`docker-compose.yml`](docker-compose.yml) | Local Postgres |
 | [`.env.example`](.env.example) | Environment template |
 
 ## Documentation
@@ -35,7 +35,7 @@ cp .env.example .env
 
 git submodule update --init --recursive
 npm run setup          # root + frontend + ats deps
-npm run dev            # postgres/s3 + api + web + ats
+npm run dev            # postgres + api + web + ats
 ```
 
 Sign in with `APP_ADMIN_EMAIL` / `APP_BOOTSTRAP_PASSWORD`, then mint an invite code for any other account with `POST /api/invite-codes` (admin session required — no UI for this yet, see [core-api/README.md](core-api/README.md#authentication)) — registration always requires one.
@@ -46,13 +46,12 @@ Sign in with `APP_ADMIN_EMAIL` / `APP_BOOTSTRAP_PASSWORD`, then mint an invite c
 | App UI | http://localhost:5173 |
 | ATS Screener | http://127.0.0.1:5174/scanner |
 | Postgres | localhost:5432 |
-| S3Mock | localhost:9090 |
 
 Useful variants:
 
 ```bash
 npm run dev:core       # infra + api + frontend (no ATS)
-npm run infra:down     # stop Postgres / S3
+npm run infra:down     # stop Postgres
 ```
 
 Ctrl+C stops API, web, and ATS; containers keep running until `infra:down`.

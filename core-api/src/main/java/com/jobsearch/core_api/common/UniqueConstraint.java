@@ -7,7 +7,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 /**
  * Maps unique-constraint races to {@link ConflictException} in one place.
  * Prefer an optimistic exists-check first, then wrap the write with {@link #onConflict}.
- * Only violations whose message mentions one of the given constraint names are mapped;
+ * Only violations whose message mentions the given constraint name are mapped;
  * other integrity errors are rethrown unchanged (so callers do not mislabel them).
  */
 public final class UniqueConstraint {
@@ -18,46 +18,16 @@ public final class UniqueConstraint {
 	private UniqueConstraint() {
 	}
 
-	public static <T> T onConflict(
-			String conflictMessage,
-			Supplier<T> write,
-			String constraintName,
-			String... moreConstraintNames
-	) {
+	public static <T> T onConflict(String conflictMessage, Supplier<T> write, String constraintName) {
 		try {
 			return write.get();
 		}
 		catch (DataIntegrityViolationException ex) {
-			if (!matchesConstraint(ex, constraintName, moreConstraintNames)) {
+			if (!exceptionText(ex).toLowerCase(Locale.ROOT).contains(constraintName.toLowerCase(Locale.ROOT))) {
 				throw ex;
 			}
 			throw new ConflictException(conflictMessage, ex);
 		}
-	}
-
-	static boolean matchesConstraint(
-			DataIntegrityViolationException ex,
-			String constraintName,
-			String... moreConstraintNames
-	) {
-		String haystack = exceptionText(ex).toLowerCase(Locale.ROOT);
-		if (containsConstraint(haystack, constraintName)) {
-			return true;
-		}
-		if (moreConstraintNames != null) {
-			for (String name : moreConstraintNames) {
-				if (containsConstraint(haystack, name)) {
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-
-	private static boolean containsConstraint(String haystack, String constraintName) {
-		return constraintName != null
-				&& !constraintName.isBlank()
-				&& haystack.contains(constraintName.toLowerCase(Locale.ROOT));
 	}
 
 	private static String exceptionText(Throwable ex) {

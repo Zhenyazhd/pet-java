@@ -4,7 +4,6 @@ import com.jobsearch.core_api.ai.OpenRouterClient;
 import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.common.ConflictException;
 import com.jobsearch.core_api.common.UniqueConstraint;
-import com.jobsearch.core_api.jobapplication.ApplicationStatus;
 import com.jobsearch.core_api.jobapplication.JobApplication;
 import com.jobsearch.core_api.vacancy.VacancyDtos.VacancyImportRequest;
 import com.jobsearch.core_api.vacancy.VacancyDtos.VacancyResponse;
@@ -93,28 +92,16 @@ public class VacancyImportService {
 		return UniqueConstraint.onConflict(
 				"Vacancy with this URL already exists",
 				() -> transactionTemplate.execute(status -> {
-					if (vacancyRepository.existsByUserIdAndUrl(userId, url)) {
-						throw new ConflictException("Vacancy with this URL already exists");
-					}
-
 					Vacancy vacancy = new Vacancy();
 					vacancy.setUserId(userId);
 					vacancy.setUrl(url);
 					vacancy.setTitle(parsed.title());
 					vacancy.setCompany(parsed.company());
 					vacancy.setDescription(parsed.description());
-					vacancy.setMatchPercent(null);
-
-					for (ParsedRequirement item : parsed.requirements()) {
-						VacancyRequirement requirement = new VacancyRequirement();
-						requirement.setName(item.name());
-						requirement.setRequired(item.required());
-						vacancy.addRequirement(requirement);
+					for (VacancyRequirements.Item item : parsed.requirements()) {
+						vacancy.addRequirement(item.name(), item.required());
 					}
-
-					JobApplication application = new JobApplication();
-					application.setStatus(ApplicationStatus.NOT_APPLIED);
-					vacancy.setApplication(application);
+					vacancy.setApplication(new JobApplication());
 
 					Vacancy saved = vacancyRepository.saveAndFlush(vacancy);
 					log.info(
@@ -152,40 +139,24 @@ public class VacancyImportService {
 		String title = textOrNull(root.path("title"));
 		String company = textOrNull(root.path("company"));
 		String description = textOrNull(root.path("description"));
-		List<ParsedRequirement> requirements = parseRequirements(root.path("requirements"));
-
-		if (title == null || title.isBlank()) {
-			title = fallbackTitle(pasted);
-		}
-		if (title.length() > 255) {
-			title = title.substring(0, 255).strip();
-		}
-		if (company != null && company.length() > 255) {
-			company = company.substring(0, 255).strip();
-		}
-		if (description == null || description.isBlank()) {
-			description = pasted;
-		}
-
-		return new ParsedVacancy(title.strip(), company, description.strip(), requirements);
+		return new ParsedVacancy(
+				cut255(title != null ? title : fallbackTitle(pasted)),
+				company != null ? cut255(company) : null,
+				description != null ? description : pasted,
+				parseRequirements(root.path("requirements"))
+		);
 	}
 
-	private static List<ParsedRequirement> parseRequirements(JsonNode node) {
-		if (node == null || !node.isArray()) {
+	private static List<VacancyRequirements.Item> parseRequirements(JsonNode node) {
+		if (!node.isArray()) {
 			return List.of();
 		}
 		List<VacancyRequirements.Item> collected = new ArrayList<>();
 		for (JsonNode item : node) {
-			String name = textOrNull(item.path("name"));
-			if (name == null || name.isBlank()) {
-				continue;
-			}
 			boolean required = !item.path("required").isBoolean() || item.path("required").asBoolean(true);
-			collected.add(new VacancyRequirements.Item(name, required));
+			collected.add(new VacancyRequirements.Item(textOrNull(item.path("name")), required));
 		}
-		return VacancyRequirements.dedupe(collected, MAX_REQUIREMENTS).stream()
-				.map(item -> new ParsedRequirement(item.name(), item.required()))
-				.toList();
+		return VacancyRequirements.dedupe(collected, MAX_REQUIREMENTS);
 	}
 
 	private static ParsedVacancy fallback(String pasted) {
@@ -193,19 +164,20 @@ public class VacancyImportService {
 	}
 
 	private static String fallbackTitle(String pasted) {
-		String firstLine = pasted.lines()
+		return cut255(pasted.lines()
 				.map(String::strip)
 				.filter(line -> !line.isBlank())
 				.findFirst()
-				.orElse("Untitled role");
-		if (firstLine.length() > 255) {
-			return firstLine.substring(0, 255).strip();
-		}
-		return firstLine;
+				.orElse("Untitled role"));
+	}
+
+	/** Fits {@code vacancy.title} / {@code vacancy.company} (VARCHAR(255)). */
+	private static String cut255(String value) {
+		return value.length() > 255 ? value.substring(0, 255).strip() : value;
 	}
 
 	private static String textOrNull(JsonNode node) {
-		if (node == null || node.isNull() || node.isMissingNode()) {
+		if (node.isNull() || node.isMissingNode()) {
 			return null;
 		}
 		String value = node.asString("").strip();
@@ -215,14 +187,11 @@ public class VacancyImportService {
 		return value;
 	}
 
-	private record ParsedRequirement(String name, boolean required) {
-	}
-
 	private record ParsedVacancy(
 			String title,
 			String company,
 			String description,
-			List<ParsedRequirement> requirements
+			List<VacancyRequirements.Item> requirements
 	) {
 	}
 }

@@ -3,6 +3,8 @@ package com.jobsearch.core_api.profile;
 import com.jobsearch.core_api.auth.UserRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -27,8 +29,9 @@ public class AppUser {
 	@Column(name = "password_hash", length = 255)
 	private String passwordHash;
 
+	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 32)
-	private String role = UserRole.USER.name();
+	private UserRole role = UserRole.USER;
 
 	@Column(name = "career_path", nullable = false, columnDefinition = "TEXT")
 	private String careerPath = "";
@@ -48,23 +51,10 @@ public class AppUser {
 		if (createdAt == null) {
 			createdAt = Instant.now();
 		}
-		if (careerPath == null) {
-			careerPath = "";
-		}
-		if (resumeJson == null) {
-			resumeJson = "";
-		}
-		if (role == null || role.isBlank()) {
-			role = UserRole.USER.name();
-		}
 	}
 
 	public Long getId() {
 		return id;
-	}
-
-	public void setId(Long id) {
-		this.id = id;
 	}
 
 	public String getEmail() {
@@ -91,11 +81,11 @@ public class AppUser {
 		this.passwordHash = passwordHash;
 	}
 
-	public String getRole() {
+	public UserRole getRole() {
 		return role;
 	}
 
-	public void setRole(String role) {
+	public void setRole(UserRole role) {
 		this.role = role;
 	}
 
@@ -123,11 +113,4 @@ public class AppUser {
 		this.resumeVersion = resumeVersion;
 	}
 
-	public Instant getCreatedAt() {
-		return createdAt;
-	}
-
-	public void setCreatedAt(Instant createdAt) {
-		this.createdAt = createdAt;
-	}
 }

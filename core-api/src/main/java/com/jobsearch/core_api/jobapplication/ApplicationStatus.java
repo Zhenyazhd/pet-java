@@ -6,5 +6,9 @@ public enum ApplicationStatus {
 	INTERVIEW,
 	OFFER,
 	REJECTED,
-	WITHDRAWN
+	WITHDRAWN;
+
+	public boolean isApplied() {
+		return this != NOT_APPLIED;
+	}
 }

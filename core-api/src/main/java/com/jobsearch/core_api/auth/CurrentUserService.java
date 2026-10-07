@@ -27,7 +27,7 @@ public class CurrentUserService {
 				.orElseThrow(() -> new UnauthorizedException("User not found"));
 	}
 
-	public AppUserPrincipal requirePrincipal() {
+	private AppUserPrincipal requirePrincipal() {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		if (authentication == null || !authentication.isAuthenticated()) {
 			throw new UnauthorizedException("Not authenticated");

@@ -5,10 +5,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
@@ -20,8 +18,7 @@ import org.springframework.stereotype.Service;
  * Compiles LaTeX to PDF via native tectonic when available,
  * otherwise falls back to Docker (slower on Apple Silicon).
  *
- * <p>Trust model: source may be user-controlled (structured resume render or raw
- * {@code /api/latex/compile} up to 500k chars). Compiles always pass
+ * <p>Trust model: source is rendered from the user-controlled structured resume. Compiles always pass
  * {@code tectonic --untrusted} so known-insecure engine features (e.g. shell escape)
  * stay disabled. Work runs in a per-request temp directory that is deleted afterward.
  */
@@ -87,7 +84,7 @@ public class LatexCompileService {
 	private CompileResult runCompiler(Path workDir) throws IOException, InterruptedException {
 		if (tectonicBinary.isPresent()) {
 			log.info("Compiling LaTeX with native tectonic --untrusted: {}", tectonicBinary.get());
-			return execute(List.of(tectonicBinary.get(), "--untrusted", "main.tex"), workDir, Map.of());
+			return execute(List.of(tectonicBinary.get(), "--untrusted", "main.tex"), workDir);
 		}
 		if (dockerAvailable) {
 			Files.createDirectories(HOST_TECTONIC_CACHE);
@@ -95,45 +92,34 @@ public class LatexCompileService {
 					"Compiling LaTeX via Docker amd64 emulation (slow on Apple Silicon). "
 							+ "Install native tectonic for speed: brew install tectonic"
 			);
-			List<String> command = new ArrayList<>();
-			command.add("docker");
-			command.add("run");
-			command.add("--rm");
-			command.add("--platform");
-			command.add("linux/amd64");
-			command.add("-v");
-			command.add(workDir.toAbsolutePath() + ":/data");
-			command.add("-v");
-			command.add(HOST_TECTONIC_CACHE.toAbsolutePath() + ":/root/.cache/Tectonic");
-			command.add("-w");
-			command.add("/data");
-			command.add(DOCKER_IMAGE);
-			command.add("tectonic");
-			command.add("--untrusted");
-			command.add("main.tex");
-			return execute(command, workDir, Map.of());
+			return execute(List.of(
+					"docker", "run", "--rm",
+					"--platform", "linux/amd64",
+					"-v", workDir.toAbsolutePath() + ":/data",
+					"-v", HOST_TECTONIC_CACHE.toAbsolutePath() + ":/root/.cache/Tectonic",
+					"-w", "/data",
+					DOCKER_IMAGE, "tectonic", "--untrusted", "main.tex"
+			), workDir);
 		}
 		log.error("No LaTeX compiler found (tectonic/docker missing)");
 		throw new IllegalStateException("PDF compiler is not available on this server. Please try again later.");
 	}
 
-	private CompileResult execute(
-			List<String> command,
-			Path workDir,
-			Map<String, String> extraEnv
-	) throws IOException, InterruptedException {
-		ProcessBuilder builder = new ProcessBuilder(command);
-		builder.directory(workDir.toFile());
-		builder.redirectErrorStream(true);
-		builder.environment().putAll(extraEnv);
-		Process process = builder.start();
-		String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+	private CompileResult execute(List<String> command, Path workDir) throws IOException, InterruptedException {
+		// Output goes to a file, not a pipe: reading a pipe blocks until the process exits,
+		// which would make the waitFor timeout below unreachable.
+		Path logFile = workDir.resolve("compile.log");
+		Process process = new ProcessBuilder(command)
+				.directory(workDir.toFile())
+				.redirectErrorStream(true)
+				.redirectOutput(logFile.toFile())
+				.start();
 		boolean finished = process.waitFor(TIMEOUT.toSeconds(), TimeUnit.SECONDS);
 		if (!finished) {
 			process.destroyForcibly();
 			throw new IllegalStateException("LaTeX compilation timed out after " + TIMEOUT.toSeconds() + "s");
 		}
-		return new CompileResult(process.exitValue(), output);
+		return new CompileResult(process.exitValue(), Files.readString(logFile, StandardCharsets.UTF_8));
 	}
 
 	private static Optional<String> resolveTectonicBinary() {

@@ -1,4 +1,6 @@
 spring:
+  application:
+    name: core-api
   datasource:
     url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:job_search}
     username: ${POSTGRES_USER:zhenya}
@@ -7,12 +9,6 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
-  flyway:
-    enabled: true
-  servlet:
-    multipart:
-      max-file-size: 10MB
-      max-request-size: 12MB
 
 server:
   # Set to "framework" only when deployed behind a trusted TLS-terminating
@@ -39,16 +35,9 @@ app:
     trust-forwarded-headers: ${APP_AUTH_TRUST_FORWARDED_HEADERS:false}
     trusted-proxies: ${APP_AUTH_TRUSTED_PROXIES:127.0.0.1,::1}
   expensive-ops-rate-limit:
-    # Shared budget for POST /api/ai/**, /api/vacancies/import, /api/resume/compile,
-    # and /api/latex/compile (per user / minute; 0 = off)
+    # Shared budget for POST /api/ai/**, /api/vacancies/import and /api/resume/compile
+    # (per user / minute; 0 = off)
     per-user-per-minute: ${APP_EXPENSIVE_OPS_PER_USER_PER_MINUTE:10}
-  s3:
-    endpoint: ${S3_ENDPOINT:http://localhost:9090}
-    region: ${S3_REGION:us-east-1}
-    access-key: ${S3_ACCESS_KEY:local}
-    secret-key: ${S3_SECRET_KEY:local}
-    bucket: ${S3_BUCKET:job-search-cvs}
-    path-style-access: ${S3_PATH_STYLE:true}
   open-router:
     api-key: ${OPENROUTER_API_KEY:}
     base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}

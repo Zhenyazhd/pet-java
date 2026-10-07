@@ -1,7 +1,6 @@
 package com.jobsearch.core_api.ai;
 
-import com.jobsearch.core_api.ai.OpenRouterConfig.ChatMessage;
-import com.jobsearch.core_api.ai.OpenRouterConfig.ChatRequest;
+import com.jobsearch.core_api.common.Strings;
 import com.jobsearch.core_api.config.AppProperties;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +38,7 @@ public class OpenRouterClient {
 	 * Sends system+user prompts and returns the assistant message content.
 	 * Expects JSON-mode output from the model.
 	 *
-	 * @param modelOverride OpenRouter model id, or null/blank to use configured default
+	 * @param modelOverride OpenRouter model id, or null to use configured default
 	 */
 	public String chat(String systemPrompt, String userPrompt, String modelOverride) {
 		AppProperties.OpenRouter cfg = appProperties.getOpenRouter();
@@ -48,9 +47,7 @@ public class OpenRouterClient {
 			throw new IllegalStateException("AI service is not configured on this server");
 		}
 
-		String model = (modelOverride != null && !modelOverride.isBlank())
-				? modelOverride.strip()
-				: cfg.getModel();
+		String model = modelOverride != null ? modelOverride : cfg.getModel();
 
 		log.info("OpenRouter chat request model={} userPromptChars={}", model, userPrompt.length());
 
@@ -75,7 +72,7 @@ public class OpenRouterClient {
 			String upstreamBody = ex.getResponseBodyAsString();
 			log.error("OpenRouter HTTP {} body={}", ex.getStatusCode().value(), upstreamBody);
 			throw new IllegalStateException(
-					"OpenRouter error " + ex.getStatusCode().value() + ": " + truncateForClient(upstreamBody),
+					"OpenRouter error " + ex.getStatusCode().value() + ": " + Strings.abbreviate(upstreamBody, 400),
 					ex
 			);
 		}
@@ -89,24 +86,11 @@ public class OpenRouterClient {
 		if (content.isBlank()) {
 			log.error("OpenRouter response missing content: {}", raw);
 			throw new IllegalStateException(
-					"OpenRouter response missing message content: " + truncateForClient(raw)
+					"OpenRouter response missing message content: " + Strings.abbreviate(raw, 400)
 			);
 		}
 		log.debug("OpenRouter response chars={}", content.length());
 		return stripCodeFences(content);
-	}
-
-	/** Keep full upstream payloads in logs; expose only a short snippet to API clients. */
-	private static String truncateForClient(String body) {
-		if (body == null || body.isBlank()) {
-			return "(empty)";
-		}
-		String trimmed = body.strip();
-		int max = 400;
-		if (trimmed.length() <= max) {
-			return trimmed;
-		}
-		return trimmed.substring(0, max) + "…";
 	}
 
 	/** Models sometimes wrap JSON in ``` fences despite json_object mode. */
@@ -121,5 +105,15 @@ public class OpenRouterClient {
 			return trimmed.substring(firstNl + 1, lastFence).strip();
 		}
 		return trimmed;
+	}
+
+	record ChatMessage(String role, String content) {
+	}
+
+	record ChatRequest(
+			String model,
+			List<ChatMessage> messages,
+			Map<String, Object> response_format
+	) {
 	}
 }

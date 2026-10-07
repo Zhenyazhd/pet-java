@@ -60,8 +60,8 @@ public class AppProperties {
 
 	public static class ExpensiveOpsRateLimit {
 		/**
-		 * Max combined POST /api/ai/** + /api/vacancies/import calls per authenticated user per minute
-		 * ({@code 0} = disabled).
+		 * Max combined POST /api/ai/**, /api/vacancies/import and /api/resume/compile calls
+		 * per authenticated user per minute ({@code 0} = disabled).
 		 */
 		private int perUserPerMinute = 10;
 

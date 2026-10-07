@@ -56,10 +56,7 @@ public class AtsMatchService {
 	}
 
 	public MatchResponse match(MatchRequest request) {
-		String vacancy = request.vacancyContext() == null ? "" : request.vacancyContext().strip();
-		if (vacancy.isBlank()) {
-			throw new IllegalArgumentException("vacancyContext is required");
-		}
+		String vacancy = request.vacancyContext().strip();
 		if (vacancy.length() > 20_000) {
 			throw new IllegalArgumentException("vacancyContext exceeds 20,000 characters");
 		}

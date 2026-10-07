@@ -20,7 +20,7 @@ public class AppUserPrincipal implements UserDetails {
 		this.email = email;
 		this.displayName = displayName;
 		this.passwordHash = passwordHash;
-		this.role = role == null ? UserRole.USER : role;
+		this.role = role;
 	}
 
 	public Long getId() {

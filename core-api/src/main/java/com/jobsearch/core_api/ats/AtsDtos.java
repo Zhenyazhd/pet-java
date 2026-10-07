@@ -13,9 +13,6 @@ public final class AtsDtos {
 			/** When set, persist {@code averageScore} onto this owned vacancy's {@code matchPercent}. */
 			Long vacancyId
 	) {
-		public MatchRequest(String vacancyContext) {
-			this(vacancyContext, null);
-		}
 	}
 
 	public record PlatformScore(

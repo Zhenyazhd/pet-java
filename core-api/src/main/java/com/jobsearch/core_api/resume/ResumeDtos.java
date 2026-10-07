@@ -70,7 +70,4 @@ public final class ResumeDtos {
 			@NotNull @Size(max = 2000) String items
 	) {
 	}
-
-	public record LatexResponse(String source) {
-	}
 }

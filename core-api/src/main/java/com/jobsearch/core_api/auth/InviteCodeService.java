@@ -63,20 +63,16 @@ public class InviteCodeService {
 	 */
 	@Transactional
 	public InviteCode lockAvailable(String rawCode) {
-		String code = rawCode == null ? "" : rawCode.strip();
-		if (code.isBlank()) {
-			throw new UnauthorizedException("Invalid invite code");
-		}
-		return inviteCodeRepository.findAvailableForUpdate(code)
+		return inviteCodeRepository.findAvailableForUpdate(rawCode.strip())
 				.orElseThrow(() -> new UnauthorizedException("Invalid or already used invite code"));
 	}
 
 	/** Marks a previously locked invite as used by {@code userId}. */
 	@Transactional
-	public InviteCode markUsed(InviteCode invite, Long userId) {
+	public void markUsed(InviteCode invite, Long userId) {
 		invite.setUsedAt(Instant.now());
 		invite.setUsedByUserId(userId);
-		return inviteCodeRepository.save(invite);
+		inviteCodeRepository.save(invite);
 	}
 
 	private String generateUniqueCode() {

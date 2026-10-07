@@ -1,6 +1,6 @@
 # core-api
 
-HTTP API for the Job Search platform: invite-only auth, vacancies and applications, CV files in S3, structured resume (JSON → LaTeX → PDF, with optimistic-concurrency versioning), user profile with career path, and AI section edits via OpenRouter.
+HTTP API for the Job Search platform: invite-only auth, vacancies and applications, structured resume (JSON → LaTeX → PDF, with optimistic-concurrency versioning), user profile with career path, and AI section edits via OpenRouter.
 
 Listens on `http://localhost:8080` by default. The Vite frontend calls `/api/**` from origins listed in `app.cors.allowed-origins` (default `http://localhost:5173`).
 
@@ -13,7 +13,6 @@ Listens on `http://localhost:8080` by default. The Vite frontend calls `/api/**`
 | Runtime | Java 25 |
 | Framework | Spring Boot **4.1.1** (Web MVC, Validation, Data JPA) |
 | Database | PostgreSQL 16 + **Flyway** (`ddl-auto: validate`) |
-| Object storage | AWS SDK v2 S3 → local **adobe/s3mock**, later R2/AWS |
 | PDF | **tectonic** (native on `PATH`, otherwise Docker `dxjoke/tectonic-docker`) |
 | AI | [OpenRouter](https://openrouter.ai) Chat Completions (`response_format: json_object`) |
 | JSON | Jackson 3 (`tools.jackson`) |
@@ -24,7 +23,7 @@ Listens on `http://localhost:8080` by default. The Vite frontend calls `/api/**`
 
 ### Dependencies
 
-1. PostgreSQL and S3Mock:
+1. PostgreSQL:
 
 ```bash
 # from repo root
@@ -72,7 +71,6 @@ Environment variables come from the shell / IDE / root `.env` (if exported). Mai
 | `app.auth-rate-limit.trust-forwarded-headers` / `APP_AUTH_TRUST_FORWARDED_HEADERS` | Honor `X-Forwarded-For` / `X-Real-IP` only from trusted proxies | `false` |
 | `app.auth-rate-limit.trusted-proxies` / `APP_AUTH_TRUSTED_PROXIES` | Comma-separated peer IPs allowed to set forwarded client IP | `127.0.0.1,::1` |
 | `app.expensive-ops-rate-limit.per-user-per-minute` / `APP_EXPENSIVE_OPS_PER_USER_PER_MINUTE` | Max AI/ATS/import/**compile** calls per user per minute (`0` = off) | `10` |
-| `app.s3.*` / `S3_*` | Endpoint, region, keys, bucket, path-style | localhost:9090, bucket `job-search-cvs` |
 | `app.open-router.api-key` / `OPENROUTER_API_KEY` | OpenRouter API key | empty |
 | `app.open-router.model` / `OPENROUTER_MODEL` | Chat model | `openai/gpt-4o-mini` |
 | `app.open-router.base-url` | API base URL | `https://openrouter.ai/api/v1` |
@@ -81,7 +79,7 @@ Environment variables come from the shell / IDE / root `.env` (if exported). Mai
 | `server.forward-headers-strategy` / `SERVER_FORWARD_HEADERS_STRATEGY` | Set to `framework` only behind a trusted TLS-terminating reverse proxy that sets `X-Forwarded-Proto` | `none` |
 | `POSTGRES_*` | JDBC to Postgres (`POSTGRES_PASSWORD` has **no default** — startup fails without it) | see `application.yml` |
 
-Multipart: max file **10MB**, request **12MB**. Session and CSRF cookies are always `Secure` — the app only works over HTTPS in production (or `localhost`, which browsers treat as secure).
+Session and CSRF cookies are always `Secure` — the app only works over HTTPS in production (or `localhost`, which browsers treat as secure).
 
 ---
 
@@ -93,13 +91,11 @@ com.jobsearch.core_api
 ├── ats/             Proxy to local ATS Screener (vacancy match scores)
 ├── auth/            Login/register/logout, sessions, invite codes, rate limiting
 ├── common/          NotFoundException, ConflictException, ApiExceptionHandler
-├── config/          AppProperties, CorsConfig, S3Config
-├── cv/              CV file versions + sendings linked to vacancies
+├── config/          AppProperties
 ├── jobapplication/  Application status (1:1 with vacancy)
-├── latex/           Compile arbitrary LaTeX → PDF
+├── latex/           LaTeX → PDF compiler (tectonic / Docker)
 ├── profile/         app_user: name, email, career_path
 ├── resume/          Structured resume JSON, LaTeX render, plain-text, compile
-├── storage/         ObjectStorageService (S3)
 └── vacancy/         Vacancies and requirements — owned per user
 ```
 
@@ -118,11 +114,9 @@ Migrations: `src/main/resources/db/migration/`.
 - **`job_application`** — exactly one application per vacancy; status ∈  
   `NOT_APPLIED | APPLIED | INTERVIEW | OFFER | REJECTED | WITHDRAWN`
 
-### V2 — user and CV files
+### V2 — user
 
 - **`app_user`** — seed: id=`1`, `me@local`
-- **`cv_version`** — file metadata + S3 `storage_key`
-- **`application_cv`** — “this CV version was sent to this vacancy” (sending history)
 
 ### V3 — career path
 
@@ -164,7 +158,7 @@ Session cookie + CSRF (double-submit), invite-only registration, two roles.
 - **CSRF**: `GET /api/auth/csrf` has no controller mapping (404) but still passes through the security filter chain, which is what sets the `XSRF-TOKEN` cookie — hit it once to get a token, then echo it back as `X-XSRF-TOKEN` on every mutating request. A stale/missing token gets one silent refresh-and-retry inside the frontend's shared `request()` helper.
 - **Registration is invite-only**: `POST /api/auth/register` requires a valid, unused `inviteCode`. There is no self-serve invite flow yet — an `ADMIN` mints codes via `POST /api/invite-codes`.
 - **Bootstrap admin**: on every startup, `AuthBootstrap` finds-or-creates the account for `APP_ADMIN_EMAIL` and promotes it to `ADMIN` (setting its password from `APP_BOOTSTRAP_PASSWORD` if it has none yet). Missing `APP_ADMIN_EMAIL` aborts startup — without an admin nobody can ever mint the first invite code.
-- **Ownership**: vacancies, applications, CV versions, and the resume are all scoped to the authenticated user's id — no shared `app.current-user-id` fallback anymore.
+- **Ownership**: vacancies, applications, and the resume are all scoped to the authenticated user's id — no shared `app.current-user-id` fallback anymore.
 
 ### `/api/auth`
 
@@ -196,8 +190,6 @@ Base prefix: `/api`. Errors use a uniform JSON body (see below).
 |--------|------|-------------|
 | GET | `/api/profile` | `displayName`, `email`, `careerPath` |
 | PUT | `/api/profile` | save all fields |
-| GET | `/api/profile/career-path` | career path only |
-| PUT | `/api/profile/career-path` | career path only |
 
 Career path is the AI’s **primary factual source** (employers, dates, skills) — the model must not invent a biography.
 
@@ -229,7 +221,6 @@ Structured document (not raw `.tex`):
 |--------|------|-------------|
 | GET | `/api/resume` | load JSON (or default) |
 | PUT | `/api/resume` | persist to `app_user.resume_json`; `409` if `version` is stale |
-| GET | `/api/resume/latex` | `{ "source": "<tex>" }` via `ResumeLatexRenderer` |
 | POST | `/api/resume/compile` | current JSON → LaTeX → PDF (`application/pdf`) |
 
 ### AI — `/api/ai`
@@ -290,14 +281,6 @@ Uses the **saved** resume (JSON → plain text) + vacancy context → ATS `POST 
 
 Flow: `AtsMatchController` → `AtsMatchService` → `AtsScreenerClient` → `tools/ats-screener`.
 
-### LaTeX (raw) — `/api/latex`
-
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/latex/compile` | body `{ "source": "..." }` → PDF |
-
-Same `LatexCompileService` as resume compile.
-
 ### Vacancies — `/api/vacancies`
 
 | Method | Path | Description |
@@ -312,35 +295,14 @@ Same `LatexCompileService` as resume compile.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/applications` | all applications |
-| GET | `/api/applications/{id}` | one |
 | POST | `/api/applications` | upsert by vacancy (create or update status/notes) |
 | PUT | `/api/applications/{id}` | status + notes |
-| DELETE | `/api/applications/{id}` | delete |
 
 When status ≠ `NOT_APPLIED`, `appliedAt` is set if missing.
-
-### CV files — `/api/cvs`, sendings
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/cvs` | CV versions for current user |
-| POST | `/api/cvs` | multipart: `label` + `file` → S3 upload + `cv_version` row |
-| GET | `/api/cvs/{id}/download` | download file |
-| DELETE | `/api/cvs/{id}` | delete (blocked if linked to sendings) |
-| GET | `/api/cv-sendings` | all CV sendings |
-| GET | `/api/vacancies/{vacancyId}/cv-sendings` | sendings for a vacancy |
-| POST | `/api/vacancies/{vacancyId}/cv-sendings` | `{ "cvVersionId", "notes?" }` — record a send |
 
 ---
 
 ## External integrations
-
-### S3 (`ObjectStorageService`)
-
-- Upload / download / delete by `storage_key`.
-- Client built in `S3Config` from `app.s3.*` (path-style for S3Mock).
-- S3 failures → `IllegalStateException` → HTTP **502**.
 
 ### OpenRouter (`OpenRouterClient`)
 
@@ -376,8 +338,8 @@ Uniform body:
 | `MethodArgumentNotValidException` | 400 (+ `fields`) |
 | `IllegalArgumentException` | 400 (incl. bad LaTeX / bad section) |
 | `NotFoundException` | 404 |
-| `ConflictException` | 409 (duplicate url, CV linked to sendings, stale resume `version`, duplicate email, …) |
-| `IllegalStateException` | 502 (OpenRouter / S3 / PDF missing / config) |
+| `ConflictException` | 409 (duplicate url, stale resume `version`, duplicate email, …) |
+| `IllegalStateException` | 502 (OpenRouter / PDF missing / config) |
 | other | 500 (`Internal server error`) |
 
 ---
@@ -389,10 +351,8 @@ SLF4J on key services:
 - save resume / profile
 - AI suggest (section, career/vacancy flags, hasProposed)
 - OpenRouter request/response errors
-- S3 upload/delete / errors
 - LaTeX compile success / engine choice
 - vacancy & application CRUD
-- CV upload / delete / send
 - warn/error levels in `ApiExceptionHandler`
 
 ---
@@ -418,4 +378,4 @@ SLF4J on key services:
 | `src/main/resources/db/migration/` | schema |
 | `src/main/resources/default-resume.json` | starter resume |
 | `../.env.example` | env for compose + API |
-| `../docker-compose.yml` | Postgres + S3Mock |
+| `../docker-compose.yml` | Postgres |
