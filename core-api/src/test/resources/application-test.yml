@@ -1,0 +1,10 @@
+# Profile for @SpringBootTest classes; the database comes from TestcontainersConfiguration.
+spring:
+  datasource:
+    password: unused-replaced-by-testcontainers
+
+app:
+  admin-email: admin@test.local
+  scheduling-enabled: false
+  latex-worker:
+    token: test-token

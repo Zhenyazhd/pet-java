@@ -17,5 +17,26 @@ services:
       timeout: 5s
       retries: 5
 
+  latex-worker:
+    build: tools/latex-worker
+    image: job-search-latex-worker
+    container_name: job-search-latex-worker
+    restart: unless-stopped
+    # Bound to localhost only: core-api runs on the host in local development. In production put the
+    # worker on an `internal: true` network shared only with core-api, so it has no internet access.
+    ports:
+      - "127.0.0.1:${LATEX_WORKER_PORT:-8090}:8090"
+    environment:
+      WORKER_TOKEN: ${LATEX_WORKER_TOKEN:?set LATEX_WORKER_TOKEN in .env}
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    cpus: 2
+    mem_limit: 2g
+
 volumes:
   postgres_data:

@@ -20,7 +20,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Per-user rate limit for expensive operations: AI suggest, ATS match, vacancy import,
- * and resume PDF compilation (each compile spawns a subprocess or container).
+ * and queuing a resume PDF compile (each one occupies a latex-worker slot).
  */
 public class ExpensiveOpsRateLimitFilter extends OncePerRequestFilter {
 

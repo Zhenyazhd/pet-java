@@ -84,3 +84,15 @@ export type RegisterRequest = {
   displayName: string
   inviteCode: string
 }
+
+export type CompileJobStatus = 'QUEUED' | 'RUNNING' | 'DONE' | 'FAILED'
+
+/** A queued PDF build of the saved resume (POST /api/resume/compile). */
+export type CompileJob = {
+  id: string
+  status: CompileJobStatus
+  /** Set when FAILED; for `compile_error` the message is the end of the LaTeX log. */
+  error: { code: string; message: string } | null
+  createdAt: string
+  finishedAt: string | null
+}
