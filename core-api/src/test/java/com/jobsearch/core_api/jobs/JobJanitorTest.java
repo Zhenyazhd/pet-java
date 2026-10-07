@@ -1,9 +1,12 @@
-package com.jobsearch.core_api.compile;
+package com.jobsearch.core_api.jobs;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
+import com.jobsearch.core_api.TestSupport;
 import com.jobsearch.core_api.TestcontainersConfiguration;
+import com.jobsearch.core_api.compile.LatexWorkerClient;
+import com.jobsearch.core_api.compile.ResumePdfCacheRepository;
 import com.jobsearch.core_api.profile.AppUserRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -20,14 +23,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 @SpringBootTest
 @ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
-class CompileJanitorTest {
+class JobJanitorTest {
 
 	@Autowired
-	private CompileJanitor janitor;
+	private JobJanitor janitor;
 	@Autowired
-	private CompileJobService service;
-	@Autowired
-	private CompileJobRepository jobRepository;
+	private JobRepository jobRepository;
 	@Autowired
 	private ResumePdfCacheRepository cacheRepository;
 	@Autowired
@@ -37,10 +38,13 @@ class CompileJanitorTest {
 	@MockitoBean
 	private LatexWorkerClient workerClient;
 
+	private long userId;
+
 	@BeforeEach
 	void setUp() {
-		CompileTestSupport.clearQueueAndCache(jobRepository, cacheRepository);
-		CompileTestSupport.signInNewUser(userRepository);
+		TestSupport.clearJobs(jobRepository);
+		TestSupport.clearPdfCache(cacheRepository);
+		userId = TestSupport.signInNewUser(userRepository);
 	}
 
 	@AfterEach
@@ -50,40 +54,44 @@ class CompileJanitorTest {
 
 	@Test
 	void requeuesExpiredLeaseUntilMaxAttemptsThenFails() throws InterruptedException {
-		UUID jobId = UUID.fromString(service.enqueue().id());
+		UUID jobId = queue();
 
 		for (int attempt = 1; attempt <= 3; attempt++) {
 			// A zero-second lease is already expired by the time the janitor looks at it.
-			jobRepository.claimNext(0).orElseThrow();
+			jobRepository.claimNext(JobType.RESUME_PDF.name(), 0).orElseThrow();
 			Thread.sleep(10);
 			janitor.recoverExpiredLeases();
 		}
 
-		CompileJob job = jobRepository.findById(jobId).orElseThrow();
-		assertEquals(CompileJobStatus.FAILED, job.getStatus());
-		assertEquals("worker_unavailable", job.getErrorCode());
+		Job job = jobRepository.findById(jobId).orElseThrow();
+		assertEquals(JobStatus.FAILED, job.getStatus());
+		assertEquals("unavailable", job.getErrorCode());
 	}
 
 	@Test
 	void failsJobsQueuedForTooLong() {
-		UUID jobId = UUID.fromString(service.enqueue().id());
-		jdbcTemplate.update("UPDATE compile_job SET created_at = NOW() - INTERVAL '1 hour' WHERE id = ?", jobId);
+		UUID jobId = queue();
+		jdbcTemplate.update("UPDATE background_job SET created_at = NOW() - INTERVAL '1 hour' WHERE id = ?", jobId);
 
 		janitor.failStaleQueuedJobs();
 
-		CompileJob job = jobRepository.findById(jobId).orElseThrow();
-		assertEquals(CompileJobStatus.FAILED, job.getStatus());
+		Job job = jobRepository.findById(jobId).orElseThrow();
+		assertEquals(JobStatus.FAILED, job.getStatus());
 		assertEquals("queue_timeout", job.getErrorCode());
 	}
 
 	@Test
 	void deletesOldFinishedJobs() {
-		UUID jobId = UUID.fromString(service.enqueue().id());
+		UUID jobId = queue();
 		jdbcTemplate.update(
-				"UPDATE compile_job SET status = 'FAILED', created_at = NOW() - INTERVAL '8 days' WHERE id = ?", jobId);
+				"UPDATE background_job SET status = 'FAILED', finished_at = NOW() - INTERVAL '8 days' WHERE id = ?", jobId);
 
-		janitor.deleteOldRows();
+		janitor.deleteOldJobs();
 
 		assertFalse(jobRepository.existsById(jobId));
+	}
+
+	private UUID queue() {
+		return jobRepository.save(Job.queued(JobType.RESUME_PDF, userId, "hash", "source")).getId();
 	}
 }

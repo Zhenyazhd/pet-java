@@ -194,12 +194,6 @@ public class AppProperties {
 		private int connectTimeoutSeconds = 3;
 		/** Must be longer than the worker's own compile timeout (60s by default). */
 		private int readTimeoutSeconds = 75;
-		/** Jobs this instance sends to workers at once. */
-		private int dispatchConcurrency = 4;
-		/** Tries per job before it fails with worker_unavailable; a busy worker does not count. */
-		private int maxAttempts = 3;
-		/** A job still queued after this long fails with queue_timeout — the user has stopped waiting. */
-		private int queueMaxAgeSeconds = 300;
 
 		public String getBaseUrl() {
 			return baseUrl;
@@ -231,30 +225,6 @@ public class AppProperties {
 
 		public void setReadTimeoutSeconds(int readTimeoutSeconds) {
 			this.readTimeoutSeconds = readTimeoutSeconds;
-		}
-
-		public int getDispatchConcurrency() {
-			return dispatchConcurrency;
-		}
-
-		public void setDispatchConcurrency(int dispatchConcurrency) {
-			this.dispatchConcurrency = dispatchConcurrency;
-		}
-
-		public int getMaxAttempts() {
-			return maxAttempts;
-		}
-
-		public void setMaxAttempts(int maxAttempts) {
-			this.maxAttempts = maxAttempts;
-		}
-
-		public int getQueueMaxAgeSeconds() {
-			return queueMaxAgeSeconds;
-		}
-
-		public void setQueueMaxAgeSeconds(int queueMaxAgeSeconds) {
-			this.queueMaxAgeSeconds = queueMaxAgeSeconds;
 		}
 	}
 

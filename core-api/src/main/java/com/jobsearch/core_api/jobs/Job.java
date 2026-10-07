@@ -1,4 +1,4 @@
-package com.jobsearch.core_api.compile;
+package com.jobsearch.core_api.jobs;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -10,12 +10,12 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * One request to turn the current resume into a PDF. Status changes after creation are made by
- * {@link CompileJobRepository} update queries, so this entity only needs getters.
+ * One piece of background work a user asked for. Status changes after creation are made by
+ * {@link JobRepository} update queries, so this entity only needs getters.
  */
 @Entity
-@Table(name = "compile_job")
-public class CompileJob {
+@Table(name = "background_job")
+public class Job {
 
 	@Id
 	private UUID id;
@@ -23,19 +23,27 @@ public class CompileJob {
 	@Column(name = "user_id", nullable = false)
 	private Long userId;
 
-	@Column(name = "source_hash", nullable = false, length = 64)
-	private String sourceHash;
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 32)
+	private JobType type;
 
-	/** The LaTeX to compile; cleared once the job finishes. */
+	/** Hash of the inputs; with user and type it identifies "the same request". */
+	@Column(name = "dedupe_key", nullable = false, length = 64)
+	private String dedupeKey;
+
+	/** Input for the handler; cleared once the job finishes. */
 	@Column(columnDefinition = "TEXT")
-	private String source;
+	private String payload;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 16)
-	private CompileJobStatus status;
+	private JobStatus status;
 
 	@Column(nullable = false)
 	private int attempts;
+
+	@Column(columnDefinition = "TEXT")
+	private String result;
 
 	@Column(name = "error_code", length = 32)
 	private String errorCode;
@@ -52,24 +60,25 @@ public class CompileJob {
 	@Column(name = "finished_at")
 	private Instant finishedAt;
 
-	protected CompileJob() {
+	protected Job() {
 	}
 
-	static CompileJob queued(Long userId, String sourceHash, String source) {
-		CompileJob job = new CompileJob();
+	static Job queued(JobType type, Long userId, String dedupeKey, String payload) {
+		Job job = new Job();
 		job.id = UUID.randomUUID();
 		job.userId = userId;
-		job.sourceHash = sourceHash;
-		job.source = source;
-		job.status = CompileJobStatus.QUEUED;
+		job.type = type;
+		job.dedupeKey = dedupeKey;
+		job.payload = payload;
+		job.status = JobStatus.QUEUED;
 		job.createdAt = Instant.now();
 		return job;
 	}
 
-	/** A job whose PDF was already in the cache: nothing to compile. */
-	static CompileJob doneFromCache(Long userId, String sourceHash) {
-		CompileJob job = queued(userId, sourceHash, null);
-		job.status = CompileJobStatus.DONE;
+	/** A request that is already satisfied (e.g. its PDF is cached): nothing to run. */
+	static Job done(JobType type, Long userId, String dedupeKey) {
+		Job job = queued(type, userId, dedupeKey, null);
+		job.status = JobStatus.DONE;
 		job.finishedAt = job.createdAt;
 		return job;
 	}
@@ -78,20 +87,32 @@ public class CompileJob {
 		return id;
 	}
 
-	public String getSourceHash() {
-		return sourceHash;
+	public Long getUserId() {
+		return userId;
 	}
 
-	public String getSource() {
-		return source;
+	public JobType getType() {
+		return type;
 	}
 
-	public CompileJobStatus getStatus() {
+	public String getDedupeKey() {
+		return dedupeKey;
+	}
+
+	public String getPayload() {
+		return payload;
+	}
+
+	public JobStatus getStatus() {
 		return status;
 	}
 
 	public int getAttempts() {
 		return attempts;
+	}
+
+	public String getResult() {
+		return result;
 	}
 
 	public String getErrorCode() {

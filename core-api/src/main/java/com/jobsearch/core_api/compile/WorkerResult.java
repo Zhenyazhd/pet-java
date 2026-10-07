@@ -1,7 +1,7 @@
 package com.jobsearch.core_api.compile;
 
-/** What {@link LatexWorkerClient} got back from the worker, grouped by what the dispatcher must do next. */
-sealed interface WorkerResult {
+/** What {@link LatexWorkerClient} got back from the worker; {@link CompileJobHandler} maps it to a JobOutcome. */
+public sealed interface WorkerResult {
 
 	record Pdf(byte[] bytes) implements WorkerResult {
 	}
