@@ -11,14 +11,16 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-/** Calls ATS Screener POST /api/analyze (full-score mode). */
+/** Calls ATS Screener POST /api/analyze (full-score mode); failures come back as a {@link ScreenerResult}, not exceptions. */
 @Component
 public class AtsScreenerClient {
 
 	private static final Logger log = LoggerFactory.getLogger(AtsScreenerClient.class);
+	private static final String SCORING_FAILED_MESSAGE = "ATS Screener could not score this resume. Please try again later.";
 
 	private final RestClient restClient;
 	private final AppProperties appProperties;
@@ -34,9 +36,8 @@ public class AtsScreenerClient {
 		this.objectMapper = objectMapper;
 	}
 
-	public JsonNode fullScore(String resumeText, String jobDescription) {
+	public ScreenerResult fullScore(String resumeText, String jobDescription) {
 		AppProperties.AtsScreener cfg = appProperties.getAtsScreener();
-		String baseUrl = cfg.getBaseUrl();
 		int timeoutSeconds = cfg.getTimeoutSeconds();
 		Map<String, Object> body = Map.of(
 				"mode", "full-score",
@@ -60,33 +61,33 @@ public class AtsScreenerClient {
 					.retrieve()
 					.body(String.class);
 		} catch (RestClientResponseException ex) {
-			log.error("ATS Screener HTTP {} body={}", ex.getStatusCode().value(), ex.getResponseBodyAsString());
-			throw new IllegalStateException(
-					"ATS Screener error " + ex.getStatusCode().value() + ": " + Strings.abbreviate(ex.getResponseBodyAsString(), 400),
-					ex
-			);
+			log.error("ATS Screener HTTP {} body={}", ex.getStatusCode().value(), Strings.abbreviate(ex.getResponseBodyAsString(), 400));
+			return new ScreenerResult.Failed(SCORING_FAILED_MESSAGE);
 		} catch (Exception ex) {
 			if (isTimeout(ex)) {
-				log.error("ATS Screener timed out after {}s at {}", timeoutSeconds, baseUrl);
-				throw new IllegalStateException(
-						"ATS Screener timed out after " + timeoutSeconds
-								+ "s (Gemini scoring is slow on long resumes). Retry, or set ATS_SCREENER_TIMEOUT_SECONDS higher.",
-						ex
-				);
+				log.warn("ATS Screener timed out after {}s", timeoutSeconds);
+				return new ScreenerResult.Failed(
+						"ATS Screener took longer than " + timeoutSeconds + "s. Try again, or shorten the vacancy text.");
 			}
-			log.error("ATS Screener unreachable at {}: {}", baseUrl, ex.getMessage());
-			throw new IllegalStateException("ATS Screener is currently unavailable. Please try again later.", ex);
+			return new ScreenerResult.Unavailable(cfg.getBaseUrl() + ": " + ex);
 		}
 
 		if (raw == null || raw.isBlank()) {
-			throw new IllegalStateException("ATS Screener returned an empty response");
+			log.error("ATS Screener returned an empty response");
+			return new ScreenerResult.Failed(SCORING_FAILED_MESSAGE);
 		}
-
-		JsonNode root = objectMapper.readTree(raw);
+		JsonNode root;
+		try {
+			root = objectMapper.readTree(raw);
+		} catch (JacksonException ex) {
+			log.error("ATS Screener returned malformed JSON: {}", Strings.abbreviate(raw, 400));
+			return new ScreenerResult.Failed(SCORING_FAILED_MESSAGE);
+		}
 		if (root.hasNonNull("error")) {
-			throw new IllegalStateException("ATS Screener: " + root.path("error").asString());
+			log.error("ATS Screener reported an error: {}", root.path("error").asString());
+			return new ScreenerResult.Failed(SCORING_FAILED_MESSAGE);
 		}
-		return root;
+		return new ScreenerResult.Report(root);
 	}
 
 	private static boolean isTimeout(Throwable ex) {

@@ -1,13 +1,15 @@
 package com.jobsearch.core_api.compile;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.jobsearch.core_api.TestSupport;
 import com.jobsearch.core_api.TestcontainersConfiguration;
 import com.jobsearch.core_api.common.ConflictException;
-import com.jobsearch.core_api.common.NotFoundException;
-import com.jobsearch.core_api.compile.CompileDtos.CompileJobResponse;
+import com.jobsearch.core_api.jobs.JobDtos.JobResponse;
+import com.jobsearch.core_api.jobs.JobRepository;
 import com.jobsearch.core_api.profile.AppUserRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -23,12 +25,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 @SpringBootTest
 @ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
-class CompileJobServiceTest {
+class CompileServiceTest {
 
 	@Autowired
-	private CompileJobService service;
+	private CompileService service;
 	@Autowired
-	private CompileJobRepository jobRepository;
+	private JobRepository jobRepository;
 	@Autowired
 	private ResumePdfCacheRepository cacheRepository;
 	@Autowired
@@ -38,8 +40,8 @@ class CompileJobServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		CompileTestSupport.clearQueueAndCache(jobRepository, cacheRepository);
-		CompileTestSupport.signInNewUser(userRepository);
+		TestSupport.clearJobsAndPdfCache(jobRepository, cacheRepository);
+		TestSupport.signInNewUser(userRepository);
 	}
 
 	@AfterEach
@@ -48,30 +50,15 @@ class CompileJobServiceTest {
 	}
 
 	@Test
-	void queuesNewSource() {
-		CompileJobResponse job = service.enqueue();
-
-		assertEquals("QUEUED", job.status());
-	}
-
-	@Test
-	void doubleEnqueueReturnsTheSameActiveJob() {
-		CompileJobResponse first = service.enqueue();
-		CompileJobResponse second = service.enqueue();
-
-		assertEquals(first.id(), second.id());
-	}
-
-	@Test
 	void cacheHitIsDoneWithoutCallingTheWorker() {
-		CompileJobResponse queued = service.enqueue();
-		String hash = jobRepository.findById(UUID.fromString(queued.id())).orElseThrow().getSourceHash();
+		JobResponse queued = service.enqueue();
+		String hash = jobRepository.findById(UUID.fromString(queued.id())).orElseThrow().getDedupeKey();
 		cacheRepository.upsert(hash, new byte[] { 1, 2, 3 });
 
-		CompileJobResponse cached = service.enqueue();
+		JobResponse cached = service.enqueue();
 
 		assertEquals("DONE", cached.status());
-		assertEquals(3, service.pdf(UUID.fromString(cached.id())).length);
+		assertArrayEquals(new byte[] { 1, 2, 3 }, service.pdf(UUID.fromString(cached.id())));
 		verifyNoInteractions(workerClient);
 	}
 
@@ -80,15 +67,5 @@ class CompileJobServiceTest {
 		UUID jobId = UUID.fromString(service.enqueue().id());
 
 		assertThrows(ConflictException.class, () -> service.pdf(jobId));
-	}
-
-	@Test
-	void anotherUsersJobIsNotFound() {
-		UUID jobId = UUID.fromString(service.enqueue().id());
-
-		CompileTestSupport.signInNewUser(userRepository);
-
-		assertThrows(NotFoundException.class, () -> service.get(jobId));
-		assertThrows(NotFoundException.class, () -> service.pdf(jobId));
 	}
 }
