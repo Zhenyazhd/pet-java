@@ -8,3 +8,6 @@ app:
   scheduling-enabled: false
   latex-worker:
     token: test-token
+  open-router:
+    # The LLM is mocked in tests; the key only has to be non-blank.
+    api-key: test-key

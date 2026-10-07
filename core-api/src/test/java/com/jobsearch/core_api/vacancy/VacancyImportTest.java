@@ -18,15 +18,22 @@ import com.jobsearch.core_api.jobs.JobRepository;
 import com.jobsearch.core_api.jobs.JobType;
 import com.jobsearch.core_api.profile.AppUserRepository;
 import com.jobsearch.core_api.vacancy.VacancyDtos.VacancyImportRequest;
+import java.time.Duration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResourceAccessException;
 import tools.jackson.databind.ObjectMapper;
 
 /** Queueing an import and running it through {@link VacancyImportHandler}, with a mocked LLM. */
@@ -111,12 +118,53 @@ class VacancyImportTest {
 	}
 
 	@Test
-	void llmFailureIsRetried() {
-		when(openRouterClient.chat(anyString(), anyString(), any()))
-				.thenThrow(new IllegalStateException("OpenRouter error 502"));
-		service.enqueue(new VacancyImportRequest(URL, "posting"));
+	void openRouterServerErrorIsRetried() {
+		assertInstanceOf(JobOutcome.Retry.class, runWithLlmFailure(openRouterError(HttpStatus.BAD_GATEWAY, null)));
+	}
 
-		assertInstanceOf(JobOutcome.Retry.class, handler.run(claim()));
+	@Test
+	void timeoutIsRetried() {
+		assertInstanceOf(JobOutcome.Retry.class,
+				runWithLlmFailure(new ResourceAccessException("I/O error: request timed out")));
+	}
+
+	@Test
+	void rateLimitPausesImportsWithoutUsingAnAttempt() {
+		JobOutcome outcome = runWithLlmFailure(openRouterError(HttpStatus.TOO_MANY_REQUESTS, "30"));
+
+		assertEquals(Duration.ofSeconds(30), assertInstanceOf(JobOutcome.Busy.class, outcome).retryAfter());
+	}
+
+	@Test
+	void rejectedApiKeyFailsWithoutRetry() {
+		JobOutcome outcome = runWithLlmFailure(openRouterError(HttpStatus.UNAUTHORIZED, null));
+
+		assertEquals("ai_unavailable", assertInstanceOf(JobOutcome.Failed.class, outcome).code());
+	}
+
+	@Test
+	void rejectedRequestFailsWithoutRetry() {
+		JobOutcome outcome = runWithLlmFailure(openRouterError(HttpStatus.BAD_REQUEST, null));
+
+		assertEquals("ai_rejected", assertInstanceOf(JobOutcome.Failed.class, outcome).code());
+	}
+
+	private JobOutcome runWithLlmFailure(RuntimeException failure) {
+		when(openRouterClient.chat(anyString(), anyString(), any())).thenThrow(failure);
+		service.enqueue(new VacancyImportRequest(URL, "posting"));
+		return handler.run(claim());
+	}
+
+	/** What OpenRouterClient throws for an HTTP error: its own exception with OpenRouter's response as the cause. */
+	private static IllegalStateException openRouterError(HttpStatus status, String retryAfter) {
+		HttpHeaders headers = new HttpHeaders();
+		if (retryAfter != null) {
+			headers.set(HttpHeaders.RETRY_AFTER, retryAfter);
+		}
+		HttpStatusCodeException http = status.is4xxClientError()
+				? HttpClientErrorException.create(status, status.getReasonPhrase(), headers, new byte[0], null)
+				: HttpServerErrorException.create(status, status.getReasonPhrase(), headers, new byte[0], null);
+		return new IllegalStateException("OpenRouter error " + status.value(), http);
 	}
 
 	private Job claim() {
