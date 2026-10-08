@@ -4,6 +4,8 @@ import com.jobsearch.core_api.common.Emails;
 import com.jobsearch.core_api.config.AppProperties;
 import com.jobsearch.core_api.profile.AppUser;
 import com.jobsearch.core_api.profile.AppUserRepository;
+import java.util.Locale;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -66,6 +68,7 @@ public class AuthBootstrap implements ApplicationRunner {
 		boolean hasPassword = user.getPasswordHash() != null && !user.getPasswordHash().isBlank();
 		String bootstrapPassword = appProperties.getBootstrapPassword();
 		if (!hasPassword && bootstrapPassword != null && !bootstrapPassword.isBlank()) {
+			requireStrong(bootstrapPassword);
 			user.setPasswordHash(passwordEncoder.encode(bootstrapPassword));
 			hasPassword = true;
 			log.info("Set bootstrap password for ADMIN email={}", adminEmail);
@@ -78,5 +81,16 @@ public class AuthBootstrap implements ApplicationRunner {
 		}
 
 		appUserRepository.save(user);
+	}
+
+	private static final int MIN_BOOTSTRAP_PASSWORD_LENGTH = 12;
+	private static final Set<String> PLACEHOLDER_PASSWORDS = Set.of("changeme", "change-me", "password", "admin");
+
+	private static void requireStrong(String password) {
+		if (password.length() < MIN_BOOTSTRAP_PASSWORD_LENGTH
+				|| PLACEHOLDER_PASSWORDS.contains(password.toLowerCase(Locale.ROOT))) {
+			throw new IllegalStateException("APP_BOOTSTRAP_PASSWORD must be at least "
+					+ MIN_BOOTSTRAP_PASSWORD_LENGTH + " characters and not a placeholder such as 'changeme'");
+		}
 	}
 }

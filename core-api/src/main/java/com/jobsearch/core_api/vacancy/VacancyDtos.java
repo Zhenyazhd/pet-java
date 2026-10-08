@@ -20,18 +20,18 @@ public final class VacancyDtos {
 	}
 
 	public record VacancyRequest(
-			@NotBlank String url,
+			@NotBlank @Size(max = 2_000) String url,
 			@NotBlank @Size(max = 255) String title,
 			@Size(max = 255) String company,
-			String description,
+			@Size(max = 50_000) String description,
 			@Min(0) @Max(100) Integer matchPercent,
-			List<@Valid RequirementRequest> requirements
+			@Size(max = 100) List<@Valid RequirementRequest> requirements
 	) {
 	}
 
 	/** URL + raw job posting paste; LLM extracts title / company / description. */
 	public record VacancyImportRequest(
-			@NotBlank String url,
+			@NotBlank @Size(max = 2_000) String url,
 			@NotBlank @Size(max = 50_000) String pastedText
 	) {
 	}

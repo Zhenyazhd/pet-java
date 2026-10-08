@@ -14,7 +14,12 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -77,9 +82,31 @@ public class Vacancy {
 		requirements.add(requirement);
 	}
 
-	public void clearRequirements() {
-		requirements.forEach(requirement -> requirement.setVacancy(null));
-		requirements.clear();
+	void syncRequirements(List<VacancyRequirements.Item> items) {
+		Map<String, VacancyRequirement> existing = new HashMap<>();
+		for (VacancyRequirement requirement : requirements) {
+			existing.put(requirement.getName().toLowerCase(Locale.ROOT), requirement);
+		}
+		Set<String> keep = new HashSet<>();
+		for (VacancyRequirements.Item item : items) {
+			String key = item.name().toLowerCase(Locale.ROOT);
+			keep.add(key);
+			VacancyRequirement match = existing.get(key);
+			if (match == null) {
+				addRequirement(item.name(), item.required());
+			}
+			else {
+				match.setName(item.name());
+				match.setRequired(item.required());
+			}
+		}
+		requirements.removeIf(requirement -> {
+			if (keep.contains(requirement.getName().toLowerCase(Locale.ROOT))) {
+				return false;
+			}
+			requirement.setVacancy(null);
+			return true;
+		});
 	}
 
 	public Long getId() {

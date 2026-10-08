@@ -33,6 +33,7 @@ public class JobDispatcher {
 	private final JobRepository jobRepository;
 	private final Map<JobType, Lane> lanes;
 	private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+	private volatile boolean stopped;
 
 	public JobDispatcher(JobRepository jobRepository, List<JobHandler> handlers) {
 		this.jobRepository = jobRepository;
@@ -43,7 +44,7 @@ public class JobDispatcher {
 	@Scheduled(fixedDelay = POLL_INTERVAL_MILLIS)
 	void poll() {
 		for (Lane lane : lanes.values()) {
-			while (Instant.now().isAfter(lane.pausedUntil) && lane.slots.tryAcquire()) {
+			while (!stopped && Instant.now().isAfter(lane.pausedUntil) && lane.slots.tryAcquire()) {
 				Optional<Job> claimed;
 				try {
 					claimed = jobRepository.claimNext(lane.handler.type().name(), lane.handler.lease().toSeconds());
@@ -58,9 +59,12 @@ public class JobDispatcher {
 					break;
 				}
 				Job job = claimed.get();
-				executor.submit(() -> {
+				executor.execute(() -> {
 					try {
 						process(job);
+					}
+					catch (RuntimeException ex) {
+						log.error("Job outcome not recorded type={} jobId={}", job.getType(), job.getId(), ex);
 					}
 					finally {
 						lane.slots.release();
@@ -122,6 +126,7 @@ public class JobDispatcher {
 	/** Lets in-flight jobs finish; anything still running afterwards is requeued by JobJanitor once its lease expires. */
 	@PreDestroy
 	void shutdown() throws InterruptedException {
+		stopped = true;
 		executor.shutdown();
 		executor.awaitTermination(30, TimeUnit.SECONDS);
 	}

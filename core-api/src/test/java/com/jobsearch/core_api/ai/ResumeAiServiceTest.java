@@ -49,6 +49,15 @@ class ResumeAiServiceTest {
 	}
 
 	@Test
+	void nonJsonAnswerIsServiceUnavailable() {
+		answerWith(new ChatResult.Answer("Sorry, I cannot do that."));
+
+		ServiceUnavailableException ex = assertThrows(ServiceUnavailableException.class, () -> service.suggest(HELLO));
+
+		assertEquals("The AI did not answer. Please try again.", ex.getMessage());
+	}
+
+	@Test
 	void busyIsServiceUnavailableWithRetryAfter() {
 		answerWith(new ChatResult.Busy(Duration.ofSeconds(30)));
 

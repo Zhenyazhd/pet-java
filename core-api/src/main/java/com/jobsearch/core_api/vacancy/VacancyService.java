@@ -99,20 +99,15 @@ public class VacancyService {
 		vacancy.setDescription(Strings.blankToNull(request.description()));
 		vacancy.setMatchPercent(request.matchPercent());
 
-		vacancy.clearRequirements();
 		List<RequirementRequest> requirements = request.requirements();
-		if (requirements != null) {
-			List<VacancyRequirements.Item> items = requirements.stream()
-					.filter(item -> item != null)
-					.map(item -> new VacancyRequirements.Item(
-							item.name(),
-							Boolean.TRUE.equals(item.required())
-					))
-					.toList();
-			for (VacancyRequirements.Item item : VacancyRequirements.dedupe(items, Integer.MAX_VALUE)) {
-				vacancy.addRequirement(item.name(), item.required());
-			}
-		}
+		List<VacancyRequirements.Item> items = requirements == null ? List.of() : requirements.stream()
+				.filter(item -> item != null)
+				.map(item -> new VacancyRequirements.Item(
+						item.name(),
+						Boolean.TRUE.equals(item.required())
+				))
+				.toList();
+		vacancy.syncRequirements(VacancyRequirements.dedupe(items, Integer.MAX_VALUE));
 	}
 
 	private VacancyResponse toResponse(Vacancy vacancy) {

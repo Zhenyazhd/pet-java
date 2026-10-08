@@ -5,8 +5,25 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.time.Duration;
 import java.util.Map;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -25,5 +42,62 @@ class ApiExceptionHandlerTest {
 		assertEquals("30", busy.getHeaders().getFirst(HttpHeaders.RETRY_AFTER));
 		assertEquals("busy", busy.getBody().get("message"));
 		assertNull(down.getHeaders().getFirst(HttpHeaders.RETRY_AFTER));
+	}
+
+	@RestController
+	static class Probe {
+		@PostMapping("/probe")
+		String post(@RequestBody Map<String, String> body) {
+			return "ok";
+		}
+
+		@GetMapping("/probe/{id}")
+		String get(@PathVariable UUID id) {
+			return "ok";
+		}
+	}
+
+	private MockMvc mvc() {
+		return MockMvcBuilders.standaloneSetup(new Probe()).setControllerAdvice(handler).build();
+	}
+
+	@Test
+	void malformedJsonIs400WithSharedBody() throws Exception {
+		mvc().perform(post("/probe").contentType(MediaType.APPLICATION_JSON).content("{oops"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.status").value(400))
+				.andExpect(jsonPath("$.error").value("Bad Request"))
+				.andExpect(jsonPath("$.message").value("Failed to read request"));
+	}
+
+	@Test
+	void typeMismatchIs400() throws Exception {
+		mvc().perform(get("/probe/not-a-uuid"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.status").value(400));
+	}
+
+	@Test
+	void wrongMethodIs405WithAllowHeader() throws Exception {
+		mvc().perform(put("/probe"))
+				.andExpect(status().isMethodNotAllowed())
+				.andExpect(header().exists(HttpHeaders.ALLOW))
+				.andExpect(jsonPath("$.status").value(405));
+	}
+
+	@Test
+	void wrongContentTypeIs415() throws Exception {
+		mvc().perform(post("/probe").contentType(MediaType.TEXT_PLAIN).content("x"))
+				.andExpect(status().isUnsupportedMediaType())
+				.andExpect(jsonPath("$.status").value(415));
+	}
+
+	@Test
+	void illegalStateDoesNotLeakItsMessage() {
+		ResponseEntity<Map<String, Object>> response =
+				handler.handleIllegalState(new IllegalStateException("secret bucket name"));
+
+		assertEquals(502, response.getStatusCode().value());
+		assertEquals("Upstream service failed", response.getBody().get("message"));
 	}
 }

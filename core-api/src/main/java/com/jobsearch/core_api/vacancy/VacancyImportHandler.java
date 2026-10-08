@@ -113,7 +113,14 @@ public class VacancyImportHandler implements JobHandler {
 	 */
 	@Override
 	public JobOutcome run(Job job) {
-		VacancyImportPayload payload = objectMapper.readValue(job.getPayload(), VacancyImportPayload.class);
+		VacancyImportPayload payload;
+		try {
+			payload = objectMapper.readValue(job.getPayload(), VacancyImportPayload.class);
+		}
+		catch (JacksonException ex) {
+			log.error("Vacancy import payload unreadable jobId={}", job.getId(), ex);
+			return new JobOutcome.Failed("bad_payload", "This request could not be processed.");
+		}
 		Vacancy existing = vacancyRepository.findByUserIdAndUrl(job.getUserId(), payload.url()).orElse(null);
 		if (existing != null) {
 			log.info("Vacancy import jobId={} found vacancyId={} for the URL, nothing to import",

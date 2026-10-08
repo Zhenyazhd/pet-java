@@ -84,15 +84,6 @@ public class AppProperties {
 		private int loginPerMinute = 10;
 		/** Max POST /api/auth/register attempts per client IP per minute (0 = disabled). */
 		private int registerPerMinute = 5;
-		/**
-		 * When true, read client IP from {@code X-Forwarded-For} (rightmost non-proxy address)
-		 * only if {@code request.getRemoteAddr()} is listed in {@link #trustedProxies}.
-		 * Keep false unless the API sits behind a reverse proxy (Vite/nginx) that appends to that header.
-		 * Enabling this without a trusted proxy lets clients spoof IPs and bypass the limit.
-		 */
-		private boolean trustForwardedHeaders = false;
-		/** Comma-separated proxy remote addresses allowed to supply forwarded client IPs. */
-		private String trustedProxies = "127.0.0.1,::1";
 
 		public int getLoginPerMinute() {
 			return loginPerMinute;
@@ -108,32 +99,6 @@ public class AppProperties {
 
 		public void setRegisterPerMinute(int registerPerMinute) {
 			this.registerPerMinute = registerPerMinute;
-		}
-
-		public boolean isTrustForwardedHeaders() {
-			return trustForwardedHeaders;
-		}
-
-		public void setTrustForwardedHeaders(boolean trustForwardedHeaders) {
-			this.trustForwardedHeaders = trustForwardedHeaders;
-		}
-
-		public String getTrustedProxies() {
-			return trustedProxies;
-		}
-
-		public void setTrustedProxies(String trustedProxies) {
-			this.trustedProxies = trustedProxies;
-		}
-
-		public List<String> trustedProxyList() {
-			if (trustedProxies == null || trustedProxies.isBlank()) {
-				return List.of();
-			}
-			return Arrays.stream(trustedProxies.split(","))
-					.map(String::strip)
-					.filter(ip -> !ip.isEmpty())
-					.toList();
 		}
 	}
 

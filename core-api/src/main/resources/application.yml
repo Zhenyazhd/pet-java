@@ -7,18 +7,24 @@ spring:
     virtual:
       enabled: true
   datasource:
-    url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:job_search}
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:job_search}
     username: ${POSTGRES_USER:zhenya}
     password: ${POSTGRES_PASSWORD}
+  lifecycle:
+    timeout-per-shutdown-phase: 40s
   jpa:
     hibernate:
       ddl-auto: validate
     open-in-view: false
 
 server:
-  # Set to "framework" only when deployed behind a trusted TLS-terminating
-  # reverse proxy (nginx/ALB) that sets X-Forwarded-Proto — otherwise clients
-  # could spoof the scheme. Default "none": safe when reachable directly.
+  # Let in-flight requests finish on deploy; the job dispatcher stops claiming in its own @PreDestroy.
+  shutdown: graceful
+  # Behind a trusted reverse proxy (nginx/ALB) set "native": Tomcat's RemoteIpValve then resolves the real
+  # client address (rightmost X-Forwarded-For entry not in SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES, a CIDR list or regex;
+  # default = private ranges) and the scheme from X-Forwarded-Proto. Do NOT use "framework": its
+  # ForwardedHeaderFilter takes the LEFTMOST (client-supplied) address, which defeats the auth rate limit.
+  # Default "none": safe when reachable directly.
   forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:none}
   servlet:
     session:
@@ -26,6 +32,18 @@ server:
         same-site: lax
         http-only: true
         secure: true
+
+management:
+  # Only health is exposed (liveness/readiness probes for the orchestrator); no details, no other endpoints.
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
 
 app:
   admin-email: ${APP_ADMIN_EMAIL:}
@@ -35,14 +53,7 @@ app:
   auth-rate-limit:
     login-per-minute: ${APP_AUTH_LOGIN_PER_MINUTE:10}
     register-per-minute: ${APP_AUTH_REGISTER_PER_MINUTE:5}
-    # Only honor X-Forwarded-For when peer ∈ trusted-proxies (Vite/nginx). The client is the
-    # rightmost address that is not a trusted proxy, so the proxy must append to the header.
-    # false = always use remoteAddr (safe if API is reachable without a reverse proxy).
-    trust-forwarded-headers: ${APP_AUTH_TRUST_FORWARDED_HEADERS:false}
-    trusted-proxies: ${APP_AUTH_TRUSTED_PROXIES:127.0.0.1,::1}
   expensive-ops-rate-limit:
-    # Shared budget for POST /api/ai/**, /api/vacancies/import and /api/resume/compile
-    # (per user / minute; 0 = off)
     per-user-per-minute: ${APP_EXPENSIVE_OPS_PER_USER_PER_MINUTE:10}
   open-router:
     api-key: ${OPENROUTER_API_KEY:}
@@ -57,8 +68,6 @@ app:
     base-url: ${ATS_SCREENER_BASE_URL:http://127.0.0.1:5174}
     timeout-seconds: ${ATS_SCREENER_TIMEOUT_SECONDS:180}
   latex-worker:
-    # tools/latex-worker — compiles resume PDFs; the token must match its WORKER_TOKEN
     base-url: ${LATEX_WORKER_BASE_URL:http://127.0.0.1:8090}
     token: ${LATEX_WORKER_TOKEN:}
-    # must exceed the worker's own 60s compile timeout
     read-timeout-seconds: ${LATEX_WORKER_READ_TIMEOUT_SECONDS:75}

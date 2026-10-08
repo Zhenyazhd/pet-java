@@ -19,6 +19,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -72,7 +73,14 @@ public class AtsMatchHandler implements JobHandler {
 
 	@Override
 	public JobOutcome run(Job job) {
-		AtsMatchPayload payload = objectMapper.readValue(job.getPayload(), AtsMatchPayload.class);
+		AtsMatchPayload payload;
+		try {
+			payload = objectMapper.readValue(job.getPayload(), AtsMatchPayload.class);
+		}
+		catch (JacksonException ex) {
+			log.error("ATS match payload unreadable jobId={}", job.getId(), ex);
+			return new JobOutcome.Failed("bad_payload", "This request could not be processed.");
+		}
 		return switch (screenerClient.fullScore(payload.resumeText(), payload.vacancyText())) {
 			case ScreenerResult.Report(JsonNode root) -> {
 				MatchResponse report = mapResponse(root);
@@ -91,8 +99,13 @@ public class AtsMatchHandler implements JobHandler {
 
 	/** Scoped to the job's owner: there is no logged-in user on the dispatcher thread. */
 	private void saveMatchPercent(long userId, long vacancyId, int averageScore) {
-		if (vacancyRepository.updateMatchPercent(vacancyId, userId, averageScore, Instant.now()) == 0) {
-			log.info("ATS match vacancy not found for job owner, matchPercent not saved vacancyId={} userId={}", vacancyId, userId);
+		try {
+			if (vacancyRepository.updateMatchPercent(vacancyId, userId, averageScore, Instant.now()) == 0) {
+				log.info("ATS match vacancy not found for job owner, matchPercent not saved vacancyId={} userId={}", vacancyId, userId);
+			}
+		}
+		catch (RuntimeException ex) {
+			log.error("ATS match percent not saved vacancyId={} userId={}", vacancyId, userId, ex);
 		}
 	}
 

@@ -3,6 +3,7 @@ package com.jobsearch.core_api.profile;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 public final class ProfileDtos {
 
@@ -17,9 +18,9 @@ public final class ProfileDtos {
 	}
 
 	public record ProfileRequest(
-			@NotBlank String displayName,
-			@NotBlank @Email String email,
-			@NotNull String careerPath
+			@NotBlank @Size(max = 255) String displayName,
+			@NotBlank @Email @Size(max = 255) String email,
+			@NotNull @Size(max = 20_000) String careerPath
 	) {
 	}
 }

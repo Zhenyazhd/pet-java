@@ -190,11 +190,26 @@ public class ResumeLatexRenderer {
 		return out.toString();
 	}
 
-	private static String escUrl(String value) {
+	static String escUrl(String value) {
 		if (value == null) {
 			return "";
 		}
-		return value.replace("\\", "").replace("{", "").replace("}", "").replace("#", "");
+		StringBuilder out = new StringBuilder(value.length());
+		for (int i = 0; i < value.length(); i++) {
+			int cp = value.codePointAt(i);
+			if (Character.charCount(cp) == 2) {
+				i++;
+			}
+			if (cp > 127) {
+				for (byte b : new String(Character.toChars(cp)).getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
+					out.append('%').append(String.format("%02X", b));
+				}
+			}
+			else if ("._~:/?&=%+@!,;()*'-".indexOf(cp) >= 0 || Character.isLetterOrDigit(cp)) {
+				out.append((char) cp);
+			}
+		}
+		return out.toString();
 	}
 
 	private static <T> List<T> nullToEmpty(List<T> values) {
