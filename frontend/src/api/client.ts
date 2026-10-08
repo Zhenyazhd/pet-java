@@ -1,21 +1,22 @@
 import type {
+  AiScope,
+  ChatTurn,
+  MatchResponse,
+  ResumeDocument,
+  SuggestResponse,
+} from './resumeTypes'
+import type {
   ApplicationStatus,
   AuthUser,
-  CompileJob,
+  Job,
   JobApplication,
   LoginRequest,
+  Profile,
   RegisterRequest,
   Vacancy,
   VacancyImportRequest,
-  VacancyRequest,
+  VacancyImportResult,
 } from './types'
-import type {
-  ChatTurn,
-  ResumeDocument,
-  AiScope,
-  SuggestResponse,
-  MatchResponse,
-} from '../types/resume'
 
 export class ApiError extends Error {
   readonly status: number
@@ -31,12 +32,7 @@ export function isUnauthorized(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401
 }
 
-/** CSRF rejection (invalid/missing token) — Spring Security returns 403. */
-export function isForbidden(error: unknown): boolean {
-  return error instanceof ApiError && error.status === 403
-}
-
-/** Optimistic-concurrency rejection (e.g. a stale resume save) — server returns 409. */
+/** A save rejected because the resume changed elsewhere (stale `version`). */
 export function isConflict(error: unknown): boolean {
   return error instanceof ApiError && error.status === 409
 }
@@ -45,34 +41,31 @@ type UnauthorizedListener = () => void
 
 let unauthorizedListener: UnauthorizedListener | null = null
 
-/** Register a handler for session expiry (401 on protected calls). */
 export function setUnauthorizedListener(listener: UnauthorizedListener | null): void {
   unauthorizedListener = listener
 }
 
 type RequestOptions = {
-  /** Do not notify global 401 handler (e.g. GET /api/auth/me while bootstrapping). */
   skipAuthRedirect?: boolean
-  /** Default JSON; use `blob` for binary endpoints (compiled PDF). */
-  responseType?: 'json' | 'blob'
+  signal?: AbortSignal
+  responseType?: 'blob'
 }
 
 function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name.replace(/[$()*+.?[\\\]^{|}]/g, '\\$&')}=([^;]*)`))
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
   return match ? decodeURIComponent(match[1]) : null
 }
 
-function readXsrfToken(): string | null {
-  return readCookie('XSRF-TOKEN')
-}
-
-/** Shared in-flight CSRF mint so parallel mutations don't fan out N GETs. */
 let csrfRefreshInFlight: Promise<void> | null = null
 
 async function refreshCsrfCookie(): Promise<void> {
   if (!csrfRefreshInFlight) {
     csrfRefreshInFlight = fetch('/api/auth/csrf', { credentials: 'include' })
-      .then(() => undefined)
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new ApiError(await readErrorMessage(response), response.status)
+        }
+      })
       .finally(() => {
         csrfRefreshInFlight = null
       })
@@ -80,74 +73,64 @@ async function refreshCsrfCookie(): Promise<void> {
   await csrfRefreshInFlight
 }
 
-/** Return the current XSRF token, minting a cookie first only if one is missing. After logout, call {@link refreshCsrfCookie} instead. */
-async function ensureCsrfCookie(): Promise<string | null> {
-  const existing = readXsrfToken()
+async function ensureCsrfToken(): Promise<string> {
+  const existing = readCookie('XSRF-TOKEN')
   if (existing) return existing
   await refreshCsrfCookie()
-  return readXsrfToken()
+  const token = readCookie('XSRF-TOKEN')
+  if (!token) throw new ApiError('CSRF token was not set', 403)
+  return token
 }
 
 function needsCsrf(method: string): boolean {
-  const m = method.toUpperCase()
-  return m !== 'GET' && m !== 'HEAD' && m !== 'OPTIONS' && m !== 'TRACE'
+  return !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method.toUpperCase())
 }
 
 async function readErrorMessage(response: Response): Promise<string> {
+  const fallback = `Request failed (${response.status})`
   const text = await response.text()
-  let message = `Request failed (${response.status})`
+  let data: unknown
   try {
-    const data = JSON.parse(text)
-    if (typeof data?.message === 'string') {
-      message = data.message
-    }
+    data = JSON.parse(text)
   } catch {
-    if (text) message = text
+    // Not JSON (e.g. a proxy error page): show short plain text, never markup.
+    return text && text.length <= 200 && !text.trimStart().startsWith('<') ? text : fallback
   }
-  return message
+  const { message, fields } = (data ?? {}) as { message?: unknown; fields?: unknown }
+  const details =
+    fields && typeof fields === 'object'
+      ? Object.values(fields).filter((v): v is string => typeof v === 'string')
+      : []
+  if (details.length > 0) return details.join('. ')
+  return typeof message === 'string' ? message : fallback
 }
 
-async function buildRequestHeaders(
-  method: string,
-  init: RequestInit | undefined,
-  options: RequestOptions | undefined,
-): Promise<Record<string, string>> {
-  const headers: Record<string, string> = {
-    ...(options?.responseType === 'blob' ? {} : { 'Content-Type': 'application/json' }),
-    ...(init?.headers as Record<string, string> | undefined),
-  }
+async function buildHeaders(method: string): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (needsCsrf(method)) {
-    const token = await ensureCsrfCookie()
-    if (token) {
-      headers['X-XSRF-TOKEN'] = token
-    }
+    headers['X-XSRF-TOKEN'] = await ensureCsrfToken()
   }
   return headers
 }
 
 async function request<T>(path: string, init?: RequestInit, options?: RequestOptions): Promise<T> {
   const method = init?.method ?? 'GET'
-
-  let response = await fetch(path, {
-    credentials: 'include',
-    ...init,
-    headers: await buildRequestHeaders(method, init, options),
-  })
-
-  // Stale/missing CSRF token: any mutation, not just logout, can hit this if the
-  // XSRF cookie expired or was cleared mid-session. Mint a fresh one and retry once.
-  if (response.status === 403 && needsCsrf(method)) {
-    await refreshCsrfCookie()
-    response = await fetch(path, {
+  const send = async () =>
+    fetch(path, {
       credentials: 'include',
       ...init,
-      headers: await buildRequestHeaders(method, init, options),
+      headers: await buildHeaders(method),
+      signal: options?.signal,
     })
+
+  let response = await send()
+
+  if (response.status === 403 && needsCsrf(method)) {
+    await refreshCsrfCookie()
+    response = await send()
   }
 
-  if (response.status === 204) {
-    return undefined as T
-  }
+  if (response.status === 204) return undefined as T
 
   if (!response.ok) {
     const message = await readErrorMessage(response)
@@ -157,149 +140,92 @@ async function request<T>(path: string, init?: RequestInit, options?: RequestOpt
     throw new ApiError(message, response.status)
   }
 
-  if (options?.responseType === 'blob') {
-    return (await response.blob()) as T
-  }
+  if (options?.responseType === 'blob') return (await response.blob()) as T
 
   const text = await response.text()
-  return (text ? JSON.parse(text) : null) as T
+  if (!text) return null as T
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw new ApiError(`Response was not valid JSON (${response.status})`, response.status)
+  }
 }
 
-export type Profile = {
-  displayName: string
-  email: string
-  careerPath: string
-}
+const json = (method: string, body: unknown): RequestInit => ({
+  method,
+  body: JSON.stringify(body),
+})
 
 export const api = {
-  ensureCsrf: () => ensureCsrfCookie(),
-  /** Force a new XSRF-TOKEN (required after logout — session invalidate leaves a stale cookie). */
-  refreshCsrf: () => refreshCsrfCookie(),
+  refreshCsrf: refreshCsrfCookie,
 
   getMe: () => request<AuthUser>('/api/auth/me', undefined, { skipAuthRedirect: true }),
 
   login: (body: LoginRequest) =>
-    request<AuthUser>(
-      '/api/auth/login',
-      {
-        method: 'POST',
-        body: JSON.stringify(body),
-      },
-      { skipAuthRedirect: true },
-    ),
+    request<AuthUser>('/api/auth/login', json('POST', body), { skipAuthRedirect: true }),
 
   register: (body: RegisterRequest) =>
-    request<AuthUser>(
-      '/api/auth/register',
-      {
-        method: 'POST',
-        body: JSON.stringify(body),
-      },
-      { skipAuthRedirect: true },
-    ),
+    request<AuthUser>('/api/auth/register', json('POST', body), { skipAuthRedirect: true }),
 
-  // POST logout is permitAll but still CSRF-protected — send X-XSRF-TOKEN.
-  // After success, refresh CSRF for the next anonymous session.
   logout: async () => {
-    await request<void>(
-      '/api/auth/logout',
-      {
-        method: 'POST',
-      },
-      { skipAuthRedirect: true },
-    )
-    await refreshCsrfCookie()
+    await request<void>('/api/auth/logout', { method: 'POST' }, { skipAuthRedirect: true })
+    try {
+      await refreshCsrfCookie()
+    } catch {
+      // The session is already closed. The next sign-in asks for a token again.
+    }
   },
-
-  listVacancies: () => request<Vacancy[]>('/api/vacancies'),
-
-  getVacancy: (id: number) => request<Vacancy>(`/api/vacancies/${id}`),
-
-  createVacancy: (body: VacancyRequest) =>
-    request<Vacancy>('/api/vacancies', {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
-
-  importVacancy: (body: VacancyImportRequest) =>
-    request<Vacancy>('/api/vacancies/import', {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
-
-  updateVacancy: (id: number, body: VacancyRequest) =>
-    request<Vacancy>(`/api/vacancies/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(body),
-    }),
-
-  deleteVacancy: (id: number) =>
-    request<void>(`/api/vacancies/${id}`, {
-      method: 'DELETE',
-    }),
-
-  createApplication: (vacancyId: number, status: ApplicationStatus, notes?: string) =>
-    request<JobApplication>('/api/applications', {
-      method: 'POST',
-      body: JSON.stringify({ vacancyId, status, notes: notes || null }),
-    }),
-
-  /** Omit `notes` to leave existing notes unchanged (status-only update). */
-  updateApplication: (id: number, status: ApplicationStatus, notes?: string) =>
-    request<JobApplication>(`/api/applications/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(notes === undefined ? { status } : { status, notes }),
-    }),
-
-  getResume: () => request<ResumeDocument>('/api/resume'),
-
-  saveResume: (resume: ResumeDocument) =>
-    request<ResumeDocument>('/api/resume', {
-      method: 'PUT',
-      body: JSON.stringify(resume),
-    }),
-
-  startCompile: () => request<CompileJob>('/api/resume/compile', { method: 'POST' }),
-
-  getCompileJob: (jobId: string) => request<CompileJob>(`/api/resume/compile/${jobId}`),
-
-  getCompiledPdf: (jobId: string) =>
-    request<Blob>(`/api/resume/compile/${jobId}/pdf`, undefined, { responseType: 'blob' }),
-
-  suggestResumeSection: (
-    section: AiScope,
-    instruction: string,
-    itemIndex?: number,
-    history?: ChatTurn[],
-    vacancyContext?: string,
-    model?: string,
-  ) =>
-    request<SuggestResponse>('/api/ai/resume/suggest', {
-      method: 'POST',
-      body: JSON.stringify({
-        section,
-        instruction,
-        ...(itemIndex === undefined ? {} : { itemIndex }),
-        ...(history && history.length > 0 ? { history } : {}),
-        ...(vacancyContext?.trim() ? { vacancyContext: vacancyContext.trim() } : {}),
-        ...(model?.trim() ? { model: model.trim() } : {}),
-      }),
-    }),
-
-  matchResume: (vacancyContext: string, vacancyId?: number) =>
-    request<MatchResponse>('/api/ai/resume/match', {
-      method: 'POST',
-      body: JSON.stringify({
-        vacancyContext: vacancyContext.trim(),
-        ...(vacancyId != null ? { vacancyId } : {}),
-      }),
-    }),
 
   getProfile: () => request<Profile>('/api/profile'),
 
-  saveProfile: (profile: Profile) =>
-    request<Profile>('/api/profile', {
-      method: 'PUT',
-      body: JSON.stringify(profile),
-    }),
+  saveProfile: (profile: Profile) => request<Profile>('/api/profile', json('PUT', profile)),
+
+  getResume: () => request<ResumeDocument>('/api/resume'),
+
+  saveResume: (resume: ResumeDocument) => request<ResumeDocument>('/api/resume', json('PUT', resume)),
+
+  startCompile: (signal?: AbortSignal) =>
+    request<Job<null>>('/api/resume/compile', { method: 'POST' }, { signal }),
+
+  getCompileJob: (jobId: string) => request<Job<null>>(`/api/resume/compile/${jobId}`),
+
+  getCompiledPdf: (jobId: string, signal?: AbortSignal) =>
+    request<Blob>(`/api/resume/compile/${jobId}/pdf`, undefined, { responseType: 'blob', signal }),
+
+  suggestResumeSection: (
+    body: {
+      section: AiScope
+      instruction: string
+      itemIndex?: number
+      history?: ChatTurn[]
+      vacancyContext?: string
+      model?: string
+    },
+    signal?: AbortSignal,
+  ) => request<SuggestResponse>('/api/ai/resume/suggest', json('POST', body), { signal }),
+
+  startMatch: (vacancyContext: string, vacancyId: number | null, signal?: AbortSignal) =>
+    request<Job<MatchResponse>>(
+      '/api/ai/resume/match',
+      json('POST', { vacancyContext, ...(vacancyId === null ? {} : { vacancyId }) }),
+      { signal },
+    ),
+
+  getMatchJob: (jobId: string) => request<Job<MatchResponse>>(`/api/ai/resume/match/${jobId}`),
+
+  listVacancies: () => request<Vacancy[]>('/api/vacancies'),
+
+  deleteVacancy: (id: number) => request<void>(`/api/vacancies/${id}`, { method: 'DELETE' }),
+
+  startVacancyImport: (body: VacancyImportRequest) =>
+    request<Job<VacancyImportResult>>('/api/vacancies/import', json('POST', body)),
+
+  getVacancyImportJob: (jobId: string) =>
+    request<Job<VacancyImportResult>>(`/api/vacancies/import/${jobId}`),
+
+  createApplication: (vacancyId: number, status: ApplicationStatus) =>
+    request<JobApplication>('/api/applications', json('POST', { vacancyId, status })),
+
+  updateApplication: (id: number, changes: { status: ApplicationStatus; notes?: string }) =>
+    request<JobApplication>(`/api/applications/${id}`, json('PUT', changes)),
 }

@@ -1,405 +1,162 @@
-import { removeAt, setAt, updateAt } from '../../lib/list'
-import { isSelected } from '../../lib/resumeFocus'
-import { resolveLocale, SECTION_TITLES } from '../../lib/resumeLocale'
-import type { ResumeDocument, ResumeSection, Selection } from '../../types/resume'
+import { LIMITS } from '../../lib/resume/limits'
+import { EMPTY_ITEMS, type EditableResume } from '../../lib/resume/editable'
+import { SECTION_TITLES } from '../../lib/resume/locale'
+import type { Selection } from '../../lib/resume/selection'
+import { CvBlock } from './CvBlock'
 import { CvField } from './CvField'
-import { CvSection } from './CvSection'
+import { ExperienceEditor } from './ExperienceEditor'
+import { ListEditor } from './ListEditor'
 
 type CvSheetProps = {
-  resume: ResumeDocument
+  resume: EditableResume
   selected: Selection | null
-  onClearFocus: () => void
-  onSelect: (section: ResumeSection, itemIndex?: number, e?: { stopPropagation(): void }) => void
-  onPatch: (updater: (current: ResumeDocument) => ResumeDocument) => void
+  onSelect: (selection: Selection) => void
+  onPatch: (updater: (current: EditableResume) => EditableResume) => void
 }
 
-export function CvSheet({ resume, selected, onClearFocus, onSelect, onPatch }: CvSheetProps) {
-  const titles = SECTION_TITLES[resolveLocale(resume.locale)]
+export function CvSheet({ resume, selected, onSelect, onPatch }: CvSheetProps) {
+  const titles = SECTION_TITLES[resume.locale]
+  const isActive = (section: Selection['section'], rowKey?: string) =>
+    selected?.section === section && selected.rowKey === rowKey
+  const set = <K extends keyof EditableResume>(key: K, value: EditableResume[K]) =>
+    onPatch((current) => ({ ...current, [key]: value }))
 
   return (
-    <article className="cv-sheet" onClick={onClearFocus}>
-      <div
-        role="button"
-        tabIndex={0}
-        className={`cv-block ${isSelected(selected, 'header') ? 'cv-block--active' : ''}`}
-        onClick={(e) => onSelect('header', undefined, e)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') onSelect('header')
-        }}
+    <article className="cv-sheet" lang={resume.locale} aria-label="Your CV">
+      <CvBlock
+        target="Header"
+        active={isActive('header')}
+        onFocus={() => onSelect({ section: 'header' })}
       >
-        <CvField
-          className="cv-name"
-          value={resume.name}
-          label="Full name"
-          onChange={(name) => onPatch((r) => ({ ...r, name }))}
-        />
-        <CvField
-          className="cv-headline"
-          value={resume.headline}
-          label="Headline"
-          onChange={(headline) => onPatch((r) => ({ ...r, headline }))}
-        />
+        <CvField className="cv-name" value={resume.name} label="Full name" maxLength={LIMITS.name} required placeholder="Full name" onChange={(v) => set('name', v)} />
+        <CvField className="cv-headline" value={resume.headline} label="Headline" maxLength={LIMITS.headline} placeholder="Headline" onChange={(v) => set('headline', v)} />
         <div className="cv-contacts">
-          <CvField
-            value={resume.phone}
-            label="Phone"
-            onChange={(phone) => onPatch((r) => ({ ...r, phone }))}
-          />
-          <span>|</span>
-          <CvField
-            value={resume.email}
-            label="Email"
-            onChange={(email) => onPatch((r) => ({ ...r, email }))}
-          />
-          <span>|</span>
-          <CvField
-            value={resume.linkedinLabel}
-            label="LinkedIn"
-            onChange={(linkedinLabel) => onPatch((r) => ({ ...r, linkedinLabel }))}
-          />
+          <CvField value={resume.phone} label="Phone" maxLength={LIMITS.phone} placeholder="Phone" onChange={(v) => set('phone', v)} />
+          <CvField value={resume.email} label="Email" maxLength={LIMITS.email} placeholder="Email" onChange={(v) => set('email', v)} />
+          <div className="cv-contact">
+            <span className="cv-caption small-caps" aria-hidden="true">
+              LinkedIn text
+            </span>
+            <CvField
+              value={resume.linkedinLabel}
+              label="LinkedIn text, shown on the CV"
+              maxLength={LIMITS.linkedinLabel}
+              placeholder="linkedin.com/in/your-name"
+              onChange={(v) => set('linkedinLabel', v)}
+            />
+          </div>
+          <div className="cv-contact">
+            <span className="cv-caption small-caps" aria-hidden="true">
+              LinkedIn link
+            </span>
+            <CvField
+              value={resume.linkedinUrl}
+              label="LinkedIn link, where the text leads"
+              maxLength={LIMITS.linkedinUrl}
+              placeholder="https://www.linkedin.com/in/your-name"
+              onChange={(v) => set('linkedinUrl', v)}
+            />
+          </div>
         </div>
-      </div>
+      </CvBlock>
 
-      <CvSection
+      <CvBlock
         title={titles.profile}
-        active={isSelected(selected, 'profile')}
-        onSelect={(e) => onSelect('profile', undefined, e)}
+        target="Profile"
+        active={isActive('profile')}
+        onFocus={() => onSelect({ section: 'profile' })}
       >
-        <CvField
-          multiline
-          className="cv-body"
-          value={resume.profile}
-          label="Profile summary"
-          onChange={(profile) => onPatch((r) => ({ ...r, profile }))}
+        <CvField multiline value={resume.profile} label="Profile summary" maxLength={LIMITS.profile} onChange={(v) => set('profile', v)} />
+      </CvBlock>
+
+      <CvBlock
+        title={titles.experience}
+        target="all experience"
+        active={isActive('experience')}
+        onFocus={() => onSelect({ section: 'experience' })}
+      >
+        <ListEditor
+          items={resume.experience}
+          noun="job"
+          create={EMPTY_ITEMS.experience}
+          max={LIMITS.jobs}
+          onChange={(items) => set('experience', items)}
+          focus={{
+            isActive: (index) => isActive('experience', resume.experience[index].key),
+            onFocus: (index) =>
+              onSelect({ section: 'experience', rowKey: resume.experience[index].key }),
+            target: (index) => resume.experience[index].title || `job ${index + 1}`,
+          }}
+          renderItem={(job, index, update) => (
+            <ExperienceEditor job={job} position={index + 1} update={update} />
+          )}
         />
-      </CvSection>
+      </CvBlock>
 
-      <div className="cv-section">
-        <h2 className="cv-section__title">{titles.experience}</h2>
-        {resume.experience.map((job, index) => (
-          <div
-            key={index}
-            role="button"
-            tabIndex={0}
-            className={`cv-block cv-entry ${
-              isSelected(selected, 'experience', index) ? 'cv-block--active' : ''
-            }`}
-            onClick={(e) => onSelect('experience', index, e)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') onSelect('experience', index)
-            }}
-          >
-            <div className="cv-entry__row">
-              <CvField
-                className="cv-entry__title"
-                value={job.title}
-                label={`Job ${index + 1} title`}
-                onChange={(title) =>
-                  onPatch((r) => ({
-                    ...r,
-                    experience: updateAt(r.experience, index, { title }),
-                  }))
-                }
-              />
-              <CvField
-                className="cv-entry__dates"
-                value={job.dates}
-                label={`Job ${index + 1} dates`}
-                onChange={(dates) =>
-                  onPatch((r) => ({
-                    ...r,
-                    experience: updateAt(r.experience, index, { dates }),
-                  }))
-                }
-              />
-            </div>
-            <CvField
-              className="cv-entry__sub"
-              value={job.subtitle}
-              label={`Job ${index + 1} company / location`}
-              onChange={(subtitle) =>
-                onPatch((r) => ({
-                  ...r,
-                  experience: updateAt(r.experience, index, { subtitle }),
-                }))
-              }
-            />
-            <ul className="cv-list">
-              {job.bullets.map((bullet, bIndex) => (
-                <li key={bIndex} className="cv-list__item">
-                  <CvField
-                    multiline
-                    className="cv-body"
-                    value={bullet}
-                    label={`Job ${index + 1} bullet ${bIndex + 1}`}
-                    onChange={(text) =>
-                      onPatch((r) => ({
-                        ...r,
-                        experience: updateAt(r.experience, index, {
-                          bullets: setAt(r.experience[index].bullets, bIndex, text),
-                        }),
-                      }))
-                    }
-                  />
-                  <button
-                    type="button"
-                    className="cv-icon-btn"
-                    title="Remove bullet"
-                    aria-label={`Remove job ${index + 1} bullet ${bIndex + 1}`}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onPatch((r) => ({
-                        ...r,
-                        experience: updateAt(r.experience, index, {
-                          bullets: removeAt(r.experience[index].bullets, bIndex),
-                        }),
-                      }))
-                    }}
-                  >
-                    ×
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              className="cv-add"
-              onClick={(e) => {
-                e.stopPropagation()
-                onPatch((r) => ({
-                  ...r,
-                  experience: updateAt(r.experience, index, {
-                    bullets: [...r.experience[index].bullets, ''],
-                  }),
-                }))
-              }}
-            >
-              + bullet
-            </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          className="cv-add"
-          onClick={(e) => {
-            e.stopPropagation()
-            onPatch((r) => ({
-              ...r,
-              experience: [
-                ...r.experience,
-                { title: 'New role', subtitle: '', dates: '', bullets: [''] },
-              ],
-            }))
-          }}
-        >
-          + job
-        </button>
-      </div>
-
-      <CvSection
+      <CvBlock
         title={titles.education}
-        active={isSelected(selected, 'education')}
-        onSelect={(e) => onSelect('education', undefined, e)}
+        target="Education"
+        active={isActive('education')}
+        onFocus={() => onSelect({ section: 'education' })}
       >
-        {resume.education.map((edu, index) => (
-          <div key={index} className="cv-entry">
-            <div className="cv-entry__row">
-              <CvField
-                className="cv-entry__title"
-                value={edu.title}
-                label={`School ${index + 1} name`}
-                onChange={(title) =>
-                  onPatch((r) => ({
-                    ...r,
-                    education: updateAt(r.education, index, { title }),
-                  }))
-                }
-              />
-              <CvField
-                className="cv-entry__dates"
-                value={edu.location}
-                label={`School ${index + 1} location`}
-                onChange={(location) =>
-                  onPatch((r) => ({
-                    ...r,
-                    education: updateAt(r.education, index, { location }),
-                  }))
-                }
-              />
-            </div>
-            <CvField
-              className="cv-entry__sub"
-              value={edu.subtitle}
-              label={`School ${index + 1} degree / field`}
-              onChange={(subtitle) =>
-                onPatch((r) => ({
-                  ...r,
-                  education: updateAt(r.education, index, { subtitle }),
-                }))
-              }
-            />
-            <CvField
-              multiline
-              className="cv-body cv-body--small"
-              value={edu.details}
-              label={`School ${index + 1} details`}
-              onChange={(details) =>
-                onPatch((r) => ({
-                  ...r,
-                  education: updateAt(r.education, index, { details }),
-                }))
-              }
-            />
-          </div>
-        ))}
-        <button
-          type="button"
-          className="cv-add"
-          onClick={(e) => {
-            e.stopPropagation()
-            onPatch((r) => ({
-              ...r,
-              education: [
-                ...r.education,
-                { title: 'New school', subtitle: '', location: '', details: '' },
-              ],
-            }))
-          }}
-        >
-          + education
-        </button>
-      </CvSection>
+        <ListEditor
+          items={resume.education}
+          noun="education entry"
+          create={EMPTY_ITEMS.education}
+          max={LIMITS.education}
+          onChange={(items) => set('education', items)}
+          renderItem={(entry, index, update) => (
+            <>
+              <CvField className="cv-entry__title" value={entry.title} label={`Education ${index + 1} title`} maxLength={LIMITS.title} required placeholder="Degree" onChange={(title) => update({ title })} />
+              <CvField className="cv-entry__sub" value={entry.subtitle} label={`Education ${index + 1} school`} maxLength={LIMITS.subtitle} placeholder="School" onChange={(subtitle) => update({ subtitle })} />
+              <CvField value={entry.location} label={`Education ${index + 1} location`} maxLength={LIMITS.location} placeholder="Location" onChange={(location) => update({ location })} />
+              <CvField multiline value={entry.details} label={`Education ${index + 1} details`} maxLength={LIMITS.details} placeholder="Details" onChange={(details) => update({ details })} />
+            </>
+          )}
+        />
+      </CvBlock>
 
-      <CvSection
+      <CvBlock
         title={titles.achievements}
-        active={isSelected(selected, 'achievements')}
-        onSelect={(e) => onSelect('achievements', undefined, e)}
+        target="Achievements"
+        active={isActive('achievements')}
+        onFocus={() => onSelect({ section: 'achievements' })}
       >
-        <ul className="cv-list">
-          {resume.achievements.map((item, index) => (
-            <li key={index} className="cv-list__item cv-achievement">
-              <div className="cv-list__grow">
-                <CvField
-                  className="cv-entry__title"
-                  value={item.title}
-                  label={`Achievement ${index + 1} title`}
-                  onChange={(title) =>
-                    onPatch((r) => ({
-                      ...r,
-                      achievements: updateAt(r.achievements, index, { title }),
-                    }))
-                  }
-                />
-                <CvField
-                  multiline
-                  className="cv-body"
-                  value={item.text}
-                  label={`Achievement ${index + 1} description`}
-                  onChange={(text) =>
-                    onPatch((r) => ({
-                      ...r,
-                      achievements: updateAt(r.achievements, index, { text }),
-                    }))
-                  }
-                />
-              </div>
-              <button
-                type="button"
-                className="cv-icon-btn"
-                title="Remove"
-                aria-label={`Remove achievement ${index + 1}`}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onPatch((r) => ({
-                    ...r,
-                    achievements: removeAt(r.achievements, index),
-                  }))
-                }}
-              >
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
-        <button
-          type="button"
-          className="cv-add"
-          onClick={(e) => {
-            e.stopPropagation()
-            onPatch((r) => ({
-              ...r,
-              achievements: [...r.achievements, { title: 'New', text: '' }],
-            }))
-          }}
-        >
-          + achievement
-        </button>
-      </CvSection>
+        <ListEditor
+          items={resume.achievements}
+          noun="achievement"
+          create={EMPTY_ITEMS.achievements}
+          max={LIMITS.achievements}
+          onChange={(items) => set('achievements', items)}
+          renderItem={(item, index, update) => (
+            <>
+              <CvField className="cv-entry__title" value={item.title} label={`Achievement ${index + 1} title`} maxLength={LIMITS.title} required placeholder="Title" onChange={(title) => update({ title })} />
+              <CvField multiline value={item.text} label={`Achievement ${index + 1} text`} maxLength={LIMITS.text} placeholder="What you achieved" onChange={(text) => update({ text })} />
+            </>
+          )}
+        />
+      </CvBlock>
 
-      <CvSection
+      <CvBlock
         title={titles.skills}
-        active={isSelected(selected, 'skills')}
-        onSelect={(e) => onSelect('skills', undefined, e)}
+        target="Skills"
+        active={isActive('skills')}
+        onFocus={() => onSelect({ section: 'skills' })}
       >
-        <ul className="cv-list cv-list--skills">
-          {resume.skills.map((skill, index) => (
-            <li key={index} className="cv-list__item cv-skill">
-              <div className="cv-list__grow">
-                <CvField
-                  className="cv-entry__title"
-                  value={skill.category}
-                  label={`Skill group ${index + 1} category`}
-                  onChange={(category) =>
-                    onPatch((r) => ({
-                      ...r,
-                      skills: updateAt(r.skills, index, { category }),
-                    }))
-                  }
-                />
-                <CvField
-                  className="cv-body"
-                  value={skill.items}
-                  label={`Skill group ${index + 1} items`}
-                  onChange={(items) =>
-                    onPatch((r) => ({
-                      ...r,
-                      skills: updateAt(r.skills, index, { items }),
-                    }))
-                  }
-                />
-              </div>
-              <button
-                type="button"
-                className="cv-icon-btn"
-                title="Remove"
-                aria-label={`Remove skill group ${index + 1}`}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onPatch((r) => ({
-                    ...r,
-                    skills: removeAt(r.skills, index),
-                  }))
-                }}
-              >
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
-        <button
-          type="button"
-          className="cv-add"
-          onClick={(e) => {
-            e.stopPropagation()
-            onPatch((r) => ({
-              ...r,
-              skills: [...r.skills, { category: 'New', items: '' }],
-            }))
-          }}
-        >
-          + skill
-        </button>
-      </CvSection>
+        <ListEditor
+          items={resume.skills}
+          noun="skill group"
+          create={EMPTY_ITEMS.skills}
+          max={LIMITS.skills}
+          onChange={(items) => set('skills', items)}
+          renderItem={(item, index, update) => (
+            <div>
+              <CvField className="cv-skill__category" value={item.category} label={`Skill group ${index + 1} name`} maxLength={LIMITS.category} required placeholder="Category" onChange={(category) => update({ category })} />
+              <CvField multiline value={item.items} label={`Skill group ${index + 1} skills`} maxLength={LIMITS.items} placeholder="Skills, comma separated" onChange={(items) => update({ items })} />
+            </div>
+          )}
+        />
+      </CvBlock>
     </article>
   )
 }

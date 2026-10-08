@@ -1,118 +1,166 @@
-import { useEffect, useState } from 'react'
-import { api, type Profile } from '../api/client'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { api } from '../api/client'
+import type { Profile } from '../api/types'
+import { useAuth } from '../auth/AuthContext'
 import { Banner } from '../components/ui/Banner'
 import { Button } from '../components/ui/Button'
+import { Field, TextAreaField } from '../components/ui/Field'
 import { PageHeader } from '../components/ui/PageHeader'
-import { ProfileField } from '../components/ui/ProfileField'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
+
+const CAREER_PATH_MAX = 20_000
+const EMPTY: Profile = { displayName: '', email: '', careerPath: '' }
 
 export function ProfilePage() {
-  const [profile, setProfile] = useState<Profile>({
-    displayName: '',
-    email: '',
-    careerPath: '',
-  })
+  useDocumentTitle('Profile')
+  const { updateUser } = useAuth()
+  const [profile, setProfile] = useState<Profile>(EMPTY)
+  const [saved, setSaved] = useState<Profile>(EMPTY)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [justSaved, setJustSaved] = useState(false)
 
-  useEffect(() => {
+  const dirty =
+    profile.displayName !== saved.displayName ||
+    profile.email !== saved.email ||
+    profile.careerPath !== saved.careerPath
+
+  const load = useCallback(() => {
     let cancelled = false
-    ;(async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const data = await api.getProfile()
-        if (!cancelled) setProfile(data)
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load profile')
-        }
-      } finally {
+    setLoading(true)
+    setLoadError(null)
+    api
+      .getProfile()
+      .then((data) => {
+        if (cancelled) return
+        setProfile(data)
+        setSaved(data)
+      })
+      .catch((err) => {
+        if (!cancelled)
+          setLoadError(err instanceof Error ? err.message : 'Failed to load the profile')
+      })
+      .finally(() => {
         if (!cancelled) setLoading(false)
-      }
-    })()
+      })
     return () => {
       cancelled = true
     }
   }, [])
 
+  useEffect(() => load(), [load])
+
+  useEffect(() => {
+    if (!dirty) return
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault()
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
+
   function update<K extends keyof Profile>(key: K, value: Profile[K]) {
     setProfile((prev) => ({ ...prev, [key]: value }))
-    setSaved(false)
+    setJustSaved(false)
   }
 
-  async function save() {
+  const disabled = loading || saving
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault()
+    if (disabled || !dirty) return
     setSaving(true)
-    setError(null)
-    setSaved(false)
+    setSaveError(null)
+    setJustSaved(false)
     try {
-      const data = await api.saveProfile(profile)
+      const data = await api.saveProfile({
+        ...profile,
+        displayName: profile.displayName.trim(),
+        email: profile.email.trim(),
+      })
       setProfile(data)
-      setSaved(true)
+      setSaved(data)
+      updateUser({ displayName: data.displayName, email: data.email })
+      setJustSaved(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save profile')
+      setSaveError(err instanceof Error ? err.message : 'Failed to save the profile')
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <section className="page profile-page">
+    <section className="page" aria-labelledby="profile-title">
       <PageHeader
         eyebrow="Account"
-        title="My Profile"
-        lead="Your identity and career narrative — used as context when AI edits the resume."
-        actions={
-          <Button onClick={save} disabled={loading || saving}>
-            {saving ? 'Saving…' : 'Save'}
-          </Button>
-        }
+        title="Your profile"
+        titleId="profile-title"
+        lead="Who you are and where you have been. This is the context AI will draw on when it drafts and tailors your resume."
       />
 
-      {error && <Banner tone="error">{error}</Banner>}
-      {saved && !error && <Banner tone="ok">Saved.</Banner>}
-
-      <div className="profile-identity">
-        <ProfileField
-          label="Name"
-          value={profile.displayName}
-          onChange={(e) => update('displayName', e.target.value)}
-          disabled={loading}
-          placeholder="Your name"
-          autoComplete="name"
-        />
-        <ProfileField
-          label="Email"
-          type="email"
-          value={profile.email}
-          onChange={(e) => update('email', e.target.value)}
-          disabled={loading}
-          placeholder="you@example.com"
-          autoComplete="email"
-        />
-      </div>
-
-      <div className="profile-career-section">
-        <div className="profile-career-section__intro">
-          <span className="profile-field__label">Career path</span>
-          <p className="profile-career-section__hint">
-            Describe your background in full — roles, projects, studies, skills and transitions.
-            The more complete this story is, the better AI can draft and tailor your CV later.
-          </p>
+      {loadError ? (
+        <div className="stack">
+          <Banner tone="error">{loadError}</Banner>
+          <div>
+            <Button variant="outline" onClick={load}>
+              Try again
+            </Button>
+          </div>
         </div>
-        <div className="profile-career">
-          <textarea
-            className="career-editor"
+      ) : (
+        <form className="profile" onSubmit={onSubmit} aria-busy={loading}>
+          <div className="profile__identity">
+            <Field
+              label="Name"
+              type="text"
+              autoComplete="name"
+              value={profile.displayName}
+              onChange={(e) => update('displayName', e.target.value)}
+              disabled={loading}
+              readOnly={saving}
+              maxLength={255}
+              required
+            />
+            <Field
+              label="Email"
+              type="email"
+              autoComplete="email"
+              value={profile.email}
+              onChange={(e) => update('email', e.target.value)}
+              disabled={loading}
+              readOnly={saving}
+              maxLength={255}
+              required
+            />
+          </div>
+
+          <hr className="rule" />
+
+          <TextAreaField
+            label="Career path"
+            hint="Roles, projects, studies, skills and the turns between them. The fuller the story, the better the drafts."
+            counter={`${profile.careerPath.length.toLocaleString('en-US')} / ${CAREER_PATH_MAX.toLocaleString('en-US')}`}
             value={profile.careerPath}
             onChange={(e) => update('careerPath', e.target.value)}
             disabled={loading}
-            placeholder="Example: 2019–2022 backend engineer at X… then moved to Y… studied Z… currently looking for…"
-            spellCheck={true}
-            aria-label="Career path"
+              readOnly={saving}
+            maxLength={CAREER_PATH_MAX}
+            placeholder="2019–2022 backend engineer at X, then moved to Y after studying Z. Now looking for…"
           />
-        </div>
-      </div>
+
+          {saveError && <Banner tone="error">{saveError}</Banner>}
+          <div role="status">
+            {justSaved && !saveError && <Banner tone="ok">Profile saved.</Banner>}
+          </div>
+
+          <div className="profile__actions">
+            <Button type="submit" aria-disabled={disabled || !dirty}>
+              {saving ? 'Saving…' : 'Save profile'}
+            </Button>
+            {dirty && !saving && <span className="status-text profile__dirty">Unsaved changes</span>}
+          </div>
+        </form>
+      )}
     </section>
   )
 }

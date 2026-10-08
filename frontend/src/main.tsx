@@ -2,11 +2,15 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import './styles.css'
+import './styles/tokens.css'
+import './styles/base.css'
+import './styles/components.css'
+import './styles/vacancies.css'
+import './styles/resume.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ErrorBoundary fatal hint="The app hit an unexpected error. Reloading usually fixes it.">
+    <ErrorBoundary>
       <App />
     </ErrorBoundary>
   </StrictMode>,
