@@ -34,7 +34,9 @@ public final class AiDtos {
 			String section,
 			Integer itemIndex,
 			String message,
-			JsonNode proposed
+			JsonNode proposed,
+			/** The model offered an edit that could not be used; {@code message} says so in English. */
+			boolean proposalRejected
 	) {
 	}
 }
