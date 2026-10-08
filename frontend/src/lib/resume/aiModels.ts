@@ -13,6 +13,7 @@ export const AI_MODELS: AiModelOption[] = [
   { id: 'deepseek/deepseek-chat', label: 'DeepSeek Chat' },
 ]
 
+const DEFAULT_MODEL = 'deepseek/deepseek-chat'
 const STORAGE_KEY = 'job-search:ai-model'
 
 export function readAiModel(): string {
@@ -22,7 +23,7 @@ export function readAiModel(): string {
   } catch {
     // storage unavailable: fall back to the default
   }
-  return AI_MODELS[0].id
+  return DEFAULT_MODEL
 }
 
 export function writeAiModel(model: string): void {

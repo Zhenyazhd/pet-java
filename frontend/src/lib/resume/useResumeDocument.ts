@@ -67,7 +67,7 @@ export function useResumeDocument() {
         setRestored(decision === 'restore')
         setStaleDraft(decision === 'stale' ? draft : null)
         markEdited(decision === 'restore')
-        if (decision === 'restore') setStatus('Restored your unsaved draft.')
+        if (decision === 'restore') setStatus('Your unsaved edits are back on the sheet.')
         return true
       } catch (err) {
         if (seq === loadSeq.current) setLoadError(errorMessage(err, 'Failed to load the CV'))

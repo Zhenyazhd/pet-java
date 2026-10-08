@@ -38,7 +38,8 @@ function parseOptionalStrings<K extends string>(raw: Record<string, unknown>, na
   const fields: Partial<Record<K, string>> = {}
   for (const name of names) {
     const value = raw[name]
-    if (value === undefined) continue
+    // A model told to "leave unknown fields empty" often answers null: that is absent, not malformed.
+    if (value === undefined || value === null) continue
     if (typeof value !== 'string') return null
     fields[name] = value
   }
@@ -107,6 +108,18 @@ const withKeys = (items: ListItem[]): Keyed<ListItem>[] =>
 
 const listFromAll = (lists: WholeLists, section: ListSection) => withKeys(lists[section])
 
+/**
+ * For a CV written from scratch: a header field or the summary the reply leaves out becomes empty,
+ * so it cannot keep the template's placeholder ("you@example.com") on the sheet.
+ */
+export function blankAbsentFields(change: ProposalChange): ProposalChange {
+  if (change.section !== 'all') return change
+  const blank: HeaderFields & { profile?: string } = {}
+  for (const name of [...HEADER_FIELDS, 'profile'] as const) blank[name] = ''
+  return { ...change, fields: { ...blank, ...change.fields } }
+}
+
+/** Returns the same object when the change cannot land (its row is gone). */
 export function applyProposal(resume: EditableResume, change: ProposalChange): EditableResume {
   switch (change.section) {
     case 'all':

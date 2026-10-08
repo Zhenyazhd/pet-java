@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { AI_MODELS } from '../../lib/resume/aiModels'
 import { LIMITS } from '../../lib/resume/limits'
-import type { ChatItem } from '../../lib/resume/useResumeAi'
+import type { ChatItem, SendResult } from '../../lib/resume/useResumeAi'
 import { Banner } from '../ui/Banner'
 import { Button } from '../ui/Button'
 import { ChatMessage } from './ChatMessage'
@@ -18,7 +18,7 @@ type AiPanelProps = {
   holdSend: string | null
   onWholeCv: () => void
   onModelChange: (model: string) => void
-  onSend: (instruction: string) => Promise<boolean>
+  onSend: (instruction: string) => Promise<SendResult>
   onStop: () => void
   onApply: (id: number) => void
   onDismiss: (id: number) => void
@@ -60,7 +60,7 @@ export function AiPanel({
     if (busy || holdSend || !draft.trim()) return
     const text = draft
     setDraft('')
-    void onSend(text).then((answered) => {
+    void onSend(text).then(({ answered }) => {
       if (!answered) setDraft((current) => (current === '' ? text : current))
     })
   }

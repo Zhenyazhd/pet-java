@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { CreateCvCard } from '../components/resume/CreateCvCard'
 import { CvSheet } from '../components/resume/CvSheet'
 import { AiPanel } from '../components/resume/AiPanel'
 import { MatchPanel } from '../components/resume/MatchPanel'
@@ -9,6 +10,11 @@ import { VacancyPicker } from '../components/resume/VacancyPicker'
 import { Banner } from '../components/ui/Banner'
 import { Button } from '../components/ui/Button'
 import { PageHeader } from '../components/ui/PageHeader'
+import {
+  CREATE_FROM_PROFILE_INSTRUCTION,
+  CREATE_FROM_PROFILE_SHOWN_AS,
+  shouldOfferCreate,
+} from '../lib/resume/createFromProfile'
 import { focusLabel } from '../lib/resume/focus'
 import { sameTarget } from '../lib/resume/selection'
 import { buildVacancyContext } from '../lib/vacancies/vacancyContext'
@@ -24,7 +30,7 @@ function PageIntro() {
       eyebrow="Curriculum"
       title="Your CV"
       titleId="resume-title"
-      lead="Edit the sheet in place, or point the AI at a block and apply what it proposes. Nothing changes until you press Apply, and nothing is stored until you save."
+      lead="Edit the sheet in place, or point the AI at a block. Its suggestions wait for your Apply, and nothing is stored until you save."
     />
   )
 }
@@ -58,10 +64,31 @@ export function ResumePage() {
   }, [requestedId, resetChat, resetMatch])
 
   const { announce } = doc
+  const [createFailure, setCreateFailure] = useState<string | null>(null)
   useEffect(() => {
     if (jobs.pdfNote) announce(jobs.pdfNote)
   }, [jobs.pdfNote, announce])
 
+  async function createCv() {
+    setCreateFailure(null)
+    const result = await ai.send(CREATE_FROM_PROFILE_INSTRUCTION, {
+      shownAs: CREATE_FROM_PROFILE_SHOWN_AS,
+      wholeCv: true,
+      applyAtOnce: true,
+    })
+    // No reply and no reason means the user stopped it or changed vacancy: nothing to report.
+    if (!result.applied && (result.answered || result.problem)) {
+      setCreateFailure(
+        result.problem
+          ? result.waiting
+            ? result.problem
+            : `Could not create the CV: ${result.problem}`
+          : 'The CV was not put on the sheet. Check the AI panel for the reply.',
+      )
+    }
+  }
+
+  // The pressed banner button unmounts: say what happened and keep the keyboard on the page.
   function afterBannerAction(message: string) {
     announce(message)
     document.getElementById('resume-title')?.focus({ preventScroll: true })
@@ -102,6 +129,11 @@ export function ResumePage() {
   const resume = doc.resume
   const selected = ai.selected
   const conflictBlocked = doc.conflict
+  const sendHold = conflictBlocked
+    ? 'Reload the latest CV to continue.'
+    : requestedId !== null && vacanciesLoading
+      ? 'Loading the vacancy…'
+      : null
 
   return (
     <section className="page resume-page" aria-labelledby="resume-title">
@@ -143,34 +175,38 @@ export function ResumePage() {
         {doc.staleDraft && (
           <Banner tone="error">
             <p>
-              A draft saved in this browser is based on an older version of the CV: it was saved
-              elsewhere since. Restore the draft over the current version, or discard it.
+              This browser holds edits you made to an older version of your CV. The CV has been saved
+              again since, for example in another tab, so putting these edits on the sheet replaces
+              that newer version.
             </p>
             <Button
               variant="outline"
               onClick={() => {
                 doc.restoreStaleDraft()
-                afterBannerAction('Draft restored over the current version.')
+                afterBannerAction('Your edits are on the sheet.')
               }}
             >
-              Restore draft
+              Put my edits on the sheet
             </Button>{' '}
             <Button
               variant="ghost"
               onClick={() => {
                 doc.dropStaleDraft()
-                afterBannerAction('Draft discarded.')
+                afterBannerAction('Edits deleted.')
               }}
             >
-              Discard draft
+              Delete these edits
             </Button>
           </Banner>
         )}
         {doc.restored && (
           <Banner tone="ok">
-            <p>Restored an unsaved draft from this browser.</p>
+            <p>
+              You did not save your last edits, so they were kept in this browser and are back on the
+              sheet. Press Save to keep them, or discard them to return to the saved CV.
+            </p>
             <Button variant="ghost" onClick={() => void doc.discardAndReload()}>
-              Discard all unsaved changes
+              Discard edits and load the saved CV
             </Button>
           </Banner>
         )}
@@ -184,6 +220,18 @@ export function ResumePage() {
           </Banner>
         )}
       </div>
+
+      {/* Kept while a request or its failure is pending: the save that precedes the request moves the version. */}
+      {(shouldOfferCreate(resume.version) || ai.creating || createFailure) && (
+        <CreateCvCard
+          creating={ai.creating}
+          onCancel={ai.stopCreate}
+          replacesEdits={doc.dirty}
+          hold={conflictBlocked ? sendHold : null}
+          failure={createFailure}
+          onCreate={() => void createCv()}
+        />
+      )}
 
       <div className="resume-layout">
         <CvSheet
@@ -209,13 +257,7 @@ export function ResumePage() {
             error={ai.error}
             canUndo={ai.canUndo}
             hasVacancy={vacancy !== null}
-            holdSend={
-              conflictBlocked
-                ? 'Reload the latest CV to continue.'
-                : requestedId !== null && vacanciesLoading
-                  ? 'Loading the vacancy…'
-                  : null
-            }
+            holdSend={sendHold}
             onWholeCv={() => ai.select(null)}
             onModelChange={ai.setModel}
             onSend={ai.send}
