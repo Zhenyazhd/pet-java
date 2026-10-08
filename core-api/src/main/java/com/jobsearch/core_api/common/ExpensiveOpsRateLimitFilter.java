@@ -50,7 +50,7 @@ public class ExpensiveOpsRateLimitFilter extends OncePerRequestFilter {
 		if (!HttpMethod.POST.matches(request.getMethod())) {
 			return true;
 		}
-		String path = request.getRequestURI();
+		String path = RequestPaths.routed(request);
 		return !path.startsWith("/api/ai/") && !LIMITED_EXACT_PATHS.contains(path);
 	}
 
@@ -65,8 +65,14 @@ public class ExpensiveOpsRateLimitFilter extends OncePerRequestFilter {
 		String key = "expensive|" + userKey;
 		long retryAfter = rateLimiter.tryAcquire(key, limit, WINDOW_MS);
 		if (retryAfter > 0) {
-			log.warn("Expensive-ops rate limit hit path={} user={} retryAfter={}s",
-					request.getRequestURI(), userKey, retryAfter);
+			if (SecurityContextHolder.getContext().getAuthentication() != null
+					&& SecurityContextHolder.getContext().getAuthentication().getPrincipal() instanceof AppUserPrincipal) {
+				log.warn("Expensive-ops rate limit hit path={} user={} retryAfter={}s",
+						RequestPaths.routed(request), userKey, retryAfter);
+			} else {
+				log.debug("Expensive-ops rate limit hit path={} user={} retryAfter={}s",
+						RequestPaths.routed(request), userKey, retryAfter);
+			}
 			apiErrorResponses.write(
 					response,
 					HttpStatus.TOO_MANY_REQUESTS,

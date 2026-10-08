@@ -51,6 +51,7 @@ class AuthRateLimitFilterTest {
 		for (int i = 0; i < 5; i++) {
 			MockHttpServletRequest request = request(CLIENT, null);
 			request.setRequestURI("/api/auth/me");
+			request.setServletPath("/api/auth/me");
 			MockHttpServletResponse response = new MockHttpServletResponse();
 			filter.doFilter(request, response, new MockFilterChain());
 			assertEquals(200, response.getStatus());
@@ -65,6 +66,7 @@ class AuthRateLimitFilterTest {
 
 	private static MockHttpServletRequest request(String peer, String forwardedFor) {
 		MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/login");
+		request.setServletPath("/api/auth/login");
 		request.setRemoteAddr(peer);
 		if (forwardedFor != null) {
 			request.addHeader("X-Forwarded-For", forwardedFor);

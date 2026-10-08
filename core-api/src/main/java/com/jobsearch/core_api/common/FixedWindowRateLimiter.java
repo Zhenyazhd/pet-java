@@ -12,7 +12,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class FixedWindowRateLimiter {
 
+	private static final long CLEANUP_INTERVAL_MS = 5_000;
+	private static final int CLEANUP_THRESHOLD = 2_048;
+
 	private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
+	private volatile long nextCleanupAtMs;
 
 	/**
 	 * @return retry-after seconds if limited, or {@code -1} if the request is allowed
@@ -37,10 +41,16 @@ public class FixedWindowRateLimiter {
 		return deniedRetryAfter[0];
 	}
 
+	public void clear() {
+		windows.clear();
+		nextCleanupAtMs = 0;
+	}
+
 	private void maybeCleanup(long now) {
-		if (windows.size() < 2_048) {
+		if (windows.size() < CLEANUP_THRESHOLD || now < nextCleanupAtMs) {
 			return;
 		}
+		nextCleanupAtMs = now + CLEANUP_INTERVAL_MS;
 		Iterator<Map.Entry<String, Window>> it = windows.entrySet().iterator();
 		while (it.hasNext()) {
 			Map.Entry<String, Window> entry = it.next();

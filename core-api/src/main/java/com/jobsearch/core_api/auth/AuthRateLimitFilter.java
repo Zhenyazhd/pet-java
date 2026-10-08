@@ -2,6 +2,7 @@ package com.jobsearch.core_api.auth;
 
 import com.jobsearch.core_api.common.ApiErrorResponses;
 import com.jobsearch.core_api.common.FixedWindowRateLimiter;
+import com.jobsearch.core_api.common.RequestPaths;
 import com.jobsearch.core_api.config.AppProperties;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -40,7 +41,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 		if (!HttpMethod.POST.matches(request.getMethod())) {
 			return true;
 		}
-		String path = request.getRequestURI();
+		String path = RequestPaths.routed(request);
 		return !"/api/auth/login".equals(path) && !"/api/auth/register".equals(path);
 	}
 
@@ -50,7 +51,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 			HttpServletResponse response,
 			FilterChain filterChain
 	) throws ServletException, IOException {
-		String path = request.getRequestURI();
+		String path = RequestPaths.routed(request);
 		AppProperties.AuthRateLimit limits = appProperties.getAuthRateLimit();
 		int limit = "/api/auth/login".equals(path)
 				? limits.getLoginPerMinute()
