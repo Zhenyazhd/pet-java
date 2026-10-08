@@ -62,6 +62,22 @@ function parseWhole(raw: unknown): ProposalChange | null {
 }
 
 
+function unwrapText(raw: unknown): string | null {
+  if (typeof raw === 'string') return raw
+  if (Array.isArray(raw)) return raw.length === 1 ? unwrapText(raw[0]) : null
+  if (!isRecord(raw)) return null
+  if (typeof raw.profile === 'string') return raw.profile
+  const values = Object.values(raw)
+  return values.length === 1 ? unwrapText(values[0]) : null
+}
+
+function describeShape(raw: unknown): string {
+  if (raw === null) return 'null'
+  if (Array.isArray(raw)) return `a list of ${raw.length}`
+  if (isRecord(raw)) return `an object with ${Object.keys(raw).slice(0, 6).join(', ') || 'no keys'}`
+  return `a ${typeof raw}`
+}
+
 export function parseProposal(section: string, rowKey: string | null, raw: unknown): ParsedProposal {
   switch (section) {
     case 'all': {
@@ -75,10 +91,10 @@ export function parseProposal(section: string, rowKey: string | null, raw: unkno
         : fail('The suggested header has an unexpected shape.')
     }
     case 'profile': {
-      const text = isRecord(raw) ? raw.profile : raw
-      return typeof text === 'string'
+      const text = unwrapText(raw)
+      return text !== null
         ? { ok: true, change: { section, text } }
-        : fail('The suggested profile has an unexpected shape.')
+        : fail(`The suggested profile has an unexpected shape (${describeShape(raw)}).`)
     }
     case 'experience':
     case 'education':

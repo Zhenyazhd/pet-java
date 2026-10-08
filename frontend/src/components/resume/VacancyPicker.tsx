@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import type { Vacancy } from '../../api/types'
-import { companyLabel } from '../../lib/vacancies/vacancy'
+import { companyLabel, statusOf } from '../../lib/vacancies/vacancy'
 
 type VacancyPickerProps = {
   vacancies: Vacancy[]
@@ -12,11 +12,16 @@ type VacancyPickerProps = {
 
 export function VacancyPicker({ vacancies, loading, error, value, onChange }: VacancyPickerProps) {
   const id = useId()
+  // Only roles still to apply for are worth tailoring a CV to. The one already chosen stays listed
+  // (a "Tailor my CV" link can point at any vacancy), or the select would show a choice it cannot display.
+  const options = vacancies.filter((vacancy) => statusOf(vacancy) === 'NOT_APPLIED' || vacancy.id === value)
   const hint = error
     ? 'Your vacancies could not be loaded.'
     : loading
       ? 'Loading your vacancies…'
-      : 'AI suggestions and the match check target this role. Changing it clears the chat and the report, not your edits.'
+      : options.length === 0
+        ? 'No vacancies waiting for an application. Add one on the Vacancies page.'
+        : 'Only vacancies you have not applied to yet. The AI and the match check aim at the chosen one.'
 
   return (
     <div className="field">
@@ -31,7 +36,7 @@ export function VacancyPicker({ vacancies, loading, error, value, onChange }: Va
         onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
       >
         <option value="">No vacancy</option>
-        {vacancies.map((vacancy) => (
+        {options.map((vacancy) => (
           <option key={vacancy.id} value={vacancy.id}>
             {vacancy.title} · {companyLabel(vacancy)}
           </option>

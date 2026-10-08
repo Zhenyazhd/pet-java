@@ -33,8 +33,30 @@ export function CvSheet({ resume, selected, onSelect, onPatch }: CvSheetProps) {
         <div className="cv-contacts">
           <CvField value={resume.phone} label="Phone" maxLength={LIMITS.phone} placeholder="Phone" onChange={(v) => set('phone', v)} />
           <CvField value={resume.email} label="Email" maxLength={LIMITS.email} placeholder="Email" onChange={(v) => set('email', v)} />
-          <CvField value={resume.linkedinLabel} label="LinkedIn label" maxLength={LIMITS.linkedinLabel} placeholder="LinkedIn label" onChange={(v) => set('linkedinLabel', v)} />
-          <CvField value={resume.linkedinUrl} label="LinkedIn URL" maxLength={LIMITS.linkedinUrl} placeholder="LinkedIn URL" onChange={(v) => set('linkedinUrl', v)} />
+          <div className="cv-contact">
+            <span className="cv-caption small-caps" aria-hidden="true">
+              LinkedIn text
+            </span>
+            <CvField
+              value={resume.linkedinLabel}
+              label="LinkedIn text, shown on the CV"
+              maxLength={LIMITS.linkedinLabel}
+              placeholder="linkedin.com/in/your-name"
+              onChange={(v) => set('linkedinLabel', v)}
+            />
+          </div>
+          <div className="cv-contact">
+            <span className="cv-caption small-caps" aria-hidden="true">
+              LinkedIn link
+            </span>
+            <CvField
+              value={resume.linkedinUrl}
+              label="LinkedIn link, where the text leads"
+              maxLength={LIMITS.linkedinUrl}
+              placeholder="https://www.linkedin.com/in/your-name"
+              onChange={(v) => set('linkedinUrl', v)}
+            />
+          </div>
         </div>
       </CvBlock>
 

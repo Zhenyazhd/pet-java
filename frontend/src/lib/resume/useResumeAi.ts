@@ -13,6 +13,7 @@ const HISTORY_TURNS = 12
 
 export type ChatItem =
   | { id: number; role: 'user'; text: string }
+  | { id: number; role: 'note'; text: string }
   | {
       id: number
       role: 'assistant'
@@ -58,8 +59,6 @@ export function useResumeAi({
   const [chat, setChat] = useState<ChatItem[]>([])
   const [selected, setSelected] = useState<Selection | null>(null)
   const [model, setModelState] = useState(readAiModel)
-  // Two independent requests: the chat and "Create CV". Each has its own busy flag, abort and error,
-  // so neither blocks the other.
   const [busy, setBusy] = useState(false)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -76,7 +75,7 @@ export function useResumeAi({
     chat: null,
     create: null,
   })
-  // Per channel: changing the vacancy resets the chat, but a CV being written from the profile does not depend on it.
+  // Per channel generation: a reset of one request kind never touches the other.
   const generation = useRef({ chat: 0, create: 0 })
   const nextId = useRef(0)
 
@@ -134,7 +133,6 @@ export function useResumeAi({
       const text = instruction.trim()
       const channel = options.applyAtOnce ? 'create' : 'chat'
       const setChannelBusy = channel === 'create' ? setCreating : setBusy
-      // Only the chat shows its failures in the panel; Create reports its own through the result.
       const fail = (problem: string): SendResult => {
         if (channel === 'chat') setError(problem)
         return { ...NOT_SENT, problem }
@@ -143,7 +141,10 @@ export function useResumeAi({
       if (blocked) return fail('The CV changed elsewhere. Reload the latest version before asking the AI.')
       busyRefs.current[channel] = true
       setChannelBusy(true)
-      if (channel === 'chat') setError(null)
+      if (channel === 'chat') {
+        setError(null)
+        setUndo(null)
+      }
       const mine = generation.current[channel]
       const abort = new AbortController()
       aborts.current[channel] = abort
@@ -151,7 +152,10 @@ export function useResumeAi({
       // The chat remembers the conversation; a CV written from the profile starts from nothing.
       const history =
         channel === 'chat'
-          ? chat.slice(-HISTORY_TURNS).map((item) => ({ role: item.role, content: item.text }))
+          ? chat
+              .filter((item) => item.role !== 'note')
+              .slice(-HISTORY_TURNS)
+              .map((item) => ({ role: item.role as 'user' | 'assistant', content: item.text }))
           : []
       setChat((items) => [
         ...items,
@@ -244,15 +248,9 @@ export function useResumeAi({
   const stop = useCallback(() => aborts.current.chat?.abort(), [])
   const stopCreate = useCallback(() => aborts.current.create?.abort(), [])
 
-  /** Clears the conversation and stops a chat request. A "Create CV" run is not tied to it and keeps going. */
-  const reset = useCallback(() => {
-    generation.current.chat += 1
-    aborts.current.chat?.abort()
-    aborts.current.chat = null
-    busyRefs.current.chat = false
-    setBusy(false)
-    setChat([])
-    setError(null)
+  /** A line in the conversation that is not a message, e.g. the vacancy being targeted changed. */
+  const addNote = useCallback((text: string) => {
+    setChat((items) => [...items, { id: ++nextId.current, role: 'note', text }])
   }, [])
 
   return {
@@ -271,6 +269,6 @@ export function useResumeAi({
     undoLast,
     stop,
     stopCreate,
-    reset,
+    addNote,
   }
 }

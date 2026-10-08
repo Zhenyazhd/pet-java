@@ -1,10 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import type { Vacancy } from '../api/types'
 import { statusOf } from '../lib/vacancies/vacancy'
 import { AddVacancyForm } from '../components/vacancies/AddVacancyForm'
 import { VacancyDialog } from '../components/vacancies/VacancyDialog'
 import { VacancyList } from '../components/vacancies/VacancyList'
+import { Button } from '../components/ui/Button'
 import { PageHeader } from '../components/ui/PageHeader'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { useVacancies } from '../lib/vacancies/useVacancies'
@@ -16,6 +17,14 @@ export function VacanciesPage() {
   const location = useLocation()
   const { vacancies, loading, error, reload, updateApplication, remove } = useVacancies()
 
+  // The form is closed by default: opening the page is mostly for checking the list.
+  const [adding, setAdding] = useState(false)
+  const addPanel = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (adding) addPanel.current?.querySelector<HTMLElement>('input, textarea')?.focus()
+  }, [adding])
+
   const selectedId = id === undefined ? null : Number(id)
   const selected = vacancies.find((vacancy) => vacancy.id === selectedId) ?? null
 
@@ -26,6 +35,7 @@ export function VacanciesPage() {
   }, [selectedId, loading, error, selected, navigate])
 
   async function onSaved(vacancyId: number) {
+    setAdding(false)
     await reload()
     navigate(`/vacancies/${vacancyId}`)
   }
@@ -49,19 +59,24 @@ export function VacanciesPage() {
       />
 
       <div className="vacancies">
-        <section aria-labelledby="add-title">
-          <h2 id="add-title" className="section-title">
-            Add a vacancy
-          </h2>
-          <AddVacancyForm onSaved={onSaved} findSavedByUrl={findSavedByUrl} />
-        </section>
-
-        <hr className="rule" />
-
         <section aria-labelledby="saved-title">
-          <h2 id="saved-title" className="section-title">
-            Saved
-          </h2>
+          <div className="section-head">
+            <h2 id="saved-title" className="section-title">
+              Saved
+            </h2>
+            <Button
+              variant={adding ? 'ghost' : 'primary'}
+              aria-expanded={adding}
+              aria-controls="add-vacancy-panel"
+              onClick={() => setAdding((open) => !open)}
+            >
+              {adding ? 'Close' : '+ Add a vacancy'}
+            </Button>
+          </div>
+          {/* Hidden, not unmounted: a posting being read keeps going, and typed text survives closing. */}
+          <div id="add-vacancy-panel" ref={addPanel} className="add-panel" hidden={!adding}>
+            <AddVacancyForm onSaved={onSaved} findSavedByUrl={findSavedByUrl} />
+          </div>
           <VacancyList
             vacancies={vacancies}
             loading={loading}

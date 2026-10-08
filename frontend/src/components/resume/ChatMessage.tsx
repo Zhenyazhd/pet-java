@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import { describeChange } from '../../lib/resume/proposal'
 import type { ChatItem } from '../../lib/resume/useResumeAi'
 import { Button } from '../ui/Button'
@@ -6,9 +7,13 @@ type ChatMessageProps = {
   item: ChatItem
   onApply: (id: number) => void
   onDismiss: (id: number) => void
+  undo?: { onUndo: () => void; buttonRef: Ref<HTMLButtonElement> }
 }
 
-export function ChatMessage({ item, onApply, onDismiss }: ChatMessageProps) {
+export function ChatMessage({ item, onApply, onDismiss, undo }: ChatMessageProps) {
+  if (item.role === 'note') {
+    return <p className="chat-note">{item.text}</p>
+  }
   if (item.role === 'user') {
     return (
       <div className="chat-msg chat-msg--user">
@@ -33,8 +38,13 @@ export function ChatMessage({ item, onApply, onDismiss }: ChatMessageProps) {
         </div>
       )}
       {item.change && item.state !== 'open' && (
-        <p className="status-text muted-line">
+        <p className="status-text muted-line chat-msg__outcome">
           {item.state === 'applied' ? 'Applied to the sheet.' : 'Dismissed.'}
+          {undo && item.state === 'applied' && (
+            <Button ref={undo.buttonRef} variant="ghost" onClick={undo.onUndo}>
+              Undo
+            </Button>
+          )}
         </p>
       )}
     </div>

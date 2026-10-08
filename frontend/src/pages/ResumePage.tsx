@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { CreateCvCard } from '../components/resume/CreateCvCard'
 import { CvSheet } from '../components/resume/CvSheet'
@@ -27,7 +27,7 @@ import { useVacancies } from '../lib/vacancies/useVacancies'
 function PageIntro() {
   return (
     <PageHeader
-      eyebrow="Curriculum"
+      compact
       title="Your CV"
       titleId="resume-title"
       lead="Edit the sheet in place, or point the AI at a block. Its suggestions wait for your Apply, and nothing is stored until you save."
@@ -55,13 +55,20 @@ export function ResumePage() {
     blocked: doc.conflict,
   })
   const jobs = useResumeJobs(doc.saveIfCurrent, doc.conflict)
-  const { reset: resetChat } = ai
+  const { addNote } = ai
   const { resetMatch } = jobs
 
+  const targetedVacancyId = useRef<number | null | 'initial'>('initial')
   useEffect(() => {
-    resetChat()
-    resetMatch()
-  }, [requestedId, resetChat, resetMatch])
+    if (requestedId !== null && !vacancy) return // the list is still loading
+    const current = vacancy?.id ?? null
+    if (targetedVacancyId.current === current) return
+    if (targetedVacancyId.current !== 'initial') {
+      resetMatch()
+      addNote(vacancy ? `Now tailoring for: ${vacancy.title}` : 'No vacancy selected. Suggestions are general again.')
+    }
+    targetedVacancyId.current = current
+  }, [requestedId, vacancy, addNote, resetMatch])
 
   const { announce } = doc
   const [createFailure, setCreateFailure] = useState<string | null>(null)
@@ -88,7 +95,6 @@ export function ResumePage() {
     }
   }
 
-  // The pressed banner button unmounts: say what happened and keep the keyboard on the page.
   function afterBannerAction(message: string) {
     announce(message)
     document.getElementById('resume-title')?.focus({ preventScroll: true })
@@ -221,7 +227,6 @@ export function ResumePage() {
         )}
       </div>
 
-      {/* Kept while a request or its failure is pending: the save that precedes the request moves the version. */}
       {(shouldOfferCreate(resume.version) || ai.creating || createFailure) && (
         <CreateCvCard
           creating={ai.creating}

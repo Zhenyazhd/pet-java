@@ -64,7 +64,7 @@ export function VacancyList({ vacancies, loading, error, onRetry, onStatusChange
     return (
       <div className="empty">
         <h3>Nothing saved yet</h3>
-        <p>Paste a link and the posting text above. The first vacancy will appear here.</p>
+        <p>Press “Add a vacancy” above and paste a link and the posting text. The first vacancy will appear here.</p>
       </div>
     )
   }
