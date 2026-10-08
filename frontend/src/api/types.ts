@@ -1,76 +1,7 @@
-export type ApplicationStatus =
-  | 'NOT_APPLIED'
-  | 'APPLIED'
-  | 'INTERVIEW'
-  | 'OFFER'
-  | 'REJECTED'
-  | 'WITHDRAWN'
-
-export interface Requirement {
-  id?: number
-  name: string
-  required: boolean
-}
-
-export interface ApplicationSummary {
-  id: number
-  status: ApplicationStatus
-  applied: boolean
-  notes: string | null
-}
-
-export interface Vacancy {
-  id: number
-  url: string
-  title: string
-  company: string | null
-  description: string | null
-  matchPercent: number | null
-  requirements: Requirement[]
-  application: ApplicationSummary | null
-  createdAt: string
-  updatedAt: string
-}
-
-export interface VacancyRequest {
-  url: string
-  title: string
-  company?: string | null
-  description?: string | null
-  matchPercent?: number | null
-  requirements: Array<Pick<Requirement, 'name' | 'required'>>
-}
-
-export interface VacancyImportRequest {
-  url: string
-  pastedText: string
-}
-
-export interface JobApplication {
-  id: number
-  vacancyId: number
-  status: ApplicationStatus
-  applied: boolean
-  appliedAt: string | null
-  notes: string | null
-  createdAt: string
-  updatedAt: string
-}
-
-export const APPLICATION_STATUSES: ApplicationStatus[] = [
-  'NOT_APPLIED',
-  'APPLIED',
-  'INTERVIEW',
-  'OFFER',
-  'REJECTED',
-  'WITHDRAWN',
-]
-
 export type AuthUser = {
   id: number
   email: string
   displayName: string
-  role?: 'USER' | 'ADMIN'
 }
 
 export type LoginRequest = {
@@ -85,14 +16,68 @@ export type RegisterRequest = {
   inviteCode: string
 }
 
-export type CompileJobStatus = 'QUEUED' | 'RUNNING' | 'DONE' | 'FAILED'
+export type Profile = {
+  displayName: string
+  email: string
+  careerPath: string
+}
 
-/** A queued PDF build of the saved resume (POST /api/resume/compile). */
-export type CompileJob = {
+export const APPLICATION_STATUSES = [
+  'NOT_APPLIED',
+  'APPLIED',
+  'INTERVIEW',
+  'OFFER',
+  'REJECTED',
+  'WITHDRAWN',
+] as const
+
+export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number]
+
+export type Requirement = {
+  id: number
+  name: string
+  required: boolean
+}
+
+export type ApplicationSummary = {
+  id: number
+  status: ApplicationStatus
+  notes: string | null
+}
+
+export type Vacancy = {
+  id: number
+  url: string
+  title: string
+  company: string | null
+  description: string | null
+  requirements: Requirement[]
+  /** Null only for a vacancy that has never had a status set. */
+  application: ApplicationSummary | null
+  createdAt: string
+}
+
+export type JobApplication = {
+  id: number
+  status: ApplicationStatus
+  notes: string | null
+}
+
+export type VacancyImportRequest = {
+  url: string
+  pastedText: string
+}
+
+export type JobStatus = 'QUEUED' | 'RUNNING' | 'DONE' | 'FAILED'
+
+/** A background job; `result` is the handler's output once the job is DONE. */
+export type Job<TResult> = {
   id: string
-  status: CompileJobStatus
-  /** Set when FAILED; for `compile_error` the message is the end of the LaTeX log. */
+  status: JobStatus
   error: { code: string; message: string } | null
+  result: TResult | null
   createdAt: string
   finishedAt: string | null
 }
+
+export type VacancyImportResult = { vacancyId: number }

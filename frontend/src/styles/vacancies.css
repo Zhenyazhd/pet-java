@@ -1,0 +1,227 @@
+/* ---------- Shared bits for the vacancies page ---------- */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.section-title {
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  line-height: 1.3;
+}
+
+.muted-line {
+  color: var(--muted-foreground);
+}
+
+.vacancies {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  max-width: 52rem;
+}
+
+/* ---------- Add form ---------- */
+.add-vacancy {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.add-vacancy .input--area {
+  min-height: 14rem;
+}
+
+.add-vacancy__actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.add-vacancy__progress {
+  color: var(--accent-strong);
+}
+
+/* ---------- Filters ---------- */
+.vacancy-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.25rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--muted-foreground);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: all var(--duration) var(--ease);
+}
+
+.chip:hover {
+  border-color: var(--border-hover);
+  color: var(--foreground);
+}
+
+.chip[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-muted);
+  color: var(--foreground);
+}
+
+.chip__count {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+/* ---------- List ---------- */
+.vacancy-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border);
+}
+
+.vacancy-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem 1.5rem;
+  padding: 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  transition: background-color var(--duration) var(--ease);
+}
+
+.vacancy-row:hover {
+  background: color-mix(in srgb, var(--muted) 50%, transparent);
+}
+
+.vacancy-row__main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  color: var(--foreground);
+  text-decoration: none;
+}
+
+.vacancy-row__title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.vacancy-row__main:hover .vacancy-row__title {
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 4px;
+}
+
+.vacancy-row__meta {
+  color: var(--muted-foreground);
+}
+
+.vacancy-row__error {
+  grid-column: 1 / -1;
+  font-size: 0.875rem;
+  color: var(--danger);
+}
+
+.status-select {
+  min-height: 44px;
+  padding: 0.25rem 2.25rem 0.25rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  /* Own chevron: the native arrow sits hard against the edge and differs per browser. */
+  appearance: none;
+  background-color: var(--card);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%23777' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.875rem center;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+}
+
+.status-select:hover:not(:disabled) {
+  border-color: var(--border-hover);
+}
+
+.status-select:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-color: var(--accent);
+}
+
+.status-select:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.status-select--active {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.status-select--closed {
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 2rem;
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--accent);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+}
+
+.empty h3 {
+  font-size: 1.25rem;
+}
+
+.empty p {
+  color: var(--muted-foreground);
+}
+
+@media (max-width: 767px) {
+  .vacancy-row {
+    grid-template-columns: 1fr;
+    padding-inline: 0;
+  }
+
+  .vacancy-row .status-select {
+    width: 100%;
+  }
+
+  .add-vacancy__actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+}

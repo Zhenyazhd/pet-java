@@ -1,0 +1,42 @@
+/* Design tokens — "Serif" system: ivory, rich black, one burnished-gold accent. */
+:root {
+  --background: #fafaf8;
+  --foreground: #1a1a1a;
+  --muted: #f5f3f0;
+  --muted-foreground: #6b6b6b;
+  --card: #ffffff;
+  --border: #e8e4df;
+  --border-hover: #d6d0c8;
+
+  --accent: #b8860b;
+  --accent-secondary: #d4a84b;
+  --accent-foreground: #ffffff;
+  --accent-muted: rgb(184 134 11 / 0.06);
+  /* Gold darkened to pass WCAG AA (4.5:1) wherever it carries text: link text, primary button. */
+  --accent-strong: #946a09;
+  --ring: #b8860b;
+
+  --danger: #9b2c2c;
+  --danger-bg: #fbf1f0;
+  --ok: #3f6b3a;
+  --ok-bg: #f1f6ef;
+
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'Source Sans 3', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  --shadow-sm: 0 1px 2px rgb(26 26 26 / 0.04);
+  --shadow-md: 0 4px 12px rgb(26 26 26 / 0.06);
+  --shadow-lg: 0 8px 24px rgb(26 26 26 / 0.08);
+  --shadow-accent: 0 4px 12px rgb(184 134 11 / 0.22);
+
+  --ease: cubic-bezier(0, 0, 0.2, 1);
+  --duration: 200ms;
+  --duration-fast: 150ms;
+
+  --content-width: 64rem;
+  --reading-width: 42rem;
+}

@@ -1,46 +1,81 @@
 import { useLayoutEffect, useRef } from 'react'
+import { classNames } from '../../lib/classNames'
 
 type CvFieldProps = {
   value: string
   onChange: (value: string) => void
-  /** Accessible name — this field renders with no visible label, so screen readers need one. */
   label: string
   className?: string
   multiline?: boolean
+  placeholder?: string
+  maxLength?: number
+  required?: boolean
 }
 
-/** Inline editable field on the CV sheet (auto-grows when multiline). */
-export function CvField({ value, onChange, label, className, multiline }: CvFieldProps) {
+export function CvField({
+  value,
+  onChange,
+  label,
+  className,
+  multiline,
+  placeholder,
+  maxLength,
+  required,
+}: CvFieldProps) {
   const ref = useRef<HTMLTextAreaElement>(null)
 
   useLayoutEffect(() => {
-    if (!multiline || !ref.current) return
     const el = ref.current
+    if (!el) return
     el.style.height = 'auto'
     el.style.height = `${el.scrollHeight}px`
-  }, [multiline, value])
+  }, [value])
 
-  if (multiline) {
-    return (
-      <textarea
-        ref={ref}
-        className={`cv-field cv-field--area ${className ?? ''}`}
-        value={value}
-        aria-label={label}
-        rows={1}
-        onChange={(e) => onChange(e.target.value)}
-        onClick={(e) => e.stopPropagation()}
-      />
-    )
+  useLayoutEffect(() => {
+    const el = ref.current
+    const parent = el?.parentElement
+    if (!el || !parent) return
+    let width = parent.clientWidth
+    let frame = 0
+    const fit = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        el.style.height = 'auto'
+        el.style.height = `${el.scrollHeight}px`
+      })
+    }
+    const observer = new ResizeObserver(() => {
+      if (parent.clientWidth === width) return
+      width = parent.clientWidth
+      fit()
+    })
+    observer.observe(parent)
+    void document.fonts?.ready.then(fit)
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
+  }, [])
+
+  const shared = {
+    value,
+    'aria-label': label,
+    placeholder,
+    maxLength,
+    'aria-required': required || undefined,
+    'aria-invalid': required && !value.trim() ? true : undefined,
+    className: classNames('cv-field', className),
   }
 
-  return (
-    <input
-      className={`cv-field ${className ?? ''}`}
-      value={value}
-      aria-label={label}
+  return multiline ? (
+    <textarea
+      {...shared}
+      ref={ref}
+      rows={1}
+      className={classNames(shared.className, 'cv-field--area')}
       onChange={(e) => onChange(e.target.value)}
-      onClick={(e) => e.stopPropagation()}
     />
+  ) : (
+    <input {...shared} onChange={(e) => onChange(e.target.value)} />
   )
 }

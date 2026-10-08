@@ -1,17 +1,15 @@
-import { useState } from 'react'
-import type { FormEvent } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { PageHeader } from '../components/ui/PageHeader'
-import { Button } from '../components/ui/Button'
 import { Banner } from '../components/ui/Banner'
+import { Button } from '../components/ui/Button'
+import { Field } from '../components/ui/Field'
+import { PageHeader } from '../components/ui/PageHeader'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 export function LoginPage() {
+  useDocumentTitle('Sign in')
   const { login } = useAuth()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const from = (location.state as { from?: string } | null)?.from || '/'
-
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -19,58 +17,46 @@ export function LoginPage() {
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
+    if (pending) return
     setError(null)
     setPending(true)
     try {
       await login({ email: email.trim(), password })
-      navigate(from, { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed')
+      setError(err instanceof Error ? err.message : 'Sign-in failed')
     } finally {
       setPending(false)
     }
   }
 
   return (
-    <section className="page narrow auth-page">
-      <PageHeader
-        eyebrow="Welcome back"
-        title="Sign in"
-        lead="Use your account to open resume, vacancies, and profile."
-      />
-
-      <form className="form" onSubmit={onSubmit}>
-        <label>
-          Email
-          <input
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </label>
-        <label>
-          Password
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={8}
-          />
-        </label>
+    <section className="auth-card" aria-labelledby="login-title">
+      <PageHeader eyebrow="Welcome back" title="Sign in" titleId="login-title" />
+      <form className="form" onSubmit={onSubmit} aria-busy={pending}>
+        <Field
+          label="Email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <Field
+          label="Password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={8}
+        />
         {error && <Banner tone="error">{error}</Banner>}
-        <div className="form-actions">
-          <Button type="submit" disabled={pending}>
-            {pending ? 'Signing in…' : 'Sign in'}
-          </Button>
-        </div>
+        <Button type="submit" block aria-disabled={pending}>
+          {pending ? 'Signing in…' : 'Sign in'}
+        </Button>
       </form>
-
       <p className="auth-switch">
-        No account? <Link to="/register">Register with invite code</Link>
+        No account yet? <Link to="/register">Register with an invite code</Link>
       </p>
     </section>
   )

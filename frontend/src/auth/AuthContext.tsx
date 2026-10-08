@@ -1,109 +1,81 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, isUnauthorized, setUnauthorizedListener } from '../api/client'
 import type { AuthUser, LoginRequest, RegisterRequest } from '../api/types'
 
 type AuthContextValue = {
   user: AuthUser | null
+  /** False until the first GET /api/auth/me has settled. */
   ready: boolean
   login: (body: LoginRequest) => Promise<void>
   register: (body: RegisterRequest) => Promise<void>
   logout: () => Promise<void>
+  /** Keep the header in sync after the profile changes the name or email. */
+  updateUser: (patch: Partial<Pick<AuthUser, 'displayName' | 'email'>>) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const [user, setUser] = useState<AuthUser | null>(null)
   const [ready, setReady] = useState(false)
 
-  const clearSession = useCallback(() => {
-    setUser(null)
-    queryClient.clear()
-  }, [queryClient])
-
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
-      try {
-        const me = await api.getMe()
-        if (!cancelled) setUser(me)
-      } catch {
-        if (!cancelled) setUser(null)
-      } finally {
-        if (!cancelled) setReady(true)
-      }
-    })()
+    api
+      .getMe()
+      .then((me) => !cancelled && setUser(me))
+      .catch(() => !cancelled && setUser(null))
+      .finally(() => !cancelled && setReady(true))
     return () => {
       cancelled = true
     }
   }, [])
 
+  // A 401 on a protected call means the session expired: drop it and go to sign-in.
   useEffect(() => {
     setUnauthorizedListener(() => {
-      clearSession()
+      setUser(null)
       const path = `${window.location.pathname}${window.location.search}`
       if (!path.startsWith('/login') && !path.startsWith('/register')) {
         navigate('/login', { replace: true, state: { from: path } })
       }
     })
     return () => setUnauthorizedListener(null)
-  }, [navigate, clearSession])
+  }, [navigate])
 
-  const login = useCallback(
-    async (body: LoginRequest) => {
-      const next = await api.login(body)
-      queryClient.clear()
-      setUser(next)
-    },
-    [queryClient],
-  )
+  async function login(body: LoginRequest) {
+    setUser(await api.login(body))
+  }
 
-  const register = useCallback(
-    async (body: RegisterRequest) => {
-      const next = await api.register(body)
-      queryClient.clear()
-      setUser(next)
-    },
-    [queryClient],
-  )
+  async function register(body: RegisterRequest) {
+    setUser(await api.register(body))
+  }
 
-  const logout = useCallback(async () => {
+  async function logout() {
     try {
       await api.logout()
     } catch (err) {
-      if (isUnauthorized(err)) {
-        // Session already gone on the server — mint CSRF for the next login.
-        await api.refreshCsrf()
-      } else {
-        // A stale-CSRF 403 already gets one refresh-and-retry inside request()
-        // itself now, so anything that still reaches here (a persistent 403,
-        // network error, or 5xx) means the server session might still be
-        // valid — keep the client session so we don't pretend logout succeeded.
-        throw err
+      if (!isUnauthorized(err)) throw err // the server session may still be alive
+      try {
+        await api.refreshCsrf() // already signed out: mint a token for the next sign-in
+      } catch {
+        // the session is already gone; the next sign-in asks for a token again
       }
     }
-    // Only clear UI after server logout succeeded or session was already gone (401).
-    clearSession()
-  }, [clearSession])
+    setUser(null)
+  }
 
-  const value = useMemo(
-    () => ({ user, ready, login, register, logout }),
-    [user, ready, login, register, logout],
+  const updateUser: AuthContextValue['updateUser'] = (patch) => {
+    setUser((current) => (current ? { ...current, ...patch } : current))
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, ready, login, register, logout, updateUser }}>
+      {children}
+    </AuthContext.Provider>
   )
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth(): AuthContextValue {
