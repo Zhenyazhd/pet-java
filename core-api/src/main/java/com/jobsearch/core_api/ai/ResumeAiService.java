@@ -14,6 +14,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -229,7 +230,14 @@ public class ResumeAiService {
 			case ChatResult.Unavailable _ -> throw new ServiceUnavailableException(
 					"The AI did not answer. Please try again.", null);
 		};
-		JsonNode parsed = objectMapper.readTree(content);
+		JsonNode parsed;
+		try {
+			parsed = objectMapper.readTree(content);
+		}
+		catch (JacksonException ex) {
+			log.warn("AI answer is not valid JSON: {}", ex.getOriginalMessage());
+			throw new ServiceUnavailableException("The AI did not answer. Please try again.", null);
+		}
 		String message = parsed.path("message").asString("").strip();
 		if (message.isBlank()) {
 			message = "…";

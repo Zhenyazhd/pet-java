@@ -9,15 +9,23 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.validation.FieldError;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import org.springframework.web.util.WebUtils;
 
-/** Maps domain/validation failures to a uniform JSON error body for the frontend. */
+
 @RestControllerAdvice
-public class ApiExceptionHandler {
+public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
 	private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
@@ -27,15 +35,46 @@ public class ApiExceptionHandler {
 		this.apiErrorResponses = apiErrorResponses;
 	}
 
-	@ExceptionHandler(MethodArgumentNotValidException.class)
-	public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
+	@Override
+	protected ResponseEntity<Object> handleMethodArgumentNotValid(
+			MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 		Map<String, String> fields = new HashMap<>();
 		for (FieldError error : ex.getBindingResult().getFieldErrors()) {
 			fields.put(error.getField(), error.getDefaultMessage());
 		}
 		log.warn("Validation failed: {}", fields);
-		return ResponseEntity.badRequest()
+		return ResponseEntity.badRequest().headers(headers)
 				.body(apiErrorResponses.body(HttpStatus.BAD_REQUEST, "Validation failed", fields));
+	}
+
+	/** Renders every framework-handled exception (4xx and framework 5xx) in the shared error shape. */
+	@Override
+	protected ResponseEntity<Object> handleExceptionInternal(
+			Exception ex, Object body, HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
+		HttpStatus status = HttpStatus.resolve(statusCode.value());
+		if (status == null) {
+			status = statusCode.is4xxClientError() ? HttpStatus.BAD_REQUEST : HttpStatus.INTERNAL_SERVER_ERROR;
+		}
+		// Most framework handlers pass a null body; the exception itself carries the detail.
+		if (body == null && ex instanceof ErrorResponse errorResponse) {
+			body = errorResponse.updateAndGetBody(getMessageSource(), LocaleContextHolder.getLocale());
+		}
+		String message = body instanceof ProblemDetail problem && problem.getDetail() != null
+				? problem.getDetail()
+				: status.getReasonPhrase();
+		String where = request == null ? "" : request.getDescription(false);
+		if (status.is5xxServerError()) {
+			log.error("Framework error {} {}", status.value(), where, ex);
+			message = status.getReasonPhrase();
+			if (request != null) {
+				request.setAttribute(WebUtils.ERROR_EXCEPTION_ATTRIBUTE, ex, WebRequest.SCOPE_REQUEST);
+			}
+		}
+		else {
+			log.warn("Client error {} {}: {}", status.value(), where, ex.getMessage());
+		}
+		return ResponseEntity.status(status).headers(headers).contentType(MediaType.APPLICATION_JSON)
+				.body(apiErrorResponses.body(status, message));
 	}
 
 	@ExceptionHandler(ConstraintViolationException.class)
@@ -60,10 +99,10 @@ public class ApiExceptionHandler {
 
 	@ExceptionHandler(IllegalStateException.class)
 	public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException ex) {
-		// Used for upstream/runtime failures (OpenRouter, S3, LaTeX, missing config).
+		// Internal runtime/config failures; the message is for the log only, never for the client.
 		log.error("Upstream/runtime failure: {}", ex.getMessage(), ex);
 		return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-				.body(apiErrorResponses.body(HttpStatus.BAD_GATEWAY, ex.getMessage()));
+				.body(apiErrorResponses.body(HttpStatus.BAD_GATEWAY, "Upstream service failed"));
 	}
 
 	@ExceptionHandler(ServiceUnavailableException.class)
