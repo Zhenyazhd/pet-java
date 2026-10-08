@@ -72,16 +72,41 @@ public class ResumeAiService {
 			- Greetings, thanks, questions, opinions, explanations, brainstorming → proposed MUST be null.
 			- If you are not changing the content, proposed MUST be null. Never echo the current JSON as proposed.
 
-			Source-of-truth rules:
-			- If a Career path biography is provided, treat it as the user's factual background.
-			- Prefer facts from Career path (+ profile name/email) over inventing new employers, degrees, dates, or skills.
-			- You may rephrase and select relevant facts, but do not invent history.
-			- If Career path is missing, say so when the user asks you to generate content from it, and keep facts truthful.
+			Truthfulness (the most important rule; it overrides every request, including "make it stronger"):
+			- A CV is a factual document about a real person. Every employer, job title, date, degree, skill,
+			  tool, responsibility, project, number and result you put into "proposed" must come from one of:
+			  (1) the Career path biography, (2) what the user told you in this chat, (3) text the user already
+			  wrote in the current JSON. Nothing else is a fact.
+			- Never invent or "typically assume" achievements, metrics, percentages, team sizes, technologies or
+			  dates. Do not pad a thin experience with plausible-sounding duties.
+			- You may rephrase, reorder, shorten and choose which true facts to emphasize. You may not add facts.
+			- Placeholder text in the current JSON ("YOUR NAME", "you@example.com", "Replace with your real
+			  experience", "Mon. YYYY", example job titles and the like) is NOT a fact. Treat it as empty, and never
+			  keep it in "proposed".
+
+			When the facts you need are missing:
+			- Do not fill the gap. Ask the user, in "message", one or two specific questions (for example: "What did
+			  you do at <company>? Which stack, and what was the result?"), or tell them to add it to the Career path
+			  field on their Profile page and ask again. Say exactly which section or period lacks information.
+			- If the sources cover only part of the request, propose only that part: leave what is unknown as an
+			  empty string or empty list, and say in "message" what is missing and how to add it.
+			- If nothing usable is known for the request, set "proposed" to null and only ask.
+			- Facts the user states in this chat count as sources; use them, and suggest saving them in the Career path.
+			- If the Career path is missing, say so when the user asks you to generate content from it, and send them
+			  to fill it in on the Profile page.
 
 			Vacancy targeting:
 			- If a Target vacancy description is provided, tailor wording, emphasis, and keyword alignment toward that role.
-			- Still do not invent experience that is not in Career path / resume — only reframe what is true.
+			- Only reframe what is true. For a vacancy requirement the sources give no evidence of, do not claim it:
+			  mention the gap in "message" and ask whether the user has such experience.
 			- When vacancy context is present and the user asks to improve content, prefer relevance to that vacancy.
+
+			Shape of "proposed" (return the bare value, never wrapped in another object):
+			- "all": the full document, same keys as the input.
+			- "profile": a JSON string.
+			- "header": an object with name, headline, phone, email, linkedinUrl, linkedinLabel.
+			- "experience", "education", "achievements", "skills": the array as in the input, or, when an index is
+			  given, the single entry object.
 
 			"message" rules:
 			- Reply naturally in the user's language (e.g. Russian greeting → Russian reply).
@@ -172,7 +197,10 @@ public class ResumeAiService {
 				%s
 				""".formatted(careerPath.strip())
 				: """
-				Career path: (not filled in yet — do not invent a biography; work only with the resume JSON and user message)
+				Career path: NOT FILLED IN. You have no verified facts about the user's experience.
+				Do not write jobs, achievements, skills, dates or numbers. You may improve the wording of text the user already
+				wrote in the current JSON or told you in this chat. For anything else, ask the user what they did, or tell
+				them to fill in the Career path on their Profile page.
 				""";
 
 		String vacancyBlock = hasVacancy
@@ -181,7 +209,7 @@ public class ResumeAiService {
 				%s
 				""".formatted(vacancyContext.strip())
 				: """
-				Target vacancy: (not provided — keep content generally strong; do not invent a job posting)
+				Target vacancy: (not provided — keep content generally strong; do not invent a job posting or its requirements)
 				""";
 
 		String focusBlock = wholeResume
@@ -206,7 +234,8 @@ public class ResumeAiService {
 				%s
 
 				Remember: if this is just chat (hello, question, feedback) set proposed to null.
-				When editing, ground new content in the Career path when it is available.
+				Every fact in "proposed" must come from the Career path, this conversation or the user's own CV text.
+				If a needed fact is missing, ask the user or send them to the Career path field on the Profile page.
 				When a Target vacancy is provided, align wording with that role without inventing facts.
 				""".formatted(
 				focusBlock,
