@@ -11,8 +11,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import org.hibernate.annotations.DynamicUpdate;
 
 @Entity
+@DynamicUpdate
 @Table(name = "app_user")
 public class AppUser {
 
@@ -36,11 +38,12 @@ public class AppUser {
 	@Column(name = "career_path", nullable = false, columnDefinition = "TEXT")
 	private String careerPath = "";
 
-	@Column(name = "resume_json", nullable = false, columnDefinition = "TEXT")
+	/** Written only by {@link AppUserRepository#updateResume}, which checks the version in the same statement. */
+	@Column(name = "resume_json", nullable = false, updatable = false, columnDefinition = "TEXT")
 	private String resumeJson = "";
 
 	/** Bumped on every resume save; used for optimistic-concurrency rejection of stale saves. */
-	@Column(name = "resume_version", nullable = false)
+	@Column(name = "resume_version", nullable = false, updatable = false)
 	private int resumeVersion = 0;
 
 	@Column(name = "created_at", nullable = false)
@@ -101,16 +104,8 @@ public class AppUser {
 		return resumeJson;
 	}
 
-	public void setResumeJson(String resumeJson) {
-		this.resumeJson = resumeJson;
-	}
-
 	public int getResumeVersion() {
 		return resumeVersion;
-	}
-
-	public void setResumeVersion(int resumeVersion) {
-		this.resumeVersion = resumeVersion;
 	}
 
 }

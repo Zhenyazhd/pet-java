@@ -64,31 +64,37 @@ public class ResumeService {
 	}
 
 	/**
-	 * Rejects a save whose {@code version} doesn't match the row's current {@code resumeVersion} —
+	 * Rejects a save whose {@code version} doesn't match the row's current {@code resumeVersion}
+	 * (checked atomically by {@link AppUserRepository#updateResume}) —
 	 * i.e. the edit was based on stale data (a second tab/session saved in between). Without this,
 	 * a full-document overwrite would silently discard whatever the other save just wrote.
 	 */
 	public ResumeDocument save(ResumeDocument resume) {
-		AppUser user = currentUserService.requireUser();
-		int currentVersion = user.getResumeVersion();
-		if (resume.version() == null || resume.version() != currentVersion) {
-			throw new ConflictException(
-					"Resume was changed elsewhere since you loaded it — reload to see the latest version, "
-							+ "then reapply your edits."
-			);
+		long userId = currentUserService.requireUserId();
+		if (resume.version() == null) {
+			throw staleResume();
 		}
-		int newVersion = currentVersion + 1;
+		int newVersion = resume.version() + 1;
 		ResumeDocument toStore = withVersion(resume, newVersion);
+		String json;
 		try {
-			user.setResumeJson(objectMapper.writeValueAsString(toStore));
+			json = objectMapper.writeValueAsString(toStore);
 		}
 		catch (JacksonException ex) {
 			throw new IllegalStateException("Failed to serialize resume JSON", ex);
 		}
-		user.setResumeVersion(newVersion);
-		appUserRepository.save(user);
-		log.info("Saved resume for userId={} version={}", user.getId(), newVersion);
+		if (appUserRepository.updateResume(userId, json, resume.version()) == 0) {
+			throw staleResume();
+		}
+		log.info("Saved resume for userId={} version={}", userId, newVersion);
 		return toStore;
+	}
+
+	private static ConflictException staleResume() {
+		return new ConflictException(
+				"Resume was changed elsewhere since you loaded it — reload to see the latest version, "
+						+ "then reapply your edits."
+		);
 	}
 
 	@Transactional(readOnly = true)

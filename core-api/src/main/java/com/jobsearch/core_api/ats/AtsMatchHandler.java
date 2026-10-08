@@ -10,6 +10,7 @@ import com.jobsearch.core_api.jobs.JobOutcome;
 import com.jobsearch.core_api.jobs.JobType;
 import com.jobsearch.core_api.vacancy.VacancyRepository;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,8 +19,6 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -34,20 +33,17 @@ public class AtsMatchHandler implements JobHandler {
 
 	private final AtsScreenerClient screenerClient;
 	private final VacancyRepository vacancyRepository;
-	private final TransactionTemplate transactionTemplate;
 	private final ObjectMapper objectMapper;
 	private final Duration lease;
 
 	public AtsMatchHandler(
 			AtsScreenerClient screenerClient,
 			VacancyRepository vacancyRepository,
-			PlatformTransactionManager transactionManager,
 			ObjectMapper objectMapper,
 			AppProperties appProperties
 	) {
 		this.screenerClient = screenerClient;
 		this.vacancyRepository = vacancyRepository;
-		this.transactionTemplate = new TransactionTemplate(transactionManager);
 		this.objectMapper = objectMapper;
 		// The screener call may take the whole timeout; the slack covers storing the result.
 		this.lease = Duration.ofSeconds(appProperties.getAtsScreener().getTimeoutSeconds() + 30);
@@ -95,14 +91,9 @@ public class AtsMatchHandler implements JobHandler {
 
 	/** Scoped to the job's owner: there is no logged-in user on the dispatcher thread. */
 	private void saveMatchPercent(long userId, long vacancyId, int averageScore) {
-		transactionTemplate.executeWithoutResult(status -> vacancyRepository.findByIdAndUserId(vacancyId, userId)
-				.ifPresentOrElse(
-						vacancy -> {
-							vacancy.setMatchPercent(averageScore);
-							vacancyRepository.save(vacancy);
-						},
-						() -> log.info("ATS match vacancy not found for job owner, matchPercent not saved vacancyId={} userId={}", vacancyId, userId)
-				));
+		if (vacancyRepository.updateMatchPercent(vacancyId, userId, averageScore, Instant.now()) == 0) {
+			log.info("ATS match vacancy not found for job owner, matchPercent not saved vacancyId={} userId={}", vacancyId, userId);
+		}
 	}
 
 	private static MatchResponse mapResponse(JsonNode root) {
