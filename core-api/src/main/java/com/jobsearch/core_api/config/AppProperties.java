@@ -11,6 +11,7 @@ public class AppProperties {
 	private String adminEmail = "";
 	/** If set and bootstrap admin has no password yet, hash this onto that account on startup. */
 	private String bootstrapPassword = "";
+	private boolean strictSecrets = false;
 	private final Cors cors = new Cors();
 	private final AuthRateLimit authRateLimit = new AuthRateLimit();
 	private final ExpensiveOpsRateLimit expensiveOpsRateLimit = new ExpensiveOpsRateLimit();
@@ -18,6 +19,14 @@ public class AppProperties {
 	private final OpenRouter openRouter = new OpenRouter();
 	private final AtsScreener atsScreener = new AtsScreener();
 	private final LatexWorker latexWorker = new LatexWorker();
+
+	public boolean isStrictSecrets() {
+		return strictSecrets;
+	}
+
+	public void setStrictSecrets(boolean strictSecrets) {
+		this.strictSecrets = strictSecrets;
+	}
 
 	public String getAdminEmail() {
 		return adminEmail;

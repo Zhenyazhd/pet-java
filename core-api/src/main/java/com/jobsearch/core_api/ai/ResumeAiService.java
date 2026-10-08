@@ -1,5 +1,6 @@
 package com.jobsearch.core_api.ai;
 
+import com.jobsearch.core_api.common.BadRequestException;
 import com.jobsearch.core_api.ai.AiDtos.ChatTurn;
 import com.jobsearch.core_api.ai.AiDtos.SuggestRequest;
 import com.jobsearch.core_api.ai.AiDtos.SuggestResponse;
@@ -9,6 +10,7 @@ import com.jobsearch.core_api.resume.ResumeDtos.ResumeDocument;
 import com.jobsearch.core_api.resume.ResumeService;
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
@@ -134,10 +136,10 @@ public class ResumeAiService {
 	}
 
 	public SuggestResponse suggest(SuggestRequest request) {
-		String section = request.section().trim().toLowerCase();
+		String section = request.section().trim().toLowerCase(Locale.ROOT);
 		boolean wholeResume = SCOPE_ALL.equals(section);
 		if (!wholeResume && !SECTIONS.contains(section)) {
-			throw new IllegalArgumentException(
+			throw new BadRequestException(
 					"Unknown section '" + request.section() + "'. Use '" + SCOPE_ALL + "' or one of: " + SECTIONS
 			);
 		}
@@ -252,7 +254,7 @@ public class ResumeAiService {
 			case ChatResult.Answer(String answer) -> answer;
 			case ChatResult.Busy(Duration retryAfter) -> throw new ServiceUnavailableException(
 					"The AI is busy right now. Try again in " + retryAfter.toSeconds() + " seconds.", retryAfter);
-			case ChatResult.Rejected _ -> throw new IllegalArgumentException(
+			case ChatResult.Rejected _ -> throw new BadRequestException(
 					"The AI could not handle a change this big. Try a shorter message or one section at a time.");
 			case ChatResult.Misconfigured _ -> throw new ServiceUnavailableException(
 					"The AI is not available right now. Please try again later.", null);
@@ -315,7 +317,7 @@ public class ResumeAiService {
 		}
 		String model = requested.strip();
 		if (!ALLOWED_MODELS.contains(model)) {
-			throw new IllegalArgumentException(
+			throw new BadRequestException(
 					"Unsupported model '" + model + "'. Allowed: " + ALLOWED_MODELS
 			);
 		}
@@ -337,16 +339,16 @@ public class ResumeAiService {
 			case "education" -> resume.education();
 			case "achievements" -> resume.achievements();
 			case "skills" -> resume.skills();
-			default -> throw new IllegalArgumentException("Unknown section: " + section);
+			default -> throw new BadRequestException("Unknown section: " + section);
 		};
 		if (itemIndex != null) {
 			if (!(value instanceof List<?> list)) {
-				throw new IllegalArgumentException(
+				throw new BadRequestException(
 						"itemIndex is only supported for: experience, education, achievements, skills"
 				);
 			}
 			if (itemIndex < 0 || itemIndex >= list.size()) {
-				throw new IllegalArgumentException("itemIndex out of range for " + section + ": " + itemIndex);
+				throw new BadRequestException("itemIndex out of range for " + section + ": " + itemIndex);
 			}
 			value = list.get(itemIndex);
 		}

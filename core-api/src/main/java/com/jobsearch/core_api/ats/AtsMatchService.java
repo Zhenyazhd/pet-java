@@ -1,5 +1,6 @@
 package com.jobsearch.core_api.ats;
 
+import com.jobsearch.core_api.common.BadRequestException;
 import com.jobsearch.core_api.ats.AtsDtos.MatchRequest;
 import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.common.Hashes;
@@ -46,11 +47,11 @@ public class AtsMatchService {
 	public JobResponse enqueue(MatchRequest request) {
 		String vacancyText = request.vacancyContext().strip();
 		if (vacancyText.length() > MAX_VACANCY_CHARS) {
-			throw new IllegalArgumentException("vacancyContext exceeds " + MAX_VACANCY_CHARS + " characters");
+			throw new BadRequestException("vacancyContext exceeds " + MAX_VACANCY_CHARS + " characters");
 		}
 		String resumeText = plainTextRenderer.render(resumeService.get());
 		if (resumeText.isBlank()) {
-			throw new IllegalArgumentException("Resume is empty — fill the sheet before matching");
+			throw new BadRequestException("Resume is empty — fill the sheet before matching");
 		}
 		// Checked now so a wrong id fails the click, not the job minutes later.
 		Long vacancyId = request.vacancyId();

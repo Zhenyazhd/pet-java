@@ -21,7 +21,7 @@ public class ResumeController {
 
 	@GetMapping
 	public ResumeDocument get() {
-		return resumeService.get();
+		return resumeService.getForEditing();
 	}
 
 	@PutMapping

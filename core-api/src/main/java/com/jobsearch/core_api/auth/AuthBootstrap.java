@@ -2,10 +2,9 @@ package com.jobsearch.core_api.auth;
 
 import com.jobsearch.core_api.common.Emails;
 import com.jobsearch.core_api.config.AppProperties;
+import com.jobsearch.core_api.config.SecretStrength;
 import com.jobsearch.core_api.profile.AppUser;
 import com.jobsearch.core_api.profile.AppUserRepository;
-import java.util.Locale;
-import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -83,14 +82,7 @@ public class AuthBootstrap implements ApplicationRunner {
 		appUserRepository.save(user);
 	}
 
-	private static final int MIN_BOOTSTRAP_PASSWORD_LENGTH = 12;
-	private static final Set<String> PLACEHOLDER_PASSWORDS = Set.of("changeme", "change-me", "password", "admin");
-
 	private static void requireStrong(String password) {
-		if (password.length() < MIN_BOOTSTRAP_PASSWORD_LENGTH
-				|| PLACEHOLDER_PASSWORDS.contains(password.toLowerCase(Locale.ROOT))) {
-			throw new IllegalStateException("APP_BOOTSTRAP_PASSWORD must be at least "
-					+ MIN_BOOTSTRAP_PASSWORD_LENGTH + " characters and not a placeholder such as 'changeme'");
-		}
+		SecretStrength.require("APP_BOOTSTRAP_PASSWORD", password);
 	}
 }

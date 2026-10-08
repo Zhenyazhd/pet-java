@@ -9,6 +9,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.jobsearch.core_api.ai.AiDtos.SuggestRequest;
+import com.jobsearch.core_api.common.BadRequestException;
 import com.jobsearch.core_api.common.ServiceUnavailableException;
 import com.jobsearch.core_api.profile.ProfileDtos.ProfileResponse;
 import com.jobsearch.core_api.profile.ProfileService;
@@ -70,7 +71,7 @@ class ResumeAiServiceTest {
 	void rejectedRequestIsBadRequest() {
 		answerWith(new ChatResult.Rejected("OpenRouter HTTP 400"));
 
-		assertThrows(IllegalArgumentException.class, () -> service.suggest(HELLO));
+		assertThrows(BadRequestException.class, () -> service.suggest(HELLO));
 	}
 
 	@Test

@@ -24,10 +24,10 @@ public final class ResumeDtos {
 			@NotNull @Size(max = 500) String linkedinUrl,
 			@NotNull @Size(max = 200) String linkedinLabel,
 			@NotNull @Size(max = 5000) String profile,
-			@NotNull @Size(max = 50) List<@Valid ExperienceItem> experience,
-			@NotNull @Size(max = 30) List<@Valid EducationItem> education,
-			@NotNull @Size(max = 50) List<@Valid AchievementItem> achievements,
-			@NotNull @Size(max = 50) List<@Valid SkillItem> skills,
+			@NotNull @Size(max = 50) List<@NotNull @Valid ExperienceItem> experience,
+			@NotNull @Size(max = 30) List<@NotNull @Valid EducationItem> education,
+			@NotNull @Size(max = 50) List<@NotNull @Valid AchievementItem> achievements,
+			@NotNull @Size(max = 50) List<@NotNull @Valid SkillItem> skills,
 			/** Section heading language: "fr" or "en". Null/blank → fr. */
 			String locale,
 			/**
@@ -47,7 +47,7 @@ public final class ResumeDtos {
 			@NotBlank @Size(max = 200) String title,
 			@NotNull @Size(max = 300) String subtitle,
 			@NotNull @Size(max = 100) String dates,
-			@NotNull @Size(max = 50) List<@Size(max = 1000) String> bullets
+			@NotNull @Size(max = 50) List<@NotNull @Size(max = 1000) String> bullets
 	) {
 	}
 

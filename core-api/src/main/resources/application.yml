@@ -6,6 +6,10 @@ spring:
     # Tomcat's ~200 platform threads. Outbound concurrency is capped per client, see open-router below.
     virtual:
       enabled: true
+  web:
+    # Validation messages are the same whatever the browser's language is; the UI is English.
+    locale: en
+    locale-resolver: fixed
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:job_search}
     username: ${POSTGRES_USER:zhenya}
@@ -47,6 +51,7 @@ management:
 
 app:
   admin-email: ${APP_ADMIN_EMAIL:}
+  strict-secrets: ${APP_STRICT_SECRETS:false}
   bootstrap-password: ${APP_BOOTSTRAP_PASSWORD:}
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}

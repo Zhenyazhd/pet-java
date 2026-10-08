@@ -5,10 +5,13 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 
 public final class VacancyDtos {
+
+	static final String HTTP_URL = "(?i)^https?://\\S+$";
 
 	private VacancyDtos() {
 	}
@@ -20,7 +23,7 @@ public final class VacancyDtos {
 	}
 
 	public record VacancyRequest(
-			@NotBlank @Size(max = 2_000) String url,
+			@NotBlank @Size(max = 2_000) @Pattern(regexp = HTTP_URL, message = "must be an http(s) link") String url,
 			@NotBlank @Size(max = 255) String title,
 			@Size(max = 255) String company,
 			@Size(max = 50_000) String description,
@@ -31,7 +34,7 @@ public final class VacancyDtos {
 
 	/** URL + raw job posting paste; LLM extracts title / company / description. */
 	public record VacancyImportRequest(
-			@NotBlank @Size(max = 2_000) String url,
+			@NotBlank @Size(max = 2_000) @Pattern(regexp = HTTP_URL, message = "must be an http(s) link") String url,
 			@NotBlank @Size(max = 50_000) String pastedText
 	) {
 	}

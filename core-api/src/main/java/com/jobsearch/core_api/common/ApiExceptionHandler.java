@@ -90,19 +90,11 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 				.body(apiErrorResponses.body(HttpStatus.BAD_REQUEST, "Validation failed", fields));
 	}
 
-	@ExceptionHandler(IllegalArgumentException.class)
-	public ResponseEntity<Map<String, Object>> handleBadRequest(IllegalArgumentException ex) {
+	@ExceptionHandler(BadRequestException.class)
+	public ResponseEntity<Map<String, Object>> handleBadRequest(BadRequestException ex) {
 		log.warn("Bad request: {}", ex.getMessage());
 		return ResponseEntity.badRequest()
 				.body(apiErrorResponses.body(HttpStatus.BAD_REQUEST, ex.getMessage()));
-	}
-
-	@ExceptionHandler(IllegalStateException.class)
-	public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException ex) {
-		// Internal runtime/config failures; the message is for the log only, never for the client.
-		log.error("Upstream/runtime failure: {}", ex.getMessage(), ex);
-		return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-				.body(apiErrorResponses.body(HttpStatus.BAD_GATEWAY, "Upstream service failed"));
 	}
 
 	@ExceptionHandler(ServiceUnavailableException.class)

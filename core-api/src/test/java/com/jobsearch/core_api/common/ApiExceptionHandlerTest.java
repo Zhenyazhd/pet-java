@@ -93,11 +93,29 @@ class ApiExceptionHandlerTest {
 	}
 
 	@Test
-	void illegalStateDoesNotLeakItsMessage() {
+	void unexpectedFailuresDoNotLeakTheirMessage() {
 		ResponseEntity<Map<String, Object>> response =
-				handler.handleIllegalState(new IllegalStateException("secret bucket name"));
+				handler.handleUnexpected(new IllegalStateException("secret bucket name"));
 
-		assertEquals(502, response.getStatusCode().value());
-		assertEquals("Upstream service failed", response.getBody().get("message"));
+		assertEquals(500, response.getStatusCode().value());
+		assertEquals("Internal server error", response.getBody().get("message"));
+	}
+
+	@Test
+	void aStrayIllegalArgumentIsAServerErrorNotTheUsersMistake() {
+		ResponseEntity<Map<String, Object>> response =
+				handler.handleUnexpected(new IllegalArgumentException("password cannot be more than 72 bytes"));
+
+		assertEquals(500, response.getStatusCode().value());
+		assertEquals("Internal server error", response.getBody().get("message"));
+	}
+
+	@Test
+	void aBadRequestExceptionCarriesItsOwnMessageToTheUser() {
+		ResponseEntity<Map<String, Object>> response =
+				handler.handleBadRequest(new BadRequestException("Resume is empty — fill the sheet before matching"));
+
+		assertEquals(400, response.getStatusCode().value());
+		assertEquals("Resume is empty — fill the sheet before matching", response.getBody().get("message"));
 	}
 }

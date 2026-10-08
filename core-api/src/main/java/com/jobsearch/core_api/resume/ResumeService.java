@@ -2,6 +2,7 @@ package com.jobsearch.core_api.resume;
 
 import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.common.ConflictException;
+import com.jobsearch.core_api.common.Hashes;
 import com.jobsearch.core_api.profile.AppUser;
 import com.jobsearch.core_api.profile.AppUserRepository;
 import com.jobsearch.core_api.resume.ResumeDtos.ResumeDocument;
@@ -47,20 +48,50 @@ public class ResumeService {
 	 * is always the source of truth, so every response is stamped with it here, overriding
 	 * whatever (if anything) was embedded in the JSON.
 	 */
+	/**
+	 * What the editor loads. A stored value that is not a resume (the number 0 once was) must not lock the
+	 * user out of their own CV page, so it reads as the template and the next save overwrites it.
+	 */
+	@Transactional(readOnly = true)
+	public ResumeDocument getForEditing() {
+		AppUser user = currentUserService.requireUser();
+		try {
+			return read(user);
+		}
+		catch (JacksonException ex) {
+			log.error("Stored resume is not readable, serving the template. userId={} {}", user.getId(), describe(user, ex));
+			return withVersion(defaultResume, user.getResumeVersion());
+		}
+	}
+
+	/**
+	 * What compiling, the AI and the ATS match work on. A damaged stored resume stops them: a PDF, a score or an
+	 * edit made against the placeholder template would look right and be wrong.
+	 */
 	@Transactional(readOnly = true)
 	public ResumeDocument get() {
 		AppUser user = currentUserService.requireUser();
+		try {
+			return read(user);
+		}
+		catch (JacksonException ex) {
+			log.warn("Stored resume is not readable. userId={} {}", user.getId(), describe(user, ex));
+			throw new ConflictException("Your saved CV is damaged. Open the CV page and save it to repair it.");
+		}
+	}
+
+	private ResumeDocument read(AppUser user) {
 		if (user.getResumeJson() == null || user.getResumeJson().isBlank()) {
 			log.debug("No saved resume for userId={}, returning default template", user.getId());
 			return withVersion(defaultResume, user.getResumeVersion());
 		}
-		try {
-			ResumeDocument stored = objectMapper.readValue(user.getResumeJson(), ResumeDocument.class);
-			return withVersion(stored, user.getResumeVersion());
-		}
-		catch (JacksonException ex) {
-			throw new IllegalStateException("Stored resume JSON is invalid for userId=" + user.getId(), ex);
-		}
+		ResumeDocument stored = objectMapper.readValue(user.getResumeJson(), ResumeDocument.class);
+		return withVersion(stored, user.getResumeVersion());
+	}
+
+	private static String describe(AppUser user, JacksonException ex) {
+		String raw = user.getResumeJson();
+		return "length=" + raw.length() + " sha256=" + Hashes.sha256(raw) + " problem=" + ex.getOriginalMessage();
 	}
 
 	/**
