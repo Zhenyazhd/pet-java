@@ -85,9 +85,9 @@ public class AppProperties {
 		/** Max POST /api/auth/register attempts per client IP per minute (0 = disabled). */
 		private int registerPerMinute = 5;
 		/**
-		 * When true, read client IP from {@code X-Forwarded-For} / {@code X-Real-IP}
+		 * When true, read client IP from {@code X-Forwarded-For} (rightmost non-proxy address)
 		 * only if {@code request.getRemoteAddr()} is listed in {@link #trustedProxies}.
-		 * Keep false unless the API sits behind a reverse proxy (Vite/nginx) that sets those headers.
+		 * Keep false unless the API sits behind a reverse proxy (Vite/nginx) that appends to that header.
 		 * Enabling this without a trusted proxy lets clients spoof IPs and bypass the limit.
 		 */
 		private boolean trustForwardedHeaders = false;

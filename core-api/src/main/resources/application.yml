@@ -35,7 +35,8 @@ app:
   auth-rate-limit:
     login-per-minute: ${APP_AUTH_LOGIN_PER_MINUTE:10}
     register-per-minute: ${APP_AUTH_REGISTER_PER_MINUTE:5}
-    # Only honor X-Forwarded-For / X-Real-IP when peer ∈ trusted-proxies (Vite/nginx).
+    # Only honor X-Forwarded-For when peer ∈ trusted-proxies (Vite/nginx). The client is the
+    # rightmost address that is not a trusted proxy, so the proxy must append to the header.
     # false = always use remoteAddr (safe if API is reachable without a reverse proxy).
     trust-forwarded-headers: ${APP_AUTH_TRUST_FORWARDED_HEADERS:false}
     trusted-proxies: ${APP_AUTH_TRUSTED_PROXIES:127.0.0.1,::1}

@@ -73,37 +73,41 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 		filterChain.doFilter(request, response);
 	}
 
-	/**
-	 * Uses {@code remoteAddr} by default. Forwarded headers are honored only when
-	 * {@code trust-forwarded-headers=true} <em>and</em> the peer is in {@code trusted-proxies}
-	 * (so a direct client cannot spoof {@code X-Forwarded-For}).
-	 */
-	private static String clientIp(HttpServletRequest request, AppProperties.AuthRateLimit limits) {
+	static String clientIp(HttpServletRequest request, AppProperties.AuthRateLimit limits) {
 		String remote = request.getRemoteAddr() == null ? "unknown" : request.getRemoteAddr();
-		if (!limits.isTrustForwardedHeaders() || !isTrustedProxy(remote, limits.trustedProxyList())) {
+		List<String> trustedProxies = limits.trustedProxyList();
+		if (!limits.isTrustForwardedHeaders() || !isTrustedProxy(remote, trustedProxies)) {
 			return remote;
 		}
 		String forwarded = request.getHeader("X-Forwarded-For");
-		if (forwarded != null && !forwarded.isBlank()) {
-			return forwarded.split(",")[0].strip();
+		if (forwarded == null || forwarded.isBlank()) {
+			return remote;
 		}
-		String realIp = request.getHeader("X-Real-IP");
-		if (realIp != null && !realIp.isBlank()) {
-			return realIp.strip();
+		String leftmostTrusted = remote;
+		String[] hops = forwarded.split(",");
+		for (int i = hops.length - 1; i >= 0; i--) {
+			String hop = hops[i].strip();
+			if (hop.isEmpty()) {
+				continue;
+			}
+			if (!isTrustedProxy(hop, trustedProxies)) {
+				return hop;
+			}
+			leftmostTrusted = hop;
 		}
-		return remote;
+		return leftmostTrusted;
 	}
 
-	private static boolean isTrustedProxy(String remoteAddr, List<String> trustedProxies) {
-		if (remoteAddr == null || remoteAddr.isBlank() || trustedProxies.isEmpty()) {
+	private static boolean isTrustedProxy(String address, List<String> trustedProxies) {
+		if (trustedProxies.isEmpty()) {
 			return false;
 		}
 		for (String trusted : trustedProxies) {
-			if (remoteAddr.equals(trusted) || remoteAddr.equals("[" + trusted + "]")) {
+			if (address.equals(trusted) || address.equals("[" + trusted + "]")) {
 				return true;
 			}
 			// Tomcat may report IPv6 loopback as 0:0:0:0:0:0:0:1
-			if ("::1".equals(trusted) && ("0:0:0:0:0:0:0:1".equals(remoteAddr) || "[0:0:0:0:0:0:0:1]".equals(remoteAddr))) {
+			if ("::1".equals(trusted) && ("0:0:0:0:0:0:0:1".equals(address) || "[0:0:0:0:0:0:0:1]".equals(address))) {
 				return true;
 			}
 		}
