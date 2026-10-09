@@ -13,8 +13,13 @@ public final class AuthDtos {
 			Long id,
 			String email,
 			String displayName,
-			String role
+			String role,
+			/** What this deployment offers, so the page can hide what is switched off instead of failing on click. */
+			Features features
 	) {
+	}
+
+	public record Features(boolean atsMatch) {
 	}
 
 	public record LoginRequest(

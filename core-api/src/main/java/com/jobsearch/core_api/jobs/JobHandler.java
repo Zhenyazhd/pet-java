@@ -16,6 +16,14 @@ public interface JobHandler {
 	Duration lease();
 
 	/**
+	 * A disabled type is not claimed. Jobs of it that are already queued are failed by {@link JobJanitor} once its
+	 * queue timeout passes, so nothing waits for the type to be switched on again.
+	 */
+	default boolean disabled() {
+		return false;
+	}
+
+	/**
 	 * Runs one claimed job. Called outside any transaction; every expected failure is returned as an
 	 * outcome rather than thrown.
 	 */

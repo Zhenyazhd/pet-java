@@ -5,6 +5,8 @@ import com.jobsearch.core_api.ats.AtsDtos.MatchRequest;
 import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.common.Hashes;
 import com.jobsearch.core_api.common.NotFoundException;
+import com.jobsearch.core_api.common.ServiceUnavailableException;
+import com.jobsearch.core_api.config.AppProperties;
 import com.jobsearch.core_api.jobs.JobDtos.JobResponse;
 import com.jobsearch.core_api.jobs.JobService;
 import com.jobsearch.core_api.jobs.JobType;
@@ -27,6 +29,7 @@ public class AtsMatchService {
 	private final VacancyRepository vacancyRepository;
 	private final CurrentUserService currentUserService;
 	private final ObjectMapper objectMapper;
+	private final boolean enabled;
 
 	public AtsMatchService(
 			JobService jobService,
@@ -34,7 +37,8 @@ public class AtsMatchService {
 			ResumePlainTextRenderer plainTextRenderer,
 			VacancyRepository vacancyRepository,
 			CurrentUserService currentUserService,
-			ObjectMapper objectMapper
+			ObjectMapper objectMapper,
+			AppProperties appProperties
 	) {
 		this.jobService = jobService;
 		this.resumeService = resumeService;
@@ -42,9 +46,14 @@ public class AtsMatchService {
 		this.vacancyRepository = vacancyRepository;
 		this.currentUserService = currentUserService;
 		this.objectMapper = objectMapper;
+		this.enabled = appProperties.getAtsScreener().isEnabled();
 	}
 
 	public JobResponse enqueue(MatchRequest request) {
+		if (!enabled) {
+			// A fixed answer with no Retry-After: waiting will not help. 503 is not 404, which means "no such job".
+			throw new ServiceUnavailableException("The vacancy match is not available yet.", null);
+		}
 		String vacancyText = request.vacancyContext().strip();
 		if (vacancyText.length() > MAX_VACANCY_CHARS) {
 			throw new BadRequestException("vacancyContext exceeds " + MAX_VACANCY_CHARS + " characters");

@@ -142,6 +142,19 @@ public class AppProperties {
 		private String baseUrl = "http://127.0.0.1:5174";
 		/** Read timeout for /api/analyze — full Gemini scoring often exceeds 90s. */
 		private int timeoutSeconds = 180;
+		/**
+		 * Whether the vacancy match is offered at all. Off by default: the screener is a separate app with no
+		 * production setup in this repository, and it must be reachable only from core-api.
+		 */
+		private boolean enabled = false;
+
+		public boolean isEnabled() {
+			return enabled;
+		}
+
+		public void setEnabled(boolean enabled) {
+			this.enabled = enabled;
+		}
 
 		public String getBaseUrl() {
 			return baseUrl;

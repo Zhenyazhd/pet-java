@@ -100,6 +100,10 @@ a:hover {
   color: var(--muted-foreground);
 }
 
+.fatal h1:focus {
+  outline: none;
+}
+
 .fatal h1 {
   font-size: 2rem;
   color: var(--foreground);

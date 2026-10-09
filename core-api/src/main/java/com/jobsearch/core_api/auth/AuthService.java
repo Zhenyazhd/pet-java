@@ -1,9 +1,11 @@
 package com.jobsearch.core_api.auth;
 
 import com.jobsearch.core_api.auth.AuthDtos.AuthUserResponse;
+import com.jobsearch.core_api.auth.AuthDtos.Features;
 import com.jobsearch.core_api.auth.AuthDtos.LoginRequest;
 import com.jobsearch.core_api.auth.AuthDtos.RegisterRequest;
 import com.jobsearch.core_api.common.Emails;
+import com.jobsearch.core_api.config.AppProperties;
 import com.jobsearch.core_api.common.UnauthorizedException;
 import com.jobsearch.core_api.common.UniqueConstraint;
 import com.jobsearch.core_api.profile.AppUser;
@@ -36,6 +38,7 @@ public class AuthService {
 	private final AuthenticationManager authenticationManager;
 	private final InviteCodeService inviteCodeService;
 	private final SecurityContextRepository securityContextRepository;
+	private final Features features;
 
 	public AuthService(
 			AppUserRepository appUserRepository,
@@ -43,7 +46,8 @@ public class AuthService {
 			PasswordEncoder passwordEncoder,
 			AuthenticationManager authenticationManager,
 			InviteCodeService inviteCodeService,
-			SecurityContextRepository securityContextRepository
+			SecurityContextRepository securityContextRepository,
+			AppProperties appProperties
 	) {
 		this.appUserRepository = appUserRepository;
 		this.currentUserService = currentUserService;
@@ -51,12 +55,13 @@ public class AuthService {
 		this.authenticationManager = authenticationManager;
 		this.inviteCodeService = inviteCodeService;
 		this.securityContextRepository = securityContextRepository;
+		this.features = new Features(appProperties.getAtsScreener().isEnabled());
 	}
 
 	@Transactional(readOnly = true)
 	public AuthUserResponse me() {
 		AppUser user = currentUserService.requireUser();
-		return new AuthUserResponse(user.getId(), user.getEmail(), user.getDisplayName(), user.getRole().name());
+		return new AuthUserResponse(user.getId(), user.getEmail(), user.getDisplayName(), user.getRole().name(), features);
 	}
 
 	@Transactional(readOnly = true)
@@ -153,7 +158,8 @@ public class AuthService {
 				principal.getId(),
 				principal.getUsername(),
 				principal.getDisplayName(),
-				principal.getRole().name()
+				principal.getRole().name(),
+				features
 		);
 	}
 }

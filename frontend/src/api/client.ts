@@ -28,6 +28,19 @@ export class ApiError extends Error {
   }
 }
 
+const NETWORK_ERROR = "Can't reach the server. Check your connection and try again."
+
+/** fetch rejects with a bare TypeError ("Failed to fetch", "Load failed") when the network or the server is gone. */
+async function safeFetch(path: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(path, init)
+  } catch (err) {
+    // fetch rejects with a TypeError for a network failure; anything else (an abort, a bad argument) is not one.
+    if (!(err instanceof TypeError)) throw err
+    throw new ApiError(NETWORK_ERROR, 0)
+  }
+}
+
 export function isUnauthorized(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401
 }
@@ -60,7 +73,7 @@ let csrfRefreshInFlight: Promise<void> | null = null
 
 async function refreshCsrfCookie(): Promise<void> {
   if (!csrfRefreshInFlight) {
-    csrfRefreshInFlight = fetch('/api/auth/csrf', { credentials: 'include' })
+    csrfRefreshInFlight = safeFetch('/api/auth/csrf', { credentials: 'include' })
       .then(async (response) => {
         if (!response.ok) {
           throw new ApiError(await readErrorMessage(response), response.status)
@@ -116,7 +129,7 @@ async function buildHeaders(method: string): Promise<Record<string, string>> {
 async function request<T>(path: string, init?: RequestInit, options?: RequestOptions): Promise<T> {
   const method = init?.method ?? 'GET'
   const send = async () =>
-    fetch(path, {
+    safeFetch(path, {
       credentials: 'include',
       ...init,
       headers: await buildHeaders(method),

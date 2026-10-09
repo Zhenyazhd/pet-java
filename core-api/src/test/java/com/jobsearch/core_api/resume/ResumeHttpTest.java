@@ -24,6 +24,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import tools.jackson.databind.json.JsonMapper;
 
 /** The resume endpoints as a signed-in browser sees them: real login, session and CSRF, over HTTP. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -60,6 +61,14 @@ class ResumeHttpTest {
 		HttpResponse<String> login = send("POST", "/api/auth/login",
 				"{\"email\":\"" + user.getEmail() + "\",\"password\":\"" + PASSWORD + "\"}", null);
 		assertEquals(200, login.statusCode(), login.body());
+	}
+
+	@Test
+	void theSessionListsTheFeaturesThisDeploymentOffers() throws Exception {
+		HttpResponse<String> me = send("GET", "/api/auth/me", null, null);
+
+		assertEquals(200, me.statusCode(), me.body());
+		assertEquals(true, JsonMapper.builder().build().readTree(me.body()).at("/features/atsMatch").asBoolean(), me.body());
 	}
 
 	@Test

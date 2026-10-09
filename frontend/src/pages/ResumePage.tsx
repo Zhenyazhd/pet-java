@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { CreateCvCard } from '../components/resume/CreateCvCard'
+import { useAuth } from '../auth/AuthContext'
 import { CvSheet } from '../components/resume/CvSheet'
 import { AiPanel } from '../components/resume/AiPanel'
 import { MatchPanel } from '../components/resume/MatchPanel'
@@ -38,6 +39,9 @@ function PageIntro() {
 export function ResumePage() {
   useDocumentTitle('Resume')
   const doc = useResumeDocument()
+  const { user } = useAuth()
+  // An API from before this field existed (the minutes of a deploy) reads as "switched off", not as a crash.
+  const matchAvailable = user?.features?.atsMatch ?? false
   const { vacancies, loading: vacanciesLoading, error: vacanciesError } = useVacancies()
   const [params, setParams] = useSearchParams()
 
@@ -275,13 +279,14 @@ export function ResumePage() {
       </div>
 
       <MatchPanel
+        available={matchAvailable}
         hasVacancy={vacancy !== null}
         matching={jobs.matching}
         blocked={conflictBlocked}
         report={jobs.report}
         error={jobs.matchError}
         note={jobs.matchNote}
-        onCheck={() => void jobs.checkMatch(vacancyContext, vacancy?.id ?? null)}
+        onCheck={() => matchAvailable && void jobs.checkMatch(vacancyContext, vacancy?.id ?? null)}
       />
 
       {jobs.pdfUrl && <PdfDialog url={jobs.pdfUrl} onClose={jobs.closePdf} />}

@@ -3,6 +3,8 @@ import { Banner } from '../ui/Banner'
 import { Button } from '../ui/Button'
 
 type MatchPanelProps = {
+  /** False when the deployment has the vacancy match switched off. */
+  available: boolean
   hasVacancy: boolean
   matching: boolean
   blocked: boolean
@@ -12,7 +14,7 @@ type MatchPanelProps = {
   onCheck: () => void
 }
 
-export function MatchPanel({ hasVacancy, matching, blocked, report, error, note, onCheck }: MatchPanelProps) {
+export function MatchPanel({ available, hasVacancy, matching, blocked, report, error, note, onCheck }: MatchPanelProps) {
   return (
     <section className="match" aria-labelledby="match-title">
       <div className="match__bar">
@@ -20,13 +22,20 @@ export function MatchPanel({ hasVacancy, matching, blocked, report, error, note,
           <h2 id="match-title" className="section-title">
             Vacancy match
           </h2>
-          <p className="muted-line">
-            {hasVacancy
-              ? 'Scores your saved CV against the chosen vacancy on six ATS platforms. It takes a few minutes.'
-              : 'Pick a vacancy above to check how your CV scores against it.'}
+          <p id="match-lead" className="muted-line">
+            {!available
+              ? 'Not available yet. Scoring your CV against a vacancy will come later.'
+              : hasVacancy
+                ? 'Scores your saved CV against the chosen vacancy on six ATS platforms. It takes a few minutes.'
+                : 'Pick a vacancy above to check how your CV scores against it.'}
           </p>
         </div>
-        <Button variant="outline" aria-disabled={!hasVacancy || matching || blocked} onClick={onCheck}>
+        <Button
+          variant="outline"
+          aria-describedby="match-lead"
+          aria-disabled={!available || !hasVacancy || matching || blocked}
+          onClick={onCheck}
+        >
           {matching ? 'Checking…' : 'Check match'}
         </Button>
       </div>

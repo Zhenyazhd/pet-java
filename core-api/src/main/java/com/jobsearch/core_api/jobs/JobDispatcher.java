@@ -44,6 +44,9 @@ public class JobDispatcher {
 	@Scheduled(fixedDelay = POLL_INTERVAL_MILLIS)
 	void poll() {
 		for (Lane lane : lanes.values()) {
+			if (lane.handler.disabled()) {
+				continue;
+			}
 			while (!stopped && Instant.now().isAfter(lane.pausedUntil) && lane.slots.tryAcquire()) {
 				Optional<Job> claimed;
 				try {

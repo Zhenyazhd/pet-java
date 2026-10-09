@@ -63,7 +63,7 @@
   display: inline-flex;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-md);
 }
 
@@ -711,5 +711,26 @@
 
   .match__platforms li {
     grid-template-columns: 1fr auto;
+  }
+}
+
+/*
+ * A short window (a laptop at 150% zoom): the fixed-height AI column would be taller than the window and its
+ * message field unreachable until the sheet has scrolled past. Stack it, like on a narrow window.
+ */
+@media (max-height: 44rem) {
+  .resume-side {
+    position: static;
+    height: auto;
+    min-height: 0;
+  }
+
+  .ai-panel {
+    flex: none;
+  }
+
+  .chat-log {
+    flex: none;
+    height: 22rem;
   }
 }

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -35,5 +36,20 @@ class JobDispatcherPollTest {
 		dispatcher.poll();
 
 		verify(jobRepository, times(2)).claimNext(anyString(), anyLong());
+	}
+
+	@Test
+	void aDisabledTypeIsNeverClaimed() {
+		JobRepository jobRepository = mock(JobRepository.class);
+		JobHandler off = mock(JobHandler.class);
+		when(off.type()).thenReturn(JobType.ATS_MATCH);
+		when(off.concurrency()).thenReturn(2);
+		when(off.lease()).thenReturn(Duration.ofMinutes(1));
+		when(off.disabled()).thenReturn(true);
+		JobDispatcher dispatcher = new JobDispatcher(jobRepository, List.of(off));
+
+		dispatcher.poll();
+
+		verify(jobRepository, never()).claimNext(anyString(), anyLong());
 	}
 }

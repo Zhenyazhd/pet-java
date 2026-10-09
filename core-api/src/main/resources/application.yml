@@ -70,6 +70,8 @@ app:
     max-concurrent-requests: ${OPENROUTER_MAX_CONCURRENT_REQUESTS:20}
     max-tokens: ${OPENROUTER_MAX_TOKENS:8000}
   ats-screener:
+    # The vacancy match needs the separate ats-screener app; off unless you run it.
+    enabled: ${ATS_SCREENER_ENABLED:false}
     base-url: ${ATS_SCREENER_BASE_URL:http://127.0.0.1:5174}
     timeout-seconds: ${ATS_SCREENER_TIMEOUT_SECONDS:180}
   latex-worker:

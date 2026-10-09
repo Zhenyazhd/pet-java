@@ -36,6 +36,7 @@ public class AtsMatchHandler implements JobHandler {
 	private final VacancyRepository vacancyRepository;
 	private final ObjectMapper objectMapper;
 	private final Duration lease;
+	private final boolean enabled;
 
 	public AtsMatchHandler(
 			AtsScreenerClient screenerClient,
@@ -48,6 +49,12 @@ public class AtsMatchHandler implements JobHandler {
 		this.objectMapper = objectMapper;
 		// The screener call may take the whole timeout; the slack covers storing the result.
 		this.lease = Duration.ofSeconds(appProperties.getAtsScreener().getTimeoutSeconds() + 30);
+		this.enabled = appProperties.getAtsScreener().isEnabled();
+	}
+
+	@Override
+	public boolean disabled() {
+		return !enabled;
 	}
 
 	@Override
