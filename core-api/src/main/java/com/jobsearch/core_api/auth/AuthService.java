@@ -13,6 +13,7 @@ import com.jobsearch.core_api.profile.AppUserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -25,7 +26,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class AuthService {
@@ -39,6 +42,7 @@ public class AuthService {
 	private final InviteCodeService inviteCodeService;
 	private final SecurityContextRepository securityContextRepository;
 	private final Features features;
+	private final TransactionTemplate transaction;
 
 	public AuthService(
 			AppUserRepository appUserRepository,
@@ -47,7 +51,8 @@ public class AuthService {
 			AuthenticationManager authenticationManager,
 			InviteCodeService inviteCodeService,
 			SecurityContextRepository securityContextRepository,
-			AppProperties appProperties
+			AppProperties appProperties,
+			PlatformTransactionManager transactionManager
 	) {
 		this.appUserRepository = appUserRepository;
 		this.currentUserService = currentUserService;
@@ -56,6 +61,7 @@ public class AuthService {
 		this.inviteCodeService = inviteCodeService;
 		this.securityContextRepository = securityContextRepository;
 		this.features = new Features(appProperties.getAtsScreener().isEnabled());
+		this.transaction = new TransactionTemplate(transactionManager);
 	}
 
 	@Transactional(readOnly = true)
@@ -64,7 +70,6 @@ public class AuthService {
 		return new AuthUserResponse(user.getId(), user.getEmail(), user.getDisplayName(), user.getRole().name(), features);
 	}
 
-	@Transactional(readOnly = true)
 	public AuthUserResponse login(LoginRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
 		try {
 			Authentication authentication = authenticationManager.authenticate(
@@ -83,13 +88,31 @@ public class AuthService {
 		}
 	}
 
-	@Transactional
 	public AuthUserResponse register(
 			RegisterRequest request,
 			HttpServletRequest httpRequest,
 			HttpServletResponse httpResponse
 	) {
-		// Invite first: invalid codes always 401, before any email-existence signal (409).
+		// Invite first: a wrong code is refused before the slow hashing, so it cannot be used to burn CPU.
+		inviteCodeService.requireAvailable(request.inviteCode());
+		// Slow on purpose, so it runs before the transaction opens and holds no connection while it does.
+		String passwordHash = passwordEncoder.encode(request.password());
+
+		AppUserPrincipal principal = Objects.requireNonNull(transaction.execute(status -> createUser(request, passwordHash)));
+		// Before the session: if that fails the account still exists, and the log should say so.
+		log.info("Registered userId={} email={}", principal.getId(), principal.getUsername());
+
+		Authentication authentication = new UsernamePasswordAuthenticationToken(
+				principal,
+				null,
+				principal.getAuthorities()
+		);
+		establishSession(authentication, httpRequest, httpResponse);
+		return toResponse(principal);
+	}
+
+	/** One transaction: the invite is locked, the user created, the invite marked used. Any failure rolls all three back. */
+	private AppUserPrincipal createUser(RegisterRequest request, String passwordHash) {
 		InviteCode invite = inviteCodeService.lockAvailable(request.inviteCode());
 
 		String email = Emails.normalize(request.email());
@@ -100,7 +123,7 @@ public class AuthService {
 		AppUser user = new AppUser();
 		user.setEmail(email);
 		user.setDisplayName(displayName);
-		user.setPasswordHash(passwordEncoder.encode(request.password()));
+		user.setPasswordHash(passwordHash);
 		AppUser saved = UniqueConstraint.onConflict(
 				"Email already registered",
 				() -> appUserRepository.saveAndFlush(user),
@@ -109,21 +132,13 @@ public class AuthService {
 
 		inviteCodeService.markUsed(invite, saved.getId());
 
-		AppUserPrincipal principal = new AppUserPrincipal(
+		return new AppUserPrincipal(
 				saved.getId(),
 				saved.getEmail(),
 				saved.getDisplayName(),
 				saved.getPasswordHash(),
 				UserRole.USER
 		);
-		Authentication authentication = new UsernamePasswordAuthenticationToken(
-				principal,
-				null,
-				principal.getAuthorities()
-		);
-		establishSession(authentication, httpRequest, httpResponse);
-		log.info("Registered userId={} email={}", saved.getId(), saved.getEmail());
-		return toResponse(principal);
 	}
 
 	public void logout(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {

@@ -2,6 +2,7 @@ package com.jobsearch.core_api.auth;
 
 import com.jobsearch.core_api.common.ApiErrorResponses;
 import com.jobsearch.core_api.common.ExpensiveOpsRateLimitFilter;
+import com.jobsearch.core_api.common.UserMdcFilter;
 import com.jobsearch.core_api.common.FixedWindowRateLimiter;
 import com.jobsearch.core_api.config.AppProperties;
 import jakarta.servlet.FilterChain;
@@ -111,7 +112,8 @@ public class SecurityConfig {
 								apiErrorResponses.write(response, HttpStatus.FORBIDDEN, "Forbidden"))
 				)
 				.addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
-				.addFilterAfter(authRateLimitFilter, CsrfCookieFilter.class)
+				.addFilterAfter(new UserMdcFilter(), CsrfCookieFilter.class)
+				.addFilterAfter(authRateLimitFilter, UserMdcFilter.class)
 				.addFilterAfter(expensiveOpsRateLimitFilter, AuthRateLimitFilter.class)
 				.formLogin(form -> form.disable())
 				.httpBasic(basic -> basic.disable())

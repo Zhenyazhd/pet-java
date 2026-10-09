@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -29,6 +30,7 @@ public class JobDispatcher {
 
 	private static final Logger log = LoggerFactory.getLogger(JobDispatcher.class);
 	private static final long POLL_INTERVAL_MILLIS = 500;
+	private static final long CLAIM_ERROR_LOG_INTERVAL_MILLIS = 30_000;
 
 	private final JobRepository jobRepository;
 	private final Map<JobType, Lane> lanes;
@@ -54,8 +56,13 @@ public class JobDispatcher {
 				}
 				catch (RuntimeException ex) {
 					lane.slots.release();
-					log.error("Job claim failed type={}", lane.handler.type(), ex);
+					logClaimFailure(lane, ex);
 					break;
+				}
+				if (lane.claimFailingSince != 0) {
+					log.info("Job claims work again type={}", lane.handler.type());
+					lane.claimFailingSince = 0;
+					lane.lastClaimErrorLoggedAt = 0;
 				}
 				if (claimed.isEmpty()) {
 					lane.slots.release();
@@ -63,6 +70,9 @@ public class JobDispatcher {
 				}
 				Job job = claimed.get();
 				executor.execute(() -> {
+					// Every log line of this job carries its owner, like the lines of a web request do. Not a
+					// try-with-resources: that would close before the catch below logs "outcome not recorded".
+					MDC.put("userId", String.valueOf(job.getUserId()));
 					try {
 						process(job);
 					}
@@ -70,10 +80,30 @@ public class JobDispatcher {
 						log.error("Job outcome not recorded type={} jobId={}", job.getType(), job.getId(), ex);
 					}
 					finally {
+						MDC.remove("userId");
 						lane.slots.release();
 					}
 				});
 			}
+		}
+	}
+
+	/**
+	 * With the database down every poll fails, twice a second per type. The first failure is logged with its stack
+	 * trace and then one line every {@value #CLAIM_ERROR_LOG_INTERVAL_MILLIS} ms; the rest are debug.
+	 */
+	private void logClaimFailure(Lane lane, RuntimeException ex) {
+		long now = System.currentTimeMillis();
+		if (lane.claimFailingSince == 0) {
+			lane.claimFailingSince = now;
+		}
+		if (now - lane.lastClaimErrorLoggedAt >= CLAIM_ERROR_LOG_INTERVAL_MILLIS) {
+			lane.lastClaimErrorLoggedAt = now;
+			log.error("Job claim failed type={} failingForSeconds={}", lane.handler.type(),
+					(now - lane.claimFailingSince) / 1000, ex);
+		}
+		else {
+			log.debug("Job claim failed type={}", lane.handler.type(), ex);
 		}
 	}
 
@@ -151,6 +181,8 @@ public class JobDispatcher {
 		private final JobHandler handler;
 		private final Semaphore slots;
 		private volatile Instant pausedUntil = Instant.MIN;
+		private volatile long claimFailingSince;
+		private volatile long lastClaimErrorLoggedAt;
 
 		private Lane(JobHandler handler) {
 			this.handler = handler;

@@ -28,9 +28,12 @@ services:
       - "127.0.0.1:${LATEX_WORKER_PORT:-8090}:8090"
     environment:
       WORKER_TOKEN: ${LATEX_WORKER_TOKEN:?set LATEX_WORKER_TOKEN in .env}
+    # The JVM is PID 1 and does not reap processes it did not start; an init does, so a killed compile leaves no zombies.
+    init: true
     read_only: true
     tmpfs:
-      - /tmp
+      # A compile writes its log and PDF here; a runaway one must hit a ceiling, not fill the host's memory.
+      - /tmp:size=256m,mode=1777
     cap_drop:
       - ALL
     security_opt:

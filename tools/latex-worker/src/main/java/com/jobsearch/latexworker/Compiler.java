@@ -43,9 +43,16 @@ final class Compiler {
 					.redirectOutput(logFile.toFile())
 					.start();
 
-			if (!process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS)) {
-				process.descendants().forEach(ProcessHandle::destroyForcibly);
-				process.destroyForcibly().waitFor();
+			boolean finished;
+			try {
+				finished = process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS);
+			}
+			catch (InterruptedException ex) {
+				kill(process);
+				throw ex;
+			}
+			if (!finished) {
+				kill(process);
 				return new CompileResult.TimedOut();
 			}
 
@@ -61,6 +68,11 @@ final class Compiler {
 		finally {
 			deleteRecursively(workDir);
 		}
+	}
+
+	private static void kill(Process process) throws InterruptedException {
+		process.descendants().forEach(ProcessHandle::destroyForcibly);
+		process.destroyForcibly().waitFor();
 	}
 
 	private static String tail(String log) {

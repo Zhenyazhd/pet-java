@@ -14,6 +14,9 @@ public interface InviteCodeRepository extends JpaRepository<InviteCode, Long> {
 
 	List<InviteCode> findAllByOrderByCreatedAtDesc();
 
+	@Query("select count(c) > 0 from InviteCode c where lower(c.code) = lower(:code) and c.usedAt is null")
+	boolean existsAvailable(@Param("code") String code);
+
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select c from InviteCode c where lower(c.code) = lower(:code) and c.usedAt is null")
 	Optional<InviteCode> findAvailableForUpdate(@Param("code") String code);

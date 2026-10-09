@@ -57,6 +57,12 @@ public class InviteCodeService {
 		log.info("Deleted unused invite code id={}", id);
 	}
 
+	public void requireAvailable(String rawCode) {
+		if (!inviteCodeRepository.existsAvailable(rawCode.strip())) {
+			throw new UnauthorizedException("Invalid or already used invite code");
+		}
+	}
+
 	/**
 	 * Locks an unused invite for the current transaction. Call before creating the user so
 	 * invalid invites fail with 401 before any email-existence checks (no enumeration oracle).

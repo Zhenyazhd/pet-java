@@ -14,6 +14,10 @@ spring:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:job_search}
     username: ${POSTGRES_USER:zhenya}
     password: ${POSTGRES_PASSWORD}
+    hikari:
+      # Explicit, so the number is a decision and not the library's default. Jobs hold no connection while they
+      # wait for the AI or the worker, so this covers web requests plus short job writes.
+      maximum-pool-size: ${DB_POOL_SIZE:10}
   lifecycle:
     timeout-per-shutdown-phase: 40s
   jpa:
@@ -37,6 +41,10 @@ server:
         http-only: true
         secure: true
 
+logging:
+  pattern:
+    level: "%5p [user=%X{userId:-}]"
+
 management:
   # Only health is exposed (liveness/readiness probes for the orchestrator); no details, no other endpoints.
   endpoints:
@@ -47,6 +55,11 @@ management:
     health:
       probes:
         enabled: true
+      group:
+        # Liveness is for restarting a stuck process and must not depend on the database; readiness (is it
+        # worth sending requests here) does.
+        readiness:
+          include: readinessState,db
       show-details: never
 
 app:
