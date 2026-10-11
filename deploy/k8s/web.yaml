@@ -20,6 +20,8 @@ spec:
       labels: { app: web }
     spec:
       automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: ghcr
       securityContext:
         runAsNonRoot: true
         runAsUser: 101

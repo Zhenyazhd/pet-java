@@ -29,4 +29,10 @@ kubectl -n cvhelper create secret generic cvhelper-secrets \
 kubectl -n cert-manager create secret generic cloudflare-api-token \
   --from-literal=api-token="$CLOUDFLARE_API_TOKEN" \
   --dry-run=client -o yaml | kubectl apply -f -
+# Private GHCR packages: a GitHub token with only read:packages. Skip both variables if the packages are public.
+if [ -n "${GHCR_USER:-}" ] && [ -n "${GHCR_TOKEN:-}" ]; then
+  kubectl -n cvhelper create secret docker-registry ghcr \
+    --docker-server=ghcr.io --docker-username="$GHCR_USER" --docker-password="$GHCR_TOKEN" \
+    --dry-run=client -o yaml | kubectl apply -f -
+fi
 echo "Secrets applied."
