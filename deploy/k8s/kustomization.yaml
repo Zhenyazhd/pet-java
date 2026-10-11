@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: cvhelper
+resources:
+  - namespace.yaml
+  - postgres.yaml
+  - latex-worker.yaml
+  - core-api.yaml
+  - web.yaml
+  - ingress.yaml
+images:
+  - name: core-api
+    newName: ghcr.io/zhenyazhd/cvhelper-core-api
+    newTag: latest
+  - name: latex-worker
+    newName: ghcr.io/zhenyazhd/cvhelper-latex-worker
+    newTag: latest
+  - name: web
+    newName: ghcr.io/zhenyazhd/cvhelper-web
+    newTag: latest

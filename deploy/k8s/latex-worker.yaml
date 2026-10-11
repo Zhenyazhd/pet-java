@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: latex-worker
+spec:
+  selector: { app: latex-worker }
+  ports:
+    - { name: http, port: 8090 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: latex-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: latex-worker }
+  template:
+    metadata:
+      labels: { app: latex-worker }
+    spec:
+      automountServiceAccountToken: false
+      shareProcessNamespace: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: latex-worker
+          image: latex-worker
+          ports: [{ name: http, containerPort: 8090 }]
+          env:
+            - { name: WORKER_PORT, value: "8090" }
+            - { name: WORKER_CONCURRENCY, value: "2" }
+            - name: WORKER_TOKEN
+              valueFrom: { secretKeyRef: { name: cvhelper-secrets, key: LATEX_WORKER_TOKEN } }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 200m, memory: 512Mi }
+            limits: { cpu: "2", memory: 1280Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: { medium: Memory, sizeLimit: 256Mi }
