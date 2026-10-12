@@ -4,7 +4,7 @@ metadata:
   name: web
   annotations:
     # Switch to letsencrypt-staging for the first try, so a mistake does not use up the production rate limits.
-    cert-manager.io/cluster-issuer: letsencrypt-staging # TODO: change to letsencrypt-prod
+    cert-manager.io/cluster-issuer: letsencrypt-prod # TODO: change to letsencrypt-prod
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
 spec:

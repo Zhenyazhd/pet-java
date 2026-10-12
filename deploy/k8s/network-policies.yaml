@@ -62,3 +62,13 @@ spec:
   podSelector: { matchLabels: { app: postgres } }
   policyTypes: [Egress]
   egress: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: ats-screener-from-core-api }
+spec:
+  podSelector: { matchLabels: { app: ats-screener } }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: core-api } } }]
+      ports: [{ port: 3000 }]

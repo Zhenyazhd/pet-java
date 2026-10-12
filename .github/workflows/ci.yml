@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-  workflow_dispatch:
+    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -94,8 +94,11 @@ jobs:
           - { name: cvhelper-core-api, context: core-api }
           - { name: cvhelper-latex-worker, context: tools/latex-worker }
           - { name: cvhelper-web, context: frontend }
+          - { name: cvhelper-ats-screener, context: tools/ats-screener, file: deploy/ats-screener/Dockerfile }
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: ${{ matrix.name == 'cvhelper-ats-screener' }}
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -107,6 +110,7 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
+          file: ${{ matrix.file || format('{0}/Dockerfile', matrix.context) }}
           platforms: linux/amd64
           push: true
           tags: |

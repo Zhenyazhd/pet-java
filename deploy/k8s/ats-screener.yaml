@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ats-screener
+spec:
+  selector: { app: ats-screener }
+  ports:
+    - { name: http, port: 3000 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ats-screener
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: ats-screener }
+  template:
+    metadata:
+      labels: { app: ats-screener }
+    spec:
+      automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: ghcr
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: ats-screener
+          image: ats-screener
+          ports: [{ name: http, containerPort: 3000 }]
+          env:
+            - name: GEMINI_API_KEY
+              valueFrom: { secretKeyRef: { name: cvhelper-secrets, key: GEMINI_API_KEY } }
+            - name: GROQ_API_KEY
+              valueFrom: { secretKeyRef: { name: cvhelper-secrets, key: GROQ_API_KEY, optional: true } }
+            - name: CEREBRAS_API_KEY
+              valueFrom: { secretKeyRef: { name: cvhelper-secrets, key: CEREBRAS_API_KEY, optional: true } }
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 384Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 64Mi }
