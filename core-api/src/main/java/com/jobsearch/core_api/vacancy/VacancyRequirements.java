@@ -3,12 +3,11 @@ package com.jobsearch.core_api.vacancy;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 /**
- * Case-insensitive requirement dedupe shared by manual CRUD and LLM import.
- * Keeps the first-seen casing; ORs {@code required} when merging duplicates.
+ * Requirement dedupe shared by manual CRUD and LLM import: two names are the same when {@link SkillKey} says so.
+ * Keeps the first-seen spelling; ORs {@code required} when merging duplicates.
  */
 final class VacancyRequirements {
 
@@ -29,14 +28,14 @@ final class VacancyRequirements {
 			if (item == null || item.name() == null || item.name().isBlank()) {
 				continue;
 			}
-			String name = item.name().strip();
+			String name = SkillKey.display(item.name());
 			if (name.length() > MAX_NAME_LENGTH) {
 				name = name.substring(0, MAX_NAME_LENGTH).strip();
 			}
 			if (name.isBlank()) {
 				continue;
 			}
-			String key = name.toLowerCase(Locale.ROOT);
+			String key = SkillKey.of(name);
 			Item existing = unique.get(key);
 			if (existing == null) {
 				unique.put(key, new Item(name, item.required()));

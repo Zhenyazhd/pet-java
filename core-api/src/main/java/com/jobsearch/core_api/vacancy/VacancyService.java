@@ -25,9 +25,15 @@ public class VacancyService {
 
 	private final VacancyRepository vacancyRepository;
 	private final CurrentUserService currentUserService;
+	private final SkillService skillService;
 
-	public VacancyService(VacancyRepository vacancyRepository, CurrentUserService currentUserService) {
+	public VacancyService(
+			VacancyRepository vacancyRepository,
+			CurrentUserService currentUserService,
+			SkillService skillService
+	) {
 		this.vacancyRepository = vacancyRepository;
+		this.skillService = skillService;
 		this.currentUserService = currentUserService;
 	}
 
@@ -50,11 +56,7 @@ public class VacancyService {
 		vacancy.setUserId(userId);
 		applyRequest(vacancy, request);
 		vacancy.setApplication(new JobApplication());
-		Vacancy saved = UniqueConstraint.onConflict(
-				"Vacancy with this URL already exists",
-				() -> vacancyRepository.saveAndFlush(vacancy),
-				UniqueConstraint.VACANCY_USER_URL
-		);
+		Vacancy saved = saveChecked(vacancy);
 		log.info(
 				"Created vacancy id={} userId={} title={} applicationStatus=NOT_APPLIED",
 				saved.getId(),
@@ -68,11 +70,7 @@ public class VacancyService {
 		long userId = currentUserService.requireUserId();
 		Vacancy vacancy = getOwnedVacancy(id);
 		applyRequest(vacancy, request);
-		Vacancy saved = UniqueConstraint.onConflict(
-				"Vacancy with this URL already exists",
-				() -> vacancyRepository.saveAndFlush(vacancy),
-				UniqueConstraint.VACANCY_USER_URL
-		);
+		Vacancy saved = saveChecked(vacancy);
 		log.info("Updated vacancy id={} userId={}", id, userId);
 		return toResponse(saved);
 	}
@@ -86,6 +84,18 @@ public class VacancyService {
 		log.info("Deleted vacancy id={} userId={}", id, userId);
 	}
 
+	private Vacancy saveChecked(Vacancy vacancy) {
+		return UniqueConstraint.onConflict(
+				"The vacancy was changed at the same time; try again",
+				() -> UniqueConstraint.onConflict(
+						"Vacancy with this URL already exists",
+						() -> vacancyRepository.saveAndFlush(vacancy),
+						UniqueConstraint.VACANCY_USER_URL
+				),
+				UniqueConstraint.VACANCY_REQUIREMENT_SKILL
+		);
+	}
+
 	private Vacancy getOwnedVacancy(Long id) {
 		long userId = currentUserService.requireUserId();
 		return vacancyRepository.findDetailedByIdAndUserId(id, userId)
@@ -93,12 +103,6 @@ public class VacancyService {
 	}
 
 	private void applyRequest(Vacancy vacancy, VacancyRequest request) {
-		vacancy.setUrl(request.url().trim());
-		vacancy.setTitle(request.title().trim());
-		vacancy.setCompany(Strings.blankToNull(request.company()));
-		vacancy.setDescription(Strings.blankToNull(request.description()));
-		vacancy.setMatchPercent(request.matchPercent());
-
 		List<RequirementRequest> requirements = request.requirements();
 		List<VacancyRequirements.Item> items = requirements == null ? List.of() : requirements.stream()
 				.filter(item -> item != null)
@@ -107,7 +111,14 @@ public class VacancyService {
 						Boolean.TRUE.equals(item.required())
 				))
 				.toList();
-		vacancy.syncRequirements(VacancyRequirements.dedupe(items, Integer.MAX_VALUE));
+		List<SkillService.Resolved> skills = skillService.resolve(VacancyRequirements.dedupe(items, Integer.MAX_VALUE));
+
+		vacancy.setUrl(request.url().trim());
+		vacancy.setTitle(request.title().trim());
+		vacancy.setCompany(Strings.blankToNull(request.company()));
+		vacancy.setDescription(Strings.blankToNull(request.description()));
+		vacancy.setMatchPercent(request.matchPercent());
+		vacancy.syncRequirements(skills);
 	}
 
 	private VacancyResponse toResponse(Vacancy vacancy) {

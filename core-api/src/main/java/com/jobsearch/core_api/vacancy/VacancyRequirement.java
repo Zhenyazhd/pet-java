@@ -22,8 +22,9 @@ public class VacancyRequirement {
 	@JoinColumn(name = "vacancy_id", nullable = false)
 	private Vacancy vacancy;
 
-	@Column(nullable = false, length = 255)
-	private String name;
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "skill_id", nullable = false)
+	private Skill skill;
 
 	@Column(nullable = false)
 	private boolean required = true;
@@ -36,12 +37,16 @@ public class VacancyRequirement {
 		this.vacancy = vacancy;
 	}
 
-	public String getName() {
-		return name;
+	public Skill getSkill() {
+		return skill;
 	}
 
-	public void setName(String name) {
-		this.name = name;
+	public void setSkill(Skill skill) {
+		this.skill = skill;
+	}
+
+	public String getName() {
+		return skill.getName();
 	}
 
 	public boolean isRequired() {

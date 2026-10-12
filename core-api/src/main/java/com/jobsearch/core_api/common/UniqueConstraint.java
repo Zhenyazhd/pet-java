@@ -14,6 +14,7 @@ public final class UniqueConstraint {
 
 	public static final String APP_USER_EMAIL_LOWER = "uq_app_user_email_lower";
 	public static final String VACANCY_USER_URL = "uq_vacancy_user_url";
+	public static final String VACANCY_REQUIREMENT_SKILL = "uq_vacancy_requirement_skill";
 
 	private UniqueConstraint() {
 	}

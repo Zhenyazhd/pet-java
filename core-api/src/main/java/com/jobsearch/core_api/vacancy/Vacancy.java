@@ -17,7 +17,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -74,34 +73,33 @@ public class Vacancy {
 		updatedAt = Instant.now();
 	}
 
-	public void addRequirement(String name, boolean required) {
+	public void addRequirement(Skill skill, boolean required) {
 		VacancyRequirement requirement = new VacancyRequirement();
-		requirement.setName(name);
+		requirement.setSkill(skill);
 		requirement.setRequired(required);
 		requirement.setVacancy(this);
 		requirements.add(requirement);
 	}
 
-	void syncRequirements(List<VacancyRequirements.Item> items) {
-		Map<String, VacancyRequirement> existing = new HashMap<>();
+	void syncRequirements(List<SkillService.Resolved> items) {
+		Map<Long, VacancyRequirement> existing = new HashMap<>();
 		for (VacancyRequirement requirement : requirements) {
-			existing.put(requirement.getName().toLowerCase(Locale.ROOT), requirement);
+			existing.put(requirement.getSkill().getId(), requirement);
 		}
-		Set<String> keep = new HashSet<>();
-		for (VacancyRequirements.Item item : items) {
-			String key = item.name().toLowerCase(Locale.ROOT);
-			keep.add(key);
-			VacancyRequirement match = existing.get(key);
+		Set<Long> keep = new HashSet<>();
+		for (SkillService.Resolved item : items) {
+			Long skillId = item.skill().getId();
+			keep.add(skillId);
+			VacancyRequirement match = existing.get(skillId);
 			if (match == null) {
-				addRequirement(item.name(), item.required());
+				addRequirement(item.skill(), item.required());
 			}
 			else {
-				match.setName(item.name());
 				match.setRequired(item.required());
 			}
 		}
 		requirements.removeIf(requirement -> {
-			if (keep.contains(requirement.getName().toLowerCase(Locale.ROOT))) {
+			if (keep.contains(requirement.getSkill().getId())) {
 				return false;
 			}
 			requirement.setVacancy(null);

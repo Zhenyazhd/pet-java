@@ -65,6 +65,7 @@ public class VacancyImportHandler implements JobHandler {
 			""";
 
 	private final VacancyRepository vacancyRepository;
+	private final SkillService skillService;
 	private final OpenRouterClient openRouterClient;
 	private final ObjectMapper objectMapper;
 	private final TransactionTemplate transactionTemplate;
@@ -72,12 +73,14 @@ public class VacancyImportHandler implements JobHandler {
 
 	public VacancyImportHandler(
 			VacancyRepository vacancyRepository,
+			SkillService skillService,
 			OpenRouterClient openRouterClient,
 			ObjectMapper objectMapper,
 			PlatformTransactionManager transactionManager,
 			AppProperties appProperties
 	) {
 		this.vacancyRepository = vacancyRepository;
+		this.skillService = skillService;
 		this.openRouterClient = openRouterClient;
 		this.objectMapper = objectMapper;
 		this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -159,14 +162,15 @@ public class VacancyImportHandler implements JobHandler {
 		return UniqueConstraint.onConflict(
 				"vacancy URL conflict",
 				() -> transactionTemplate.execute(status -> {
+					List<SkillService.Resolved> skills = skillService.resolve(parsed.requirements());
 					Vacancy vacancy = new Vacancy();
 					vacancy.setUserId(userId);
 					vacancy.setUrl(url);
 					vacancy.setTitle(parsed.title());
 					vacancy.setCompany(parsed.company());
 					vacancy.setDescription(parsed.description());
-					for (VacancyRequirements.Item item : parsed.requirements()) {
-						vacancy.addRequirement(item.name(), item.required());
+					for (SkillService.Resolved skill : skills) {
+						vacancy.addRequirement(skill.skill(), skill.required());
 					}
 					vacancy.setApplication(new JobApplication());
 
