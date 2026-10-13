@@ -6,8 +6,7 @@ The prompt in `src/main/resources/prompts/` (`full-score.md` and the two `full-s
 hold the wording that differs between scoring against a vacancy and scoring a resume alone) is taken from
 [ATS Screener](https://github.com/sunnypatell/ats-screener), file `src/lib/engine/llm/prompts.ts`
 (`buildFullScoringPrompt`). The text is unchanged except that its template placeholders were turned into
-`{{...}}` markers filled by `ScoringPrompt.java`. ATS Screener is also included in this repository as the
-`tools/ats-screener` submodule.
+`{{...}}` markers filled by `ScoringPrompt.java`. ATS Screener was once included in this repository as a submodule; it is no longer used.
 
 ATS Screener is released under the MIT License:
 
