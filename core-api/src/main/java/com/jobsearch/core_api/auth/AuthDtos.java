@@ -19,7 +19,7 @@ public final class AuthDtos {
 	) {
 	}
 
-	public record Features(boolean atsMatch) {
+	public record Features(boolean atsMatch, boolean pdfReadability) {
 	}
 
 	public record LoginRequest(

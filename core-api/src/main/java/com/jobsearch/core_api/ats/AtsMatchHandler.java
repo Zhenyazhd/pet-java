@@ -3,6 +3,8 @@ package com.jobsearch.core_api.ats;
 import com.jobsearch.core_api.ats.AtsDtos.MatchResponse;
 import com.jobsearch.core_api.ats.AtsDtos.PlatformScore;
 import com.jobsearch.core_api.ats.AtsDtos.Suggestion;
+import com.jobsearch.core_api.compile.ResumePdfCache;
+import com.jobsearch.core_api.compile.ResumePdfCacheRepository;
 import com.jobsearch.core_api.config.AppProperties;
 import com.jobsearch.core_api.jobs.Job;
 import com.jobsearch.core_api.jobs.JobHandler;
@@ -24,32 +26,38 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Scores a queued resume against a vacancy via ATS Screener, stores the report as the job result
+ * Scores a built resume PDF against a vacancy via the ats-worker (the model reads the text an ATS extracts from the PDF), stores the report as the job result
  * and, when the job names a vacancy, its average score as {@code vacancy.match_percent}.
  */
 @Component
 public class AtsMatchHandler implements JobHandler {
 
 	private static final Logger log = LoggerFactory.getLogger(AtsMatchHandler.class);
+	private static final int MAX_SUGGESTIONS = 10;
+	private static final int MAX_LIST_ITEMS = 8;
+	private static final int MAX_TEXT_CHARS = 1000;
 
-	private final AtsScreenerClient screenerClient;
+	private final AtsScoreClient scoreClient;
+	private final ResumePdfCacheRepository cacheRepository;
 	private final VacancyRepository vacancyRepository;
 	private final ObjectMapper objectMapper;
 	private final Duration lease;
 	private final boolean enabled;
 
 	public AtsMatchHandler(
-			AtsScreenerClient screenerClient,
+			AtsScoreClient scoreClient,
+			ResumePdfCacheRepository cacheRepository,
 			VacancyRepository vacancyRepository,
 			ObjectMapper objectMapper,
 			AppProperties appProperties
 	) {
-		this.screenerClient = screenerClient;
+		this.scoreClient = scoreClient;
+		this.cacheRepository = cacheRepository;
 		this.vacancyRepository = vacancyRepository;
 		this.objectMapper = objectMapper;
-		// The screener call may take the whole timeout; the slack covers storing the result.
-		this.lease = Duration.ofSeconds(appProperties.getAtsScreener().getTimeoutSeconds() + 30);
-		this.enabled = appProperties.getAtsScreener().isEnabled();
+		// The worker call may take the whole timeout; the slack covers storing the result.
+		this.lease = Duration.ofSeconds(appProperties.getAtsWorker().getScoreTimeoutSeconds() + 30);
+		this.enabled = appProperties.getAtsWorker().isEnabled();
 	}
 
 	@Override
@@ -62,7 +70,7 @@ public class AtsMatchHandler implements JobHandler {
 		return JobType.ATS_MATCH;
 	}
 
-	/** Each match can hold a screener slot for minutes; keep the LLM bill and the screener load bounded. */
+	/** Each match is a model call that can run for a minute and costs tokens; keep the LLM bill bounded. */
 	@Override
 	public int concurrency() {
 		return 2;
@@ -88,8 +96,13 @@ public class AtsMatchHandler implements JobHandler {
 			log.error("ATS match payload unreadable jobId={}", job.getId(), ex);
 			return new JobOutcome.Failed("bad_payload", "This request could not be processed.");
 		}
-		return switch (screenerClient.fullScore(payload.resumeText(), payload.vacancyText())) {
-			case ScreenerResult.Report(JsonNode root) -> {
+		byte[] pdf = cacheRepository.findById(payload.sourceHash()).map(ResumePdfCache::getPdf).orElse(null);
+		if (pdf == null) {
+			// Cached PDFs unused for 30 days are deleted by PdfCacheJanitor.
+			return new JobOutcome.Failed("pdf_expired", "The PDF has expired. Build the PDF again.");
+		}
+		return switch (scoreClient.fullScore(pdf, payload.vacancyText())) {
+			case ScoreResult.Report(JsonNode root) -> {
 				MatchResponse report = mapResponse(root);
 				if (payload.vacancyId() != null) {
 					saveMatchPercent(job.getUserId(), payload.vacancyId(), report.averageScore());
@@ -99,8 +112,9 @@ public class AtsMatchHandler implements JobHandler {
 				yield new JobOutcome.Succeeded(objectMapper.writeValueAsString(report));
 			}
 			// Not retried: each try can take minutes and spends LLM tokens.
-			case ScreenerResult.Failed(String message) -> new JobOutcome.Failed("ats_failed", message);
-			case ScreenerResult.Unavailable(String reason) -> new JobOutcome.Retry(reason);
+			case ScoreResult.Failed(String message) -> new JobOutcome.Failed("ats_failed", message);
+			case ScoreResult.Busy(long retryAfterSeconds) -> new JobOutcome.Busy(Duration.ofSeconds(retryAfterSeconds));
+			case ScoreResult.Unavailable(String reason) -> new JobOutcome.Retry(reason);
 		};
 	}
 
@@ -134,14 +148,14 @@ public class AtsMatchHandler implements JobHandler {
 				JsonNode suggNode = item.path("suggestions");
 				if (suggNode.isArray()) {
 					for (JsonNode s : suggNode) {
-						String summary = s.path("summary").asString("").strip();
-						if (summary.isBlank()) {
+						String summary = cut(s.path("summary").asString("").strip());
+						if (summary.isBlank() || suggestionsBySummary.size() >= MAX_SUGGESTIONS) {
 							continue;
 						}
 						suggestionsBySummary.putIfAbsent(summary, new Suggestion(
 								summary,
 								stringList(s.path("details")),
-								s.path("impact").asString("medium"),
+								cut(s.path("impact").asString("medium")),
 								stringList(s.path("platforms"))
 						));
 					}
@@ -153,7 +167,7 @@ public class AtsMatchHandler implements JobHandler {
 				? 0
 				: (int) Math.round(platforms.stream().mapToInt(PlatformScore::overallScore).average().orElse(0));
 
-		String provider = root.path("_provider").asString("");
+		String provider = root.path("_model").asString("");
 		boolean cached = root.path("_cached").asBoolean(false);
 		String summary = buildSummary(average, platforms);
 
@@ -169,7 +183,7 @@ public class AtsMatchHandler implements JobHandler {
 
 	private static String buildSummary(int average, List<PlatformScore> platforms) {
 		if (platforms.isEmpty()) {
-			return "ATS Screener returned no platform scores.";
+			return "The model returned no platform scores.";
 		}
 		StringBuilder sb = new StringBuilder();
 		sb.append(String.format(Locale.ROOT, "Average ATS match: %d/100 across %d platforms.", average, platforms.size()));
@@ -189,12 +203,17 @@ public class AtsMatchHandler implements JobHandler {
 		}
 		List<String> out = new ArrayList<>();
 		for (JsonNode n : node) {
-			String v = n.asString("").strip();
-			if (!v.isBlank()) {
+			String v = cut(n.asString("").strip());
+			if (!v.isBlank() && out.size() < MAX_LIST_ITEMS) {
 				out.add(v);
 			}
 		}
 		return List.copyOf(out);
+	}
+
+	/** The model's text goes into the stored job result: bound what one answer can add to it. */
+	private static String cut(String text) {
+		return text.length() > MAX_TEXT_CHARS ? text.substring(0, MAX_TEXT_CHARS) : text;
 	}
 
 	private static int clampScore(int score) {

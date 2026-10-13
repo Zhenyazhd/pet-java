@@ -6,12 +6,11 @@ import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.common.Hashes;
 import com.jobsearch.core_api.common.NotFoundException;
 import com.jobsearch.core_api.common.ServiceUnavailableException;
+import com.jobsearch.core_api.compile.BuiltPdfService;
 import com.jobsearch.core_api.config.AppProperties;
 import com.jobsearch.core_api.jobs.JobDtos.JobResponse;
 import com.jobsearch.core_api.jobs.JobService;
 import com.jobsearch.core_api.jobs.JobType;
-import com.jobsearch.core_api.resume.ResumePlainTextRenderer;
-import com.jobsearch.core_api.resume.ResumeService;
 import com.jobsearch.core_api.vacancy.VacancyRepository;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
@@ -24,8 +23,7 @@ public class AtsMatchService {
 	private static final int MAX_VACANCY_CHARS = 20_000;
 
 	private final JobService jobService;
-	private final ResumeService resumeService;
-	private final ResumePlainTextRenderer plainTextRenderer;
+	private final BuiltPdfService builtPdfService;
 	private final VacancyRepository vacancyRepository;
 	private final CurrentUserService currentUserService;
 	private final ObjectMapper objectMapper;
@@ -33,20 +31,18 @@ public class AtsMatchService {
 
 	public AtsMatchService(
 			JobService jobService,
-			ResumeService resumeService,
-			ResumePlainTextRenderer plainTextRenderer,
+			BuiltPdfService builtPdfService,
 			VacancyRepository vacancyRepository,
 			CurrentUserService currentUserService,
 			ObjectMapper objectMapper,
 			AppProperties appProperties
 	) {
 		this.jobService = jobService;
-		this.resumeService = resumeService;
-		this.plainTextRenderer = plainTextRenderer;
+		this.builtPdfService = builtPdfService;
 		this.vacancyRepository = vacancyRepository;
 		this.currentUserService = currentUserService;
 		this.objectMapper = objectMapper;
-		this.enabled = appProperties.getAtsScreener().isEnabled();
+		this.enabled = appProperties.getAtsWorker().isEnabled();
 	}
 
 	public JobResponse enqueue(MatchRequest request) {
@@ -58,18 +54,16 @@ public class AtsMatchService {
 		if (vacancyText.length() > MAX_VACANCY_CHARS) {
 			throw new BadRequestException("vacancyContext exceeds " + MAX_VACANCY_CHARS + " characters");
 		}
-		String resumeText = plainTextRenderer.render(resumeService.get());
-		if (resumeText.isBlank()) {
-			throw new BadRequestException("Resume is empty — fill the sheet before matching");
-		}
+		// The model scores the text an ATS reads from the PDF, so the PDF must be the current resume's.
+		String sourceHash = builtPdfService.require(request.compileJobId()).sourceHash();
 		// Checked now so a wrong id fails the click, not the job minutes later.
 		Long vacancyId = request.vacancyId();
 		if (vacancyId != null && !vacancyRepository.existsByIdAndUserId(vacancyId, currentUserService.requireUserId())) {
 			throw new NotFoundException("Vacancy not found: " + vacancyId);
 		}
 
-		String payload = objectMapper.writeValueAsString(new AtsMatchPayload(resumeText, vacancyText, vacancyId));
-		String dedupeKey = Hashes.sha256(resumeText, vacancyText, Objects.toString(vacancyId, ""));
+		String payload = objectMapper.writeValueAsString(new AtsMatchPayload(sourceHash, vacancyText, vacancyId));
+		String dedupeKey = Hashes.sha256(sourceHash, vacancyText, Objects.toString(vacancyId, ""));
 		return jobService.enqueue(JobType.ATS_MATCH, dedupeKey, payload);
 	}
 }

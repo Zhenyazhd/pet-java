@@ -4,9 +4,10 @@ spring:
     password: unused-replaced-by-testcontainers
 
 app:
-  ats-screener:
-    enabled: true
   admin-email: admin@test.local
   scheduling-enabled: false
   latex-worker:
+    token: test-token
+  ats-worker:
+    enabled: true
     token: test-token

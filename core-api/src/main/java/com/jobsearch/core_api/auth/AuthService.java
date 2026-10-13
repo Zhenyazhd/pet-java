@@ -60,7 +60,7 @@ public class AuthService {
 		this.authenticationManager = authenticationManager;
 		this.inviteCodeService = inviteCodeService;
 		this.securityContextRepository = securityContextRepository;
-		this.features = new Features(appProperties.getAtsScreener().isEnabled());
+		this.features = new Features(appProperties.getAtsWorker().isEnabled(), appProperties.getAtsWorker().isEnabled());
 		this.transaction = new TransactionTemplate(transactionManager);
 	}
 

@@ -82,12 +82,14 @@ app:
     read-timeout-seconds: ${OPENROUTER_READ_TIMEOUT_SECONDS:90}
     max-concurrent-requests: ${OPENROUTER_MAX_CONCURRENT_REQUESTS:20}
     max-tokens: ${OPENROUTER_MAX_TOKENS:8000}
-  ats-screener:
-    # The vacancy match needs the separate ats-screener app; off unless you run it.
-    enabled: ${ATS_SCREENER_ENABLED:false}
-    base-url: ${ATS_SCREENER_BASE_URL:http://127.0.0.1:5174}
-    timeout-seconds: ${ATS_SCREENER_TIMEOUT_SECONDS:180}
   latex-worker:
     base-url: ${LATEX_WORKER_BASE_URL:http://127.0.0.1:8090}
     token: ${LATEX_WORKER_TOKEN:}
     read-timeout-seconds: ${LATEX_WORKER_READ_TIMEOUT_SECONDS:75}
+  ats-worker:
+    # The PDF readability check and the vacancy match need the separate tools/ats-worker; off unless you run it.
+    enabled: ${ATS_WORKER_ENABLED:false}
+    base-url: ${ATS_WORKER_BASE_URL:http://127.0.0.1:8091}
+    token: ${ATS_WORKER_TOKEN:}
+    read-timeout-seconds: ${ATS_WORKER_READ_TIMEOUT_SECONDS:30}
+    score-timeout-seconds: ${ATS_WORKER_SCORE_TIMEOUT_SECONDS:100}

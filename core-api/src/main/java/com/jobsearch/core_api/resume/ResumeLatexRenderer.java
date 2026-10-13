@@ -135,7 +135,8 @@ public class ResumeLatexRenderer {
 		return sb.toString();
 	}
 
-	private record SectionTitles(
+	/** The section headings of the PDF; {@link ResumePlainTextRenderer} writes the same ones. */
+	record SectionTitles(
 			String profile,
 			String experience,
 			String education,

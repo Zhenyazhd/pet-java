@@ -23,7 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 
 /** With the vacancy match switched off (the production default) it is refused cleanly and nothing is queued. */
-@SpringBootTest(properties = "app.ats-screener.enabled=false")
+@SpringBootTest(properties = "app.ats-worker.enabled=false")
 @ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
 class AtsDisabledTest {
@@ -54,7 +54,7 @@ class AtsDisabledTest {
 		long jobsBefore = jobRepository.count();
 
 		ServiceUnavailableException ex = assertThrows(ServiceUnavailableException.class,
-				() -> service.enqueue(new MatchRequest("Backend engineer, Java", null)));
+				() -> service.enqueue(new MatchRequest("Backend engineer, Java", null, java.util.UUID.randomUUID())));
 
 		assertEquals("The vacancy match is not available yet.", ex.getMessage());
 		assertNull(ex.getRetryAfter());

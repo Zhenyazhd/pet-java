@@ -4,5 +4,6 @@ package com.jobsearch.core_api.jobs;
 public enum JobType {
 	RESUME_PDF,
 	ATS_MATCH,
-	VACANCY_IMPORT
+	VACANCY_IMPORT,
+	PDF_READABILITY
 }

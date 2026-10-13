@@ -69,6 +69,7 @@ class ResumeHttpTest {
 
 		assertEquals(200, me.statusCode(), me.body());
 		assertEquals(true, JsonMapper.builder().build().readTree(me.body()).at("/features/atsMatch").asBoolean(), me.body());
+		assertEquals(true, JsonMapper.builder().build().readTree(me.body()).at("/features/pdfReadability").asBoolean(), me.body());
 	}
 
 	@Test
