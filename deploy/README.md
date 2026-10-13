@@ -20,9 +20,9 @@ Internet -> :443 Traefik (TLS, cert-manager) -> web (nginx: SPA + /api proxy) ->
 4. **Cloudflare DNS**: A record `cvhelper.dev` -> the static IP, **DNS only (grey cloud)**. (Orange cloud would put
    Cloudflare's proxy in front, which changes the client address and TLS handling this setup is built for.)
 5. **GitHub**: push to `main`; the `images` job in CI publishes `ghcr.io/zhenyazhd/cvhelper-{core-api,latex-worker,web}` for amd64.
-   Either make the three packages public, or create a pull secret
-   (`kubectl -n cvhelper create secret docker-registry ghcr --docker-server=ghcr.io --docker-username=<user> --docker-password=<PAT with read:packages>`
-   and add `imagePullSecrets: [{name: ghcr}]` to the three Deployments).
+   The Deployments already refer to a pull secret named `ghcr`, so private packages work: create a GitHub token
+   (Settings -> Developer settings -> Personal access tokens -> *Tokens (classic)* -> scope **read:packages** only) and
+   pass it to `make-secrets.sh` as `GHCR_USER` and `GHCR_TOKEN` (step 2). With public packages, leave both unset.
 
 ## 1. Install k3s and cert-manager (on the VM)
 
@@ -52,6 +52,7 @@ Watch `kubectl top pod -n cvhelper` during a PDF compile and raise the worker li
 export OPENROUTER_API_KEY=...  APP_ADMIN_EMAIL=you@example.com
 export APP_BOOTSTRAP_PASSWORD=...   # >= 12 chars: the first admin login
 export CLOUDFLARE_API_TOKEN=...
+export GHCR_USER=Zhenyazhd GHCR_TOKEN=...   # only for private packages
 ./deploy/make-secrets.sh
 ```
 
@@ -118,8 +119,34 @@ kubectl -n cvhelper exec -i postgres-0 -- pg_restore -U job_search -d job_search
 Options for later: Lightsail automatic snapshots, or a nightly `pg_dump` CronJob uploaded to
 Cloudflare R2 / S3.
 
+## job-list (vacancy search service, optional)
+
+`tools/job-list` runs next to the app. It has its own database in the same Postgres and its own secrets; the rest of the
+deployment does not depend on it. The Telegram bot reaches it at `https://jobs.cvhelper.dev`; `core-api` at
+`http://job-list:8100`.
+
+1. Cloudflare: an A record `jobs.cvhelper.dev` to the same static IP, **DNS only** (grey cloud).
+2. Secrets (on the server; the tokens and the database password are generated):
+   `export APIFY_TOKEN=... JOB_LIST_OPENROUTER_API_KEY=...` (a separate OpenRouter key with a credit limit), then re-run
+   `./deploy/make-secrets.sh` with the usual variables. It prints how to read the bot's token.
+3. The database, once: `kubectl apply -f deploy/job-list/db-init-job.yaml`, wait for the Job to complete
+   (`kubectl -n cvhelper get job job-list-db-init`).
+4. Set the `job-list` image tag in `deploy/job-list/kustomization.yaml` to `sha-<full commit sha>` (the `images` job
+   publishes `cvhelper-job-list`), then `kubectl apply -k deploy/job-list`.
+5. Network policies: re-apply `deploy/k8s/network-policies.yaml` (it now lets `job-list` use Postgres and be reached by
+   `core-api` and Traefik).
+6. Check from the server: `kubectl -n cvhelper port-forward deploy/job-list 8100:8100`, then the calls in
+   `tools/job-list/README.md` with the bot's token. Only `https://jobs.cvhelper.dev/mcp` is public (the MCP endpoint
+   for the bot's agent: a POST with the bot's token returns the tool list for `tools/list`).
+
+Apify spending is limited by `APIFY_MONTHLY_BUDGET_USD` (default 5) and read from `GET /v1/usage`. LinkedIn is off;
+to enable it set `JOB_LIST_SOURCE_LINKEDIN_ENABLED: "true"` in `deploy/job-list/job-list.yaml`.
+
 ## Notes
 
 - HSTS is sent with `max-age=300` (nginx `security-headers.conf`). Raise it after the site has run for a while.
   `.dev` is already HTTPS-only in browsers.
-- ATS screening is off (`ATS_SCREENER_ENABLED=false`); there is no ats-screener service in this deployment.
+- The ATS features (the PDF readability check and the vacancy match) are served by `tools/ats-worker`. They are off
+  on the server until that service is deployed: it needs a manifest, a token in `cvhelper-secrets`, a network policy
+  allowing only core-api, an image in CI, and `ATS_WORKER_ENABLED`, `ATS_WORKER_BASE_URL` and `ATS_WORKER_TOKEN` in
+  `deploy/k8s/core-api.yaml`. The vacancy match sends the resume text and the vacancy to OpenRouter.

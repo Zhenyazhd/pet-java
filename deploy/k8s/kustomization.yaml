@@ -7,7 +7,6 @@ resources:
   - latex-worker.yaml
   - core-api.yaml
   - web.yaml
-  - ats-screener.yaml
   - ingress.yaml
 images:
   - name: core-api
@@ -15,9 +14,6 @@ images:
     newTag: latest
   - name: latex-worker
     newName: ghcr.io/zhenyazhd/cvhelper-latex-worker
-    newTag: latest
-  - name: ats-screener
-    newName: ghcr.io/zhenyazhd/cvhelper-ats-screener
     newTag: latest
   - name: web
     newName: ghcr.io/zhenyazhd/cvhelper-web
