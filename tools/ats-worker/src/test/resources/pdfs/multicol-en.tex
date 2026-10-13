@@ -1,0 +1,144 @@
+\documentclass[10pt]{extarticle}
+
+\usepackage[margin=1.2cm, top=0.8cm, bottom=0.75cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{mathpazo}
+\usepackage[fontsize=9.7pt]{fontsize}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{multicol}
+\usepackage{microtype}
+\emergencystretch=2em
+\sloppy
+
+\definecolor{accent}{HTML}{1F3B57}
+\definecolor{soft}{HTML}{5A5A5A}
+\definecolor{rule}{HTML}{1F3B57}
+
+\hypersetup{colorlinks=true, urlcolor=accent, linkcolor=accent}
+
+\setlength{\parindent}{0pt}
+\pagestyle{empty}
+\setlength{\tabcolsep}{0pt}
+\linespread{0.96}
+
+\titleformat{\section}
+  {\bfseries\color{accent}\fontsize{11.5}{11}\selectfont}
+  {}{0em}{}
+  [{\color{rule}\titlerule[0.9pt]}]
+\titlespacing*{\section}{0pt}{6pt}{3pt}
+
+\newcommand{\role}[3]{%
+  \textbf{#1} \hfill {\color{soft}\small #3}\\[-1pt]
+  {\itshape\small #2}\par
+}
+\newcommand{\edu}[3]{%
+  \textbf{#1} \hfill {\color{soft}\small #3}\\[-1pt]
+  {\itshape\small #2}\par
+}
+
+\newlist{tightlist}{itemize}{1}
+\setlist[tightlist]{leftmargin=12pt, itemsep=2pt, topsep=2.5pt, parsep=0pt, label=\textbullet, font=\color{soft}}
+\setlength{\parskip}{0pt}
+
+\begin{document}
+
+\begin{center}
+    {\fontsize{18}{18}\selectfont\bfseries\color{accent} Jane Doe}\\[3pt]
+    {\normalsize\color{soft} Backend Engineer}\\[4pt]
+    {\footnotesize
+      +33~6~12~34~56~78 \quad|\quad
+      \href{mailto:jane.doe@example.com}{jane.doe@example.com} \quad|\quad
+      \href{https://www.linkedin.com/in/jane-doe}{linkedin.com/in/jane-doe}
+    }
+\end{center}
+\vspace{-9pt}
+
+\begin{multicols}{2}
+\section{Profile}
+
+Backend engineer with six years of experience building payment services in Java and PostgreSQL, focused on reliability, observability and clear ownership of production systems.
+
+\section{Professional Experience}
+
+\role{Senior Engineer}{Acme Corp, Paris}{2022 – 2024}
+
+\begin{tightlist}
+    \item Built a payment gateway handling two million transactions a day
+
+    \item Reduced the p99 latency of the checkout API by forty percent
+
+\end{tightlist}
+
+\role{Backend Engineer}{Beta SAS, Lyon}{2020 – 2022}
+
+\begin{tightlist}
+    \item Maintained the billing platform and wrote the infrastructure as code
+
+    \item Introduced contract tests between the billing and ledger services
+
+\end{tightlist}
+
+\role{Software Engineer}{Gamma Labs, Berlin}{2018 – 2020}
+
+\begin{tightlist}
+    \item Migrated a monolith to services without downtime
+
+    \item Mentored three junior engineers through their first production releases
+
+\end{tightlist}
+
+\role{Junior Developer}{Delta GmbH, Munich}{2016 – 2018}
+
+\begin{tightlist}
+    \item Wrote reporting queries on PostgreSQL for the finance team
+
+    \item Automated the nightly export of invoices to the accounting system
+
+\end{tightlist}
+
+\role{Intern}{Epsilon AG, Zurich}{2015 – 2016}
+
+\begin{tightlist}
+    \item Built an internal dashboard for monitoring batch jobs
+
+    \item Documented the deployment process for the platform team
+
+\end{tightlist}
+
+\role{Student Assistant}{Zeta University, Munich}{2014 – 2015}
+
+\begin{tightlist}
+    \item Graded programming assignments for a course of two hundred students
+
+    \item Held weekly exercise sessions on data structures
+
+\end{tightlist}
+
+\section{Education}
+
+\edu{BSc Computer Science}{Technical University of Munich}{Munich}
+
+{\footnotesize Graduated with distinction}
+
+\section{Achievements}
+
+\begin{tightlist}
+\item \textbf{Hackathon :} First place at the 2022 fintech hackathon
+\end{tightlist}
+
+\section{Skills}
+
+\begin{tightlist}
+    \item[] \textbf{Languages :} Java, Kotlin, SQL
+
+    \item[] \textbf{Tools :} Docker, Kubernetes, Terraform
+
+    \item[] \textbf{Practices :} Code review, Contract testing, Incident response
+
+\end{tightlist}
+\end{multicols}
+\end{document}
