@@ -1,0 +1,47 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.1)
+
+2026-10-13T17:42:23.791+02:00  INFO [run=] 34836 --- [job-list] [           main] c.jobsearch.joblist.JobListApplication   : Starting JobListApplication v0.0.1-SNAPSHOT using Java 25.0.4.1 with PID 34836 (/Users/evgenijzdarkin/Library/Mobile Documents/com~apple~CloudDocs/Documents/Документы — MacBook Air — Евгений/future/mygit/job_search/tools/job-list/target/job-list-0.0.1-SNAPSHOT.jar started by evgenijzdarkin in /Users/evgenijzdarkin/Library/Mobile Documents/com~apple~CloudDocs/Documents/Документы — MacBook Air — Евгений/future/mygit/job_search/tools/job-list)
+2026-10-13T17:42:23.797+02:00  INFO [run=] 34836 --- [job-list] [           main] c.jobsearch.joblist.JobListApplication   : No active profile set, falling back to 1 default profile: "default"
+2026-10-13T17:42:24.464+02:00  INFO [run=] 34836 --- [job-list] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-10-13T17:42:24.498+02:00  INFO [run=] 34836 --- [job-list] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 28 ms. Found 5 JPA repository interfaces.
+2026-10-13T17:42:24.932+02:00  INFO [run=] 34836 --- [job-list] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 58100 (http)
+2026-10-13T17:42:24.943+02:00  INFO [run=] 34836 --- [job-list] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-13T17:42:24.944+02:00  INFO [run=] 34836 --- [job-list] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.24]
+2026-10-13T17:42:24.957+02:00  INFO [run=] 34836 --- [job-list] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 1125 ms
+2026-10-13T17:42:25.154+02:00 ERROR [run=] 34836 --- [job-list] [           main] t.s.DeferredServletContainerInitializers : Error starting Tomcat context. Exception: org.springframework.beans.factory.UnsatisfiedDependencyException. Message: Error creating bean with name 'clientAuthFilter' defined in URL [jar:nested:/Users/evgenijzdarkin/Library/Mobile%20Documents/com~apple~CloudDocs/Documents/Документы%C2%A0—%20MacBook%20Air%C2%A0—%20Евгений/future/mygit/job_search/tools/job-list/target/job-list-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/com/jobsearch/joblist/api/ClientAuthFilter.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'job-list-com.jobsearch.joblist.config.JobListProperties': Could not bind properties to 'JobListProperties' : prefix=job-list, ignoreInvalidFields=false, ignoreUnknownFields=true
+2026-10-13T17:42:25.170+02:00  INFO [run=] 34836 --- [job-list] [           main] o.apache.catalina.core.StandardService   : Stopping service [Tomcat]
+2026-10-13T17:42:25.180+02:00  WARN [run=] 34836 --- [job-list] [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.context.ApplicationContextException: Unable to start web server
+2026-10-13T17:42:25.185+02:00  INFO [run=] 34836 --- [job-list] [           main] .s.b.a.l.ConditionEvaluationReportLogger : 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-10-13T17:42:25.193+02:00 ERROR [run=] 34836 --- [job-list] [           main] o.s.b.d.LoggingFailureAnalysisReporter   : 
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Binding to target com.jobsearch.joblist.config.JobListProperties failed:
+
+    Property: job-list.clients[1].token
+    Value: "tok-b"
+    Reason: размер должен находиться в диапазоне от 16 до 2147483647
+
+    Property: job-list.clients[0].token
+    Value: "tok-a"
+    Reason: размер должен находиться в диапазоне от 16 до 2147483647
+
+
+Action:
+
+Update your application's configuration
+

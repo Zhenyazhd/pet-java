@@ -35,4 +35,19 @@ if [ -n "${GHCR_USER:-}" ] && [ -n "${GHCR_TOKEN:-}" ]; then
     --docker-server=ghcr.io --docker-username="$GHCR_USER" --docker-password="$GHCR_TOKEN" \
     --dry-run=client -o yaml | kubectl apply -f -
 fi
+# job-list: only when its variables are given. The tokens and the database password are generated and kept on re-runs.
+if [ -n "${APIFY_TOKEN:-}" ] && [ -n "${JOB_LIST_OPENROUTER_API_KEY:-}" ]; then
+  existing_job_list() { kubectl -n cvhelper get secret job-list-secrets -o "jsonpath={.data.$1}" 2>/dev/null | base64 -d 2>/dev/null || true; }
+  JL_DB="$(existing_job_list DB_PASSWORD)"; JL_DB="${JL_DB:-$(rand)}"
+  JL_CORE="$(existing_job_list CORE_API_TOKEN)"; JL_CORE="${JL_CORE:-$(rand)}"
+  JL_BOT="$(existing_job_list BOT_TOKEN)"; JL_BOT="${JL_BOT:-$(rand)}"
+  kubectl -n cvhelper create secret generic job-list-secrets \
+    --from-literal=DB_PASSWORD="$JL_DB" \
+    --from-literal=CORE_API_TOKEN="$JL_CORE" \
+    --from-literal=BOT_TOKEN="$JL_BOT" \
+    --from-literal=APIFY_TOKEN="$APIFY_TOKEN" \
+    --from-literal=OPENROUTER_API_KEY="$JOB_LIST_OPENROUTER_API_KEY" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  echo "job-list secrets applied. The bot's token: kubectl -n cvhelper get secret job-list-secrets -o jsonpath='{.data.BOT_TOKEN}' | base64 -d"
+fi
 echo "Secrets applied."

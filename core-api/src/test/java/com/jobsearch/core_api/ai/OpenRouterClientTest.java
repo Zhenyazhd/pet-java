@@ -30,6 +30,10 @@ class OpenRouterClientTest {
 			{"choices": [{"message": {"content": "```json\\n{\\"message\\": \\"hi\\"}\\n```"}}]}
 			""";
 
+	private static final String ANSWER_WITH_PROSE = """
+			{"choices": [{"message": {"content": "Looking at your CV, here is the result:\\n{\\"message\\": \\"hi\\"}\\nHope it helps."}}]}
+			""";
+
 	private static final String CUT_OFF_ANSWER = """
 			{"choices": [{"message": {"content": "{\\"message\\": \\"Here is your rew"}, "finish_reason": "length"}],
 			 "usage": {"prompt_tokens": 900, "completion_tokens": 8000, "total_tokens": 8900}}
@@ -48,6 +52,15 @@ class OpenRouterClientTest {
 	@Test
 	void answerHasCodeFencesStripped() {
 		openRouter.expect(requestTo(COMPLETIONS)).andRespond(withSuccess(ANSWER, MediaType.APPLICATION_JSON));
+
+		ChatResult.Answer answer = assertInstanceOf(ChatResult.Answer.class, client.complete("system", "user", null));
+
+		assertEquals("{\"message\": \"hi\"}", answer.content());
+	}
+
+	@Test
+	void textAroundTheJsonObjectIsDropped() {
+		openRouter.expect(requestTo(COMPLETIONS)).andRespond(withSuccess(ANSWER_WITH_PROSE, MediaType.APPLICATION_JSON));
 
 		ChatResult.Answer answer = assertInstanceOf(ChatResult.Answer.class, client.complete("system", "user", null));
 

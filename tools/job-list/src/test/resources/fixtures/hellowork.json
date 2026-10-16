@@ -1,0 +1,40 @@
+[
+  {
+    "id": "77200967",
+    "title": "Développeur Python",
+    "company": "XEFI",
+    "company_url": "https://www.hellowork.com/fr-fr/entreprises/xefi-50409.html",
+    "city": "Rillieux-la-Pape",
+    "postal_code": "69140",
+    "region": "Auvergne-Rhône-Alpes",
+    "contract_type": "CDI",
+    "employment_type": "FULL_TIME",
+    "sector": "Services aux Entreprises",
+    "job_function": "Informatique",
+    "skills": ["Python", "Django"],
+    "salary_min": 26400,
+    "salary_max": 40000,
+    "salary_period": "year",
+    "salary_currency": "EUR",
+    "remote": "partial",
+    "published_at": "2026-06-25T00:13:43Z",
+    "url": "https://www.hellowork.com/fr-fr/emplois/77200967.html",
+    "description": "<p>Vous rejoignez l'équipe produit.</p><ul><li>Développer en Python</li><li>Revue de code</li></ul>"
+  },
+  {
+    "id": "77200968",
+    "title": "Stage développeur",
+    "company": "ACME",
+    "city": "Paris",
+    "contract_type": "Stage",
+    "remote": "no",
+    "url": "https://www.hellowork.com/fr-fr/emplois/77200968.html",
+    "description": "Stage de six mois."
+  },
+  {
+    "id": "77200969",
+    "title": "Sans description",
+    "company": "ACME",
+    "url": "https://www.hellowork.com/fr-fr/emplois/77200969.html"
+  }
+]

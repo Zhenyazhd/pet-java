@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: job-list
+data:
+  JOB_LIST_DB_URL: jdbc:postgresql://postgres:5432/job_list
+  JOB_LIST_DB_USER: job_list
+  SERVER_FORWARD_HEADERS_STRATEGY: native
+  # LinkedIn stays off until it is wanted: set to "true" and re-apply.
+  JOB_LIST_SOURCE_LINKEDIN_ENABLED: "false"
+  TZ: UTC
+  JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: job-list
+spec:
+  selector: { app: job-list }
+  ports:
+    - { name: http, port: 8100 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: job-list
+spec:
+  replicas: 1
+  # One replica: stop the old pod before starting the new one so two never run migrations or the worker together.
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: job-list }
+  template:
+    metadata:
+      labels: { app: job-list }
+    spec:
+      # A run in progress is finished before the pod stops (graceful shutdown waits for it, up to the 30 s the application
+      # allows); a run cut off by the kill is released at the next start and its spend stays counted at the cap.
+      terminationGracePeriodSeconds: 45
+      automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: ghcr
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: job-list
+          image: job-list
+          ports: [{ name: http, containerPort: 8100 }]
+          envFrom:
+            - configMapRef: { name: job-list }
+          env:
+            - name: JOB_LIST_DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: job-list-secrets, key: DB_PASSWORD } }
+            - name: JOB_LIST_CLIENT_0_NAME
+              value: core-api
+            - name: JOB_LIST_CLIENT_0_TOKEN
+              valueFrom: { secretKeyRef: { name: job-list-secrets, key: CORE_API_TOKEN } }
+            - name: JOB_LIST_CLIENT_1_NAME
+              value: telegram-bot
+            - name: JOB_LIST_CLIENT_1_TOKEN
+              valueFrom: { secretKeyRef: { name: job-list-secrets, key: BOT_TOKEN } }
+            - name: APIFY_TOKEN
+              valueFrom: { secretKeyRef: { name: job-list-secrets, key: APIFY_TOKEN } }
+            - name: OPENROUTER_API_KEY
+              valueFrom: { secretKeyRef: { name: job-list-secrets, key: OPENROUTER_API_KEY } }
+          startupProbe:
+            httpGet: { path: /actuator/health/liveness, port: http }
+            periodSeconds: 5
+            failureThreshold: 36
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: http }
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 384Mi }
+            limits: { memory: 640Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 128Mi }

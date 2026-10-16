@@ -143,7 +143,7 @@ public class OpenRouterClient {
 		JsonNode choice = root.path("choices").path(0);
 		String content = choice.path("message").path("content").asString("");
 		return new Completion(
-				content.isBlank() ? null : stripCodeFences(content),
+				content.isBlank() ? null : extractJson(content),
 				"length".equals(choice.path("finish_reason").asString(""))
 		);
 	}
@@ -179,18 +179,15 @@ public class OpenRouterClient {
 		}
 	}
 
-	/** Models sometimes wrap JSON in ``` fences despite json_object mode. */
-	private static String stripCodeFences(String content) {
+	/**
+	 * The JSON object of the answer. Models sometimes wrap it in ``` fences or write a sentence before or after it
+	 * despite json_object mode, so the text from the first '{' to the last '}' is taken.
+	 */
+	private static String extractJson(String content) {
 		String trimmed = content.strip();
-		if (!trimmed.startsWith("```")) {
-			return trimmed;
-		}
-		int firstNl = trimmed.indexOf('\n');
-		int lastFence = trimmed.lastIndexOf("```");
-		if (firstNl > 0 && lastFence > firstNl) {
-			return trimmed.substring(firstNl + 1, lastFence).strip();
-		}
-		return trimmed;
+		int start = trimmed.indexOf('{');
+		int end = trimmed.lastIndexOf('}');
+		return start >= 0 && end > start ? trimmed.substring(start, end + 1) : trimmed;
 	}
 
 	record ChatMessage(String role, String content) {
