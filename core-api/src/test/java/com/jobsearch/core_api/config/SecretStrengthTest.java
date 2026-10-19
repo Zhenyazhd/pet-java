@@ -34,9 +34,9 @@ class SecretStrengthTest {
 
 	@Test
 	void theErrorNamesTheVariable() {
-		IllegalStateException ex = assertThrows(IllegalStateException.class, () -> SecretStrength.require("LATEX_WORKER_TOKEN", "x"));
+		IllegalStateException ex = assertThrows(IllegalStateException.class, () -> SecretStrength.require("PDF_WORKER_TOKEN", "x"));
 
-		assertTrue(ex.getMessage().startsWith("LATEX_WORKER_TOKEN"));
+		assertTrue(ex.getMessage().startsWith("PDF_WORKER_TOKEN"));
 	}
 
 	@Test
@@ -58,7 +58,7 @@ class SecretStrengthTest {
 		if (dbPassword != null) {
 			env.setProperty("spring.datasource.password", dbPassword);
 		}
-		env.setProperty("app.latex-worker.token", workerToken);
+		env.setProperty("app.pdf-worker.token", workerToken);
 		return env;
 	}
 

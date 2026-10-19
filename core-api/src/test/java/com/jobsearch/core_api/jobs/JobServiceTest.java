@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.jobsearch.core_api.TestSupport;
 import com.jobsearch.core_api.TestcontainersConfiguration;
 import com.jobsearch.core_api.common.NotFoundException;
-import com.jobsearch.core_api.compile.LatexWorkerClient;
+import com.jobsearch.core_api.compile.PdfWorkerClient;
 import com.jobsearch.core_api.compile.ResumePdfCacheRepository;
 import com.jobsearch.core_api.jobs.JobDtos.JobResponse;
 import com.jobsearch.core_api.profile.AppUserRepository;
@@ -35,7 +35,7 @@ class JobServiceTest {
 	@Autowired
 	private AppUserRepository userRepository;
 	@MockitoBean
-	private LatexWorkerClient workerClient;
+	private PdfWorkerClient workerClient;
 
 	@BeforeEach
 	void setUp() {
