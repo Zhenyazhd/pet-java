@@ -20,7 +20,7 @@ public final class ProfileDtos {
 	public record ProfileRequest(
 			@NotBlank @Size(max = 255) String displayName,
 			@NotBlank @Email @Size(max = 255) String email,
-			@NotNull @Size(max = 20_000) String careerPath
+			@NotNull @Size(max = 40_000) String careerPath
 	) {
 	}
 }

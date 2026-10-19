@@ -10,7 +10,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { useBeforeUnload } from '../lib/useBeforeUnload'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 
-const CAREER_PATH_MAX = 20_000
+const CAREER_PATH_MAX = 40_000
 const EMPTY: Profile = { displayName: '', email: '', careerPath: '' }
 
 export function ProfilePage() {
