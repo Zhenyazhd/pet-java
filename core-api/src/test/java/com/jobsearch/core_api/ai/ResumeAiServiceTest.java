@@ -19,11 +19,13 @@ import com.jobsearch.core_api.compile.PageLayout;
 import com.jobsearch.core_api.compile.ResumeLayoutService;
 import com.jobsearch.core_api.profile.ProfileDtos.ProfileResponse;
 import com.jobsearch.core_api.profile.ProfileService;
+import com.jobsearch.core_api.profile.UserPromptService;
 import com.jobsearch.core_api.resume.ResumeDtos.ResumeDocument;
 import com.jobsearch.core_api.resume.ResumeService;
 import jakarta.validation.Validation;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,16 +41,18 @@ class ResumeAiServiceTest {
 	private ResumeService resumeService;
 	private final ResumeLayoutService layoutService = mock(ResumeLayoutService.class);
 	private ResumeAiService service;
+	private UserPromptService userPromptService;
 
 	@BeforeEach
 	void setUp() {
 		resumeService = mock(ResumeService.class);
 		ProfileService profileService = mock(ProfileService.class);
+		userPromptService = mock(UserPromptService.class);
 		when(resumeService.get()).thenReturn(new ResumeDocument(
 				"Ada", "Engineer", "", "ada@example.com", "", "", "", List.of(), List.of(), List.of(), List.of(), "en", 1));
 		when(profileService.getProfile()).thenReturn(new ProfileResponse("Ada", "ada@example.com", ""));
 		JsonMapper mapper = JsonMapper.builder().build();
-		service = new ResumeAiService(openRouterClient, resumeService, profileService, mapper,
+		service = new ResumeAiService(openRouterClient, resumeService, profileService, userPromptService, mapper,
 				new ProposedValidator(mapper, Validation.buildDefaultValidatorFactory().getValidator()),
 				layoutService);
 	}
@@ -249,6 +253,35 @@ class ResumeAiServiceTest {
 		assertTrue(correction.contains("Correction round"), correction);
 		assertTrue(correction.contains("overflows onto page 2"), correction);
 		assertTrue(correction.contains("<previous_proposal>\n"), correction);
+	}
+
+	@Test
+	void aCustomPartReachesTheModelInTheFirstCallAndInEveryCorrectionRound() {
+		when(userPromptService.customTexts()).thenReturn(Map.of(PromptPart.VACANCY, "  MY OWN VACANCY RULES\n"));
+		when(layoutService.of(any())).thenReturn(
+				Optional.of(new PageLayout(1, 0.5)), Optional.of(new PageLayout(2, 0.3)), Optional.of(new PageLayout(2, 0.2)),
+				Optional.of(new PageLayout(1, 0.96)));
+		answerWith(resumeAnswer("A", true), resumeAnswer("B", true), resumeAnswer("C", true));
+
+		service.suggest(HELLO);
+
+		ArgumentCaptor<String> systems = ArgumentCaptor.forClass(String.class);
+		verify(openRouterClient, times(3)).complete(systems.capture(), anyString(), any());
+		assertEquals(3, systems.getAllValues().size());
+		for (String system : systems.getAllValues()) {
+			assertTrue(system.contains("\n\nMY OWN VACANCY RULES\n\n"), system);
+			assertTrue(!system.contains(PromptPart.VACANCY.defaultText()));
+			assertTrue(system.contains(PromptPart.TRUTHFULNESS.defaultText()));
+		}
+	}
+
+	@Test
+	void withoutCustomPartsTheDefaultPromptIsSent() {
+		answerWith(new ChatResult.Answer("{\"message\": \"Hi\", \"proposed\": null}"));
+
+		service.suggest(HELLO);
+
+		assertEquals(SystemPromptComposer.defaultPrompt(), systemSent());
 	}
 
 	@Test
