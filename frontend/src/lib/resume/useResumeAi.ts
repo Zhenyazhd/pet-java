@@ -194,16 +194,28 @@ export function useResumeAi({
         // Blank at the source, so the reply is the same whether it lands at once or waits in a bubble for Apply.
         const change = parsed?.ok ? (options.applyAtOnce ? blankAbsentFields(parsed.change) : parsed.change) : null
         const parseProblem = parsed && !parsed.ok ? parsed.error : null
-        // A CV made from the profile goes straight onto the sheet (Undo is there); other replies wait for Apply.
+        // Replies go straight onto the sheet (Undo is there), in the chat and for a CV made from the profile.
         // Not if the user edited while the AI was writing: that reply waits for an explicit Apply.
-        const atOnce = options.applyAtOnce === true && editsRef.current === editsAtStart
+        const atOnce = editsRef.current === editsAtStart
         const refusal = atOnce && change ? applyChange(change) : null
         const applied = atOnce && change !== null && refusal === null
+        const waiting = change !== null && !atOnce
+        // The bubble says why it waits; for a CV made from the profile the page shows the same text.
+        const waitingNote = options.applyAtOnce
+          ? 'You edited the sheet while it was being written, so the CV waits in the AI panel for Apply.'
+          : 'You edited the sheet while the AI was writing, so this edit waits for Apply.'
         const problem =
           refusal ??
           parseProblem ??
-          (options.applyAtOnce && !change ? 'The AI did not return a CV.' : null)
-        if (applied) announce('Your CV was written from your profile. Review it, then press Save.')
+          (options.applyAtOnce && !change ? 'The AI did not return a CV.' : null) ??
+          (waiting ? waitingNote : null)
+        if (applied) {
+          announce(
+            options.applyAtOnce
+              ? 'Your CV was written from your profile. Review it, then press Save.'
+              : 'AI edit applied. Remember to save.',
+          )
+        }
         setChat((items) => [
           ...items,
           {
@@ -215,15 +227,7 @@ export function useResumeAi({
             state: applied ? 'applied' : refusal ? 'dismissed' : 'open',
           },
         ])
-        const waiting = options.applyAtOnce === true && change !== null && !atOnce
-        return {
-          answered: true,
-          applied,
-          waiting,
-          problem:
-            problem ??
-            (waiting ? 'You edited the sheet while it was being written, so the CV waits in the AI panel for Apply.' : null),
-        }
+        return { answered: true, applied, waiting, problem }
       } catch (err) {
         if (mine !== generation.current[channel] || isAbortError(err)) return NOT_SENT
         return fail(errorMessage(err, 'The AI request failed'))

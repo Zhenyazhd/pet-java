@@ -27,7 +27,7 @@ public class CompileService {
 	}
 
 	public JobResponse enqueue() {
-		String source = resumeService.toLatex();
+		String source = resumeService.toTypst();
 		String hash = Hashes.sha256(source);
 		if (cacheRepository.touch(hash) > 0) {
 			return jobService.enqueueDone(JobType.RESUME_PDF, hash);

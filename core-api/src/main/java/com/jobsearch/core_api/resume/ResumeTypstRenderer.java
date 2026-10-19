@@ -1,231 +1,126 @@
 package com.jobsearch.core_api.resume;
 
-import com.jobsearch.core_api.resume.ResumeDtos.AchievementItem;
-import com.jobsearch.core_api.resume.ResumeDtos.EducationItem;
-import com.jobsearch.core_api.resume.ResumeDtos.ExperienceItem;
 import com.jobsearch.core_api.resume.ResumeDtos.ResumeDocument;
-import com.jobsearch.core_api.resume.ResumeDtos.SkillItem;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
-/** Turns ResumeDocument JSON into the project LaTeX CV template. */
+/**
+ * Turns a ResumeDocument into Typst source: one line that binds the resume, as a JSON string literal, to {@code r},
+ * followed by the static template {@code typst/resume.typ}. The text of the resume is only ever data inside that
+ * string, so nothing a user types can become Typst markup or code; the only escaping needed is the string literal's.
+ */
 @Component
-public class ResumeLatexRenderer {
+public class ResumeTypstRenderer {
 
-	public String render(ResumeDocument r) {
-		SectionTitles titles = SectionTitles.forLocale(r.locale());
-		StringBuilder sb = new StringBuilder(8_000);
-		sb.append("""
-				\\documentclass[10pt]{extarticle}
+	private static final String TEMPLATE_PATH = "typst/resume.typ";
 
-				\\usepackage[margin=1.2cm, top=0.8cm, bottom=0.75cm]{geometry}
-				\\usepackage[T1]{fontenc}
-				\\usepackage[utf8]{inputenc}
-				\\usepackage{mathpazo}
-				\\usepackage[fontsize=9.7pt]{fontsize}
-				\\usepackage{titlesec}
-				\\usepackage{enumitem}
-				\\usepackage{xcolor}
-				\\usepackage{hyperref}
-				\\usepackage{microtype}
-				\\emergencystretch=2em
-				\\sloppy
+	/** List-valued keys of the document and of its items; a missing one reads as an empty list, never null. */
+	private static final String[] DOCUMENT_LISTS = { "experience", "education", "achievements", "skills" };
 
-				\\definecolor{accent}{HTML}{1F3B57}
-				\\definecolor{soft}{HTML}{5A5A5A}
-				\\definecolor{rule}{HTML}{1F3B57}
+	private final ObjectMapper objectMapper;
+	private final String template;
 
-				\\hypersetup{colorlinks=true, urlcolor=accent, linkcolor=accent}
-
-				\\setlength{\\parindent}{0pt}
-				\\pagestyle{empty}
-				\\setlength{\\tabcolsep}{0pt}
-				\\linespread{0.96}
-
-				\\titleformat{\\section}
-				  {\\bfseries\\color{accent}\\fontsize{11.5}{11}\\selectfont}
-				  {}{0em}{}
-				  [{\\color{rule}\\titlerule[0.9pt]}]
-				\\titlespacing*{\\section}{0pt}{6pt}{3pt}
-
-				\\newcommand{\\role}[3]{%
-				  \\textbf{#1} \\hfill {\\color{soft}\\small #3}\\\\[-1pt]
-				  {\\itshape\\small #2}\\par
-				}
-				\\newcommand{\\edu}[3]{%
-				  \\textbf{#1} \\hfill {\\color{soft}\\small #3}\\\\[-1pt]
-				  {\\itshape\\small #2}\\par
-				}
-
-				\\newlist{tightlist}{itemize}{1}
-				\\setlist[tightlist]{leftmargin=12pt, itemsep=2pt, topsep=2.5pt, parsep=0pt, label=\\textbullet, font=\\color{soft}}
-				\\setlength{\\parskip}{0pt}
-
-				\\begin{document}
-
-				""");
-
-		sb.append("\\begin{center}\n");
-		sb.append("    {\\fontsize{18}{18}\\selectfont\\bfseries\\color{accent} ")
-				.append(esc(r.name())).append("}\\\\[3pt]\n");
-		sb.append("    {\\normalsize\\color{soft} ").append(esc(r.headline())).append("}\\\\[4pt]\n");
-		sb.append("    {\\footnotesize\n");
-		sb.append("      ").append(phoneLatex(r.phone())).append(" \\quad|\\quad\n");
-		sb.append("      \\href{mailto:").append(escUrl(r.email())).append("}{")
-				.append(esc(r.email())).append("} \\quad|\\quad\n");
-		sb.append("      \\href{").append(escUrl(r.linkedinUrl())).append("}{")
-				.append(esc(r.linkedinLabel())).append("}\n");
-		sb.append("    }\n\\end{center}\n\\vspace{-9pt}\n\n");
-
-		sb.append("\\section{").append(esc(titles.profile())).append("}\n\n")
-				.append(esc(r.profile())).append("\n\n");
-
-		sb.append("\\section{").append(esc(titles.experience())).append("}\n\n");
-		for (ExperienceItem job : nullToEmpty(r.experience())) {
-			sb.append("\\role{").append(esc(job.title())).append("}{")
-					.append(esc(job.subtitle())).append("}{")
-					.append(esc(job.dates())).append("}\n\n");
-			List<String> bullets = nonBlank(job.bullets());
-			if (!bullets.isEmpty()) {
-				sb.append("\\begin{tightlist}\n");
-				for (String bullet : bullets) {
-					sb.append("    \\item ").append(esc(bullet)).append("\n\n");
-				}
-				sb.append("\\end{tightlist}\n\n");
-			}
-		}
-
-		sb.append("\\section{").append(esc(titles.education())).append("}\n\n");
-		for (EducationItem edu : nullToEmpty(r.education())) {
-			sb.append("\\edu{").append(esc(edu.title())).append("}{")
-					.append(esc(edu.subtitle())).append("}{")
-					.append(esc(edu.location())).append("}\n\n");
-			if (edu.details() != null && !edu.details().isBlank()) {
-				sb.append("{\\footnotesize ").append(esc(edu.details())).append("}\n\n");
-			}
-		}
-
-		List<AchievementItem> achievements = nullToEmpty(r.achievements()).stream()
-				.filter(a -> (a.title() != null && !a.title().isBlank())
-						|| (a.text() != null && !a.text().isBlank()))
-				.toList();
-		if (!achievements.isEmpty()) {
-			sb.append("\\section{").append(esc(titles.achievements())).append("}\n\n\\begin{tightlist}\n");
-			for (AchievementItem a : achievements) {
-				sb.append("\\item \\textbf{").append(esc(a.title())).append(" :} ")
-						.append(esc(a.text())).append("\n");
-			}
-			sb.append("\\end{tightlist}\n\n");
-		}
-
-		List<SkillItem> skills = nullToEmpty(r.skills()).stream()
-				.filter(s -> (s.category() != null && !s.category().isBlank())
-						|| (s.items() != null && !s.items().isBlank()))
-				.toList();
-		if (!skills.isEmpty()) {
-			sb.append("\\section{").append(esc(titles.skills())).append("}\n\n\\begin{tightlist}\n");
-			for (SkillItem s : skills) {
-				sb.append("    \\item[] \\textbf{").append(esc(s.category())).append(" :} ")
-						.append(esc(s.items())).append("\n\n");
-			}
-			sb.append("\\end{tightlist}\n");
-		}
-		sb.append("\\end{document}\n");
-		return sb.toString();
+	public ResumeTypstRenderer(ObjectMapper objectMapper) {
+		this.objectMapper = objectMapper;
+		this.template = loadTemplate();
 	}
 
-	private record SectionTitles(
-			String profile,
-			String experience,
-			String education,
-			String achievements,
-			String skills
-	) {
-		static SectionTitles forLocale(String locale) {
-			if (locale != null && locale.strip().equalsIgnoreCase("en")) {
-				return new SectionTitles(
-						"Profile",
-						"Professional Experience",
-						"Education",
-						"Achievements",
-						"Skills"
-				);
+	public String render(ResumeDocument document) {
+		return "#let r = json(bytes(\"" + escape(normalized(document).toString()) + "\"))\n" + template;
+	}
+
+	/**
+	 * The document as the template wants it: no nulls (strings become "", lists become []), no optimistic-lock
+	 * {@code version} (it is not content and would change the PDF cache key on every save), and a locale of
+	 * "en" or "fr" (anything else renders as French, as before).
+	 */
+	JsonNode normalized(ResumeDocument document) {
+		ObjectNode root = objectMapper.valueToTree(document);
+		root.remove("version");
+		String locale = root.path("locale").asString("").strip();
+		root.put("locale", "en".equalsIgnoreCase(locale) ? "en" : "fr");
+		for (String key : DOCUMENT_LISTS) {
+			ArrayNode items = list(root, key);
+			for (JsonNode item : items) {
+				if (item instanceof ObjectNode obj) {
+					fillStrings(obj);
+					if ("experience".equals(key)) {
+						ArrayNode bullets = list(obj, "bullets");
+						for (int i = 0; i < bullets.size(); i++) {
+							if (!bullets.get(i).isString()) {
+								bullets.set(i, "");
+							}
+						}
+					}
+				}
 			}
-			return new SectionTitles(
-					"Profil",
-					"Expérience professionnelle",
-					"Education",
-					"Réalisations",
-					"Compétences"
-			);
+		}
+		fillStrings(root);
+		return root;
+	}
+
+	private static ArrayNode list(ObjectNode parent, String key) {
+		JsonNode existing = parent.get(key);
+		if (existing instanceof ArrayNode array) {
+			// A null item would break the template's field access; drop it.
+			for (int i = array.size() - 1; i >= 0; i--) {
+				if (array.get(i).isNull()) {
+					array.remove(i);
+				}
+			}
+			return array;
+		}
+		return parent.putArray(key);
+	}
+
+	/** Null (or any non-container non-string) values of the object become "". */
+	private static void fillStrings(ObjectNode obj) {
+		for (String name : obj.propertyNames().stream().toList()) {
+			JsonNode value = obj.get(name);
+			if (value == null || value.isNull() || value.isMissingNode()) {
+				obj.put(name, "");
+			}
 		}
 	}
 
-	private static String phoneLatex(String phone) {
-		return esc(phone == null ? "" : phone).replace(" ", "~");
-	}
-
-	static String esc(String value) {
-		if (value == null || value.isEmpty()) {
-			return "";
-		}
-		StringBuilder out = new StringBuilder(value.length() + 16);
+	/** Escapes a value for a Typst string literal: backslash, quote, control characters and the Unicode line separators. */
+	static String escape(String value) {
+		StringBuilder out = new StringBuilder(value.length() + 32);
 		for (int i = 0; i < value.length(); i++) {
 			char c = value.charAt(i);
 			switch (c) {
-				case '\\' -> out.append("\\textbackslash{}");
-				case '{' -> out.append("\\{");
-				case '}' -> out.append("\\}");
-				case '#' -> out.append("\\#");
-				case '$' -> out.append("\\$");
-				case '%' -> out.append("\\%");
-				case '&' -> out.append("\\&");
-				case '_' -> out.append("\\_");
-				case '~' -> out.append("\\textasciitilde{}");
-				case '^' -> out.append("\\textasciicircum{}");
-				default -> out.append(c);
-			}
-		}
-		return out.toString();
-	}
-
-	static String escUrl(String value) {
-		if (value == null) {
-			return "";
-		}
-		StringBuilder out = new StringBuilder(value.length());
-		for (int i = 0; i < value.length(); i++) {
-			int cp = value.codePointAt(i);
-			if (Character.charCount(cp) == 2) {
-				i++;
-			}
-			if (cp > 127) {
-				for (byte b : new String(Character.toChars(cp)).getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
-					out.append('%').append(String.format("%02X", b));
+				case '\\' -> out.append("\\\\");
+				case '"' -> out.append("\\\"");
+				case '\n' -> out.append("\\n");
+				case '\r' -> out.append("\\r");
+				case '\t' -> out.append("\\t");
+				default -> {
+					if (c < 0x20 || c == 0x7F || c == ' ' || c == ' ') {
+						out.append("\\u{").append(Integer.toHexString(c)).append('}');
+					}
+					else {
+						out.append(c);
+					}
 				}
 			}
-			else if ("._~:/?&=%+@!,;()*'-".indexOf(cp) >= 0 || Character.isLetterOrDigit(cp)) {
-				out.append((char) cp);
-			}
 		}
 		return out.toString();
 	}
 
-	private static <T> List<T> nullToEmpty(List<T> values) {
-		return values == null ? List.of() : values;
-	}
-
-	private static List<String> nonBlank(List<String> values) {
-		if (values == null || values.isEmpty()) {
-			return List.of();
+	private static String loadTemplate() {
+		try (InputStream in = new ClassPathResource(TEMPLATE_PATH).getInputStream()) {
+			return new String(in.readAllBytes(), StandardCharsets.UTF_8);
 		}
-		List<String> out = new ArrayList<>(values.size());
-		for (String value : values) {
-			if (value != null && !value.isBlank()) {
-				out.add(value);
-			}
+		catch (IOException ex) {
+			throw new UncheckedIOException("Cannot load " + TEMPLATE_PATH, ex);
 		}
-		return out;
 	}
 }

@@ -8,7 +8,7 @@ import { waitForJob } from '../waitForJob'
 const PDF_MAX_WAIT_MS = 2 * 60 * 1000
 const MATCH_MAX_WAIT_MS = 5 * 60 * 1000
 
-export type PdfFailure = { message: string; latexLog: boolean }
+export type PdfFailure = { message: string; buildLog: boolean }
 
 export function useResumeJobs(saveIfCurrent: () => Promise<SaveOutcome>, blocked: boolean) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
@@ -64,7 +64,7 @@ export function useResumeJobs(saveIfCurrent: () => Promise<SaveOutcome>, blocked
       if (isAbortError(err)) return
       setPdfFailure({
         message: errorMessage(err, 'The PDF build failed'),
-        latexLog: err instanceof PdfBuildError && err.latexLog,
+        buildLog: err instanceof PdfBuildError && err.buildLog,
       })
     } finally {
       previewingRef.current = false
@@ -144,10 +144,10 @@ export function useResumeJobs(saveIfCurrent: () => Promise<SaveOutcome>, blocked
 }
 
 class PdfBuildError extends Error {
-  readonly latexLog: boolean
+  readonly buildLog: boolean
 
-  constructor(message: string, latexLog: boolean) {
+  constructor(message: string, buildLog: boolean) {
     super(message)
-    this.latexLog = latexLog
+    this.buildLog = buildLog
   }
 }

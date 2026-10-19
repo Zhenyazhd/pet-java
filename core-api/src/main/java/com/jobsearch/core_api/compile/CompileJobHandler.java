@@ -8,25 +8,28 @@ import com.jobsearch.core_api.jobs.JobType;
 import java.time.Duration;
 import org.springframework.stereotype.Component;
 
-/** Compiles a queued resume (payload: LaTeX source) on the latex-worker and caches the PDF. */
+/** Compiles a queued resume (payload: Typst source) on the pdf-worker and caches the PDF. */
 @Component
 public class CompileJobHandler implements JobHandler {
 
 	private static final String REJECTED_MESSAGE = "The PDF could not be generated. Please try again later.";
 
-	private final LatexWorkerClient workerClient;
+	private final PdfWorkerClient workerClient;
 	private final ResumePdfCacheRepository cacheRepository;
+	private final ResumeLayoutService layoutService;
 	private final Duration lease;
 
 	public CompileJobHandler(
-			LatexWorkerClient workerClient,
+			PdfWorkerClient workerClient,
 			ResumePdfCacheRepository cacheRepository,
+			ResumeLayoutService layoutService,
 			AppProperties appProperties
 	) {
 		this.workerClient = workerClient;
 		this.cacheRepository = cacheRepository;
+		this.layoutService = layoutService;
 		// The worker call may take the whole read timeout; the slack covers storing the result.
-		this.lease = Duration.ofSeconds(appProperties.getLatexWorker().getReadTimeoutSeconds() + 30);
+		this.lease = Duration.ofSeconds(appProperties.getPdfWorker().getReadTimeoutSeconds() + 30);
 	}
 
 	@Override
@@ -52,11 +55,15 @@ public class CompileJobHandler implements JobHandler {
 	@Override
 	public JobOutcome run(Job job) {
 		return switch (workerClient.compile(job.getPayload())) {
-			case WorkerResult.Pdf(byte[] pdf) -> {
+			case WorkerResult.Pdf(byte[] pdf, PageLayout layout) -> {
 				cacheRepository.upsert(job.getDedupeKey(), pdf);
+				if (layout != null) {
+					// The job's dedupe key is the hash of the source, which is also the layout cache key.
+					layoutService.remember(job.getDedupeKey(), layout);
+				}
 				yield new JobOutcome.Succeeded(null);
 			}
-			// Only a LaTeX error helps the user fix their resume; other rejections are our bug.
+			// Only a layout error helps the user fix their resume; other rejections are our bug.
 			case WorkerResult.Rejected(String code, String message) ->
 					new JobOutcome.Failed(code, "compile_error".equals(code) ? message : REJECTED_MESSAGE);
 			case WorkerResult.Busy(long retryAfterSeconds) -> new JobOutcome.Busy(Duration.ofSeconds(retryAfterSeconds));

@@ -18,6 +18,6 @@ public class StrictSecretsPostProcessor implements EnvironmentPostProcessor, Ord
 			return;
 		}
 		SecretStrength.require("POSTGRES_PASSWORD", environment.getProperty("spring.datasource.password"));
-		SecretStrength.require("LATEX_WORKER_TOKEN", environment.getProperty("app.latex-worker.token"));
+		SecretStrength.require("PDF_WORKER_TOKEN", environment.getProperty("app.pdf-worker.token"));
 	}
 }

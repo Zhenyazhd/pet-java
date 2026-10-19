@@ -31,7 +31,7 @@ function PageIntro() {
       compact
       title="Your CV"
       titleId="resume-title"
-      lead="Edit the sheet in place, or point the AI at a block. Its suggestions wait for your Apply, and nothing is stored until you save."
+      lead="Edit the sheet in place, or point the AI at a block. Its suggestions land on the sheet at once (Undo is there), and nothing is stored until you save."
     />
   )
 }
@@ -222,8 +222,8 @@ export function ResumePage() {
         )}
         {jobs.pdfFailure && (
           <Banner tone="error">
-            <p>{jobs.pdfFailure.latexLog ? 'The PDF could not be built (LaTeX error):' : jobs.pdfFailure.message}</p>
-            {jobs.pdfFailure.latexLog && <pre className="log-block" tabIndex={0} role="region" aria-label="LaTeX log">{jobs.pdfFailure.message}</pre>}
+            <p>{jobs.pdfFailure.buildLog ? 'The PDF could not be built (layout error):' : jobs.pdfFailure.message}</p>
+            {jobs.pdfFailure.buildLog && <pre className="log-block" tabIndex={0} role="region" aria-label="Build log">{jobs.pdfFailure.message}</pre>}
             <Button variant="ghost" onClick={jobs.dismissPdfFailure}>
               Dismiss
             </Button>
