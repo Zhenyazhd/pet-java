@@ -8,6 +8,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jobsearch.joblist.TestData;
 import com.jobsearch.joblist.TestcontainersConfiguration;
+import com.jobsearch.joblist.job.Job;
+import com.jobsearch.joblist.job.JobRepository;
+import com.jobsearch.joblist.rank.Match;
+import com.jobsearch.joblist.rank.MatchRepository;
+import com.jobsearch.joblist.source.SourceName;
+import java.time.Duration;
+import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +39,10 @@ class McpTest {
 	private MockMvc mvc;
 	@Autowired
 	private JdbcTemplate jdbc;
+	@Autowired
+	private JobRepository jobs;
+	@Autowired
+	private MatchRepository matches;
 
 	@BeforeEach
 	void setUp() {
@@ -100,6 +111,31 @@ class McpTest {
 				.andExpect(jsonPath("$.result.isError").value(true))
 				.andExpect(jsonPath("$.result.content[0].text").value("Profile not found: 1"));
 		call("mark_delivered", "{\"matchId\":999}").andExpect(jsonPath("$.result.isError").value(true));
+	}
+
+	@Test
+	void getMatchesHidesMatchesOlderThanTheAgeLimitAndUsageShowsTheLimit() throws Exception {
+		call("save_profile", "{\"ownerRef\":\"chat-1\",\"name\":\"Main\",\"expectations\":\"Python jobs.\",\"roles\":[\"python developer\"]}")
+				.andExpect(jsonPath("$.result.isError").value(false));
+		long profileId = jdbc.queryForObject("select id from search_profile", Long.class);
+		Instant now = Instant.now();
+		match(profileId, "Fresh match", now.minus(Duration.ofDays(1)), now.minus(Duration.ofDays(1)));
+		match(profileId, "Stale match", now.minus(Duration.ofDays(5)), now.minus(Duration.ofHours(1)));
+
+		call("get_matches", "{\"profileId\":" + profileId + ",\"minScore\":0}")
+				.andExpect(jsonPath("$.result.content[0].text").value(org.hamcrest.Matchers.containsString("Fresh match")))
+				.andExpect(jsonPath("$.result.content[0].text").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Stale match"))));
+		call("get_usage", "{}").andExpect(jsonPath("$.result.content[0].text").value(org.hamcrest.Matchers.containsString("\"maxPostingAgeDays\":3")));
+	}
+
+	private void match(long profileId, String title, Instant postedAt, Instant fetchedAt) {
+		Job job = TestData.job(SourceName.HELLOWORK, title);
+		job.setFingerprint(job.getExternalId());
+		job.setPostedAt(postedAt);
+		job.setFetchedAt(fetchedAt);
+		Match match = Match.of(profileId, jobs.save(job));
+		match.rank(90, "Reason", "hash");
+		matches.save(match);
 	}
 
 	@Test

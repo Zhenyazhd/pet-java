@@ -19,6 +19,7 @@ public class AppProperties {
 	private final OpenRouter openRouter = new OpenRouter();
 	private final PdfWorker pdfWorker = new PdfWorker();
 	private final AtsWorker atsWorker = new AtsWorker();
+	private final JobList jobList = new JobList();
 
 	public boolean isStrictSecrets() {
 		return strictSecrets;
@@ -72,9 +73,59 @@ public class AppProperties {
 		return atsWorker;
 	}
 
+	public JobList getJobList() {
+		return jobList;
+	}
+
+	/** The job-list service (tools/job-list) that finds and ranks vacancies. Without a token the feature is off. */
+	public static class JobList {
+		private String baseUrl = "http://127.0.0.1:8100";
+		/** The client bearer token job-list issued for core-api; blank switches the feature off. */
+		private String token = "";
+		private int connectTimeoutSeconds = 3;
+		private int readTimeoutSeconds = 15;
+
+		public boolean isConfigured() {
+			return token != null && !token.isBlank();
+		}
+
+		public String getBaseUrl() {
+			return baseUrl;
+		}
+
+		public void setBaseUrl(String baseUrl) {
+			this.baseUrl = baseUrl;
+		}
+
+		public String getToken() {
+			return token;
+		}
+
+		public void setToken(String token) {
+			this.token = token;
+		}
+
+		public int getConnectTimeoutSeconds() {
+			return connectTimeoutSeconds;
+		}
+
+		public void setConnectTimeoutSeconds(int connectTimeoutSeconds) {
+			this.connectTimeoutSeconds = connectTimeoutSeconds;
+		}
+
+		public int getReadTimeoutSeconds() {
+			return readTimeoutSeconds;
+		}
+
+		public void setReadTimeoutSeconds(int readTimeoutSeconds) {
+			this.readTimeoutSeconds = readTimeoutSeconds;
+		}
+	}
+
 	public static class ExpensiveOpsRateLimit {
 		/**
-		 * Max combined POST /api/ai/**, /api/vacancies/import and /api/resume/compile calls
+		 * Max combined POST /api/ai/**, /api/vacancies/import, /api/resume/compile,
+		 * /api/resume/readability and /api/job-search/runs (full or rank-only) calls
 		 * per authenticated user per minute ({@code 0} = disabled).
 		 */
 		private int perUserPerMinute = 10;

@@ -18,10 +18,11 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
 	@Query("select m from Match m where m.profileId = :profileId and m.job.id in :jobIds")
 	List<Match> findForJobs(@Param("profileId") long profileId, @Param("jobIds") Collection<Long> jobIds);
 
-	/** Best first. The cursor is the (score, id) of the last item of the previous page: score 101 starts from the top. */
+	/** Best first, only jobs not older than {@code postedAfter} (posting date, or fetch date when it has none). The cursor is the (score, id) of the last item of the previous page: score 101 starts from the top. */
 	@Query("""
-			select m from Match m join fetch m.job
+			select m from Match m join fetch m.job j
 			where m.profileId = :profileId and m.score >= :minScore and m.rankedAt >= :since
+			  and coalesce(j.postedAt, j.fetchedAt) >= :postedAfter
 			  and ((:delivered = true and m.deliveredAt is not null) or (:delivered = false and m.deliveredAt is null))
 			  and (m.score < :cursorScore or (m.score = :cursorScore and m.id < :cursorId))
 			order by m.score desc, m.id desc
@@ -30,6 +31,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
 			@Param("profileId") long profileId,
 			@Param("minScore") int minScore,
 			@Param("since") Instant since,
+			@Param("postedAfter") Instant postedAfter,
 			@Param("delivered") boolean delivered,
 			@Param("cursorScore") int cursorScore,
 			@Param("cursorId") long cursorId,

@@ -6,11 +6,10 @@ import com.jobsearch.joblist.job.Job;
 import com.jobsearch.joblist.job.Remote;
 import com.jobsearch.joblist.source.HtmlText;
 import static com.jobsearch.joblist.source.JsonFields.decimal;
+import static com.jobsearch.joblist.source.JsonFields.instant;
 import static com.jobsearch.joblist.source.JsonFields.text;
 import com.jobsearch.joblist.source.SourceName;
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.format.DateTimeParseException;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -44,6 +43,9 @@ class WttjMapper {
 	private static final String SKILLS = "skills";
 	private static final String TOOLS = "tools";
 	private static final String PUBLISHED_AT = "publishedAt";
+	private static final String SKILL_NAME = "name";
+	/** The language a skill is named in when the actor gives several; English reads best for the ranking model. */
+	private static final List<String> PREFERRED_LANGUAGES = List.of("en", "fr");
 
 	private final int maxDescriptionChars;
 
@@ -141,19 +143,45 @@ class WttjMapper {
 		};
 	}
 
+	/**
+	 * Skills and tools as plain names. The actor sends objects: a skill is {"name": {"en": "...", "fr": "..."}}, a tool is
+	 * {"name": "React"}; a bare string is read as it is. Any other shape is skipped, never an error: one odd skill must not
+	 * cost the whole posting.
+	 */
 	private static List<String> merged(JsonNode first, JsonNode second) {
 		Set<String> values = new LinkedHashSet<>();
-		first.forEach(node -> values.add(node.asString()));
-		second.forEach(node -> values.add(node.asString()));
+		for (JsonNode list : List.of(first, second)) {
+			list.forEach(node -> {
+				String name = skillName(node);
+				if (name != null) {
+					values.add(name);
+				}
+			});
+		}
 		return List.copyOf(values);
 	}
 
-	private static Instant instant(String value) {
-		try {
-			return value == null ? null : Instant.parse(value);
+	private static String skillName(JsonNode node) {
+		if (node.isString()) {
+			return node.asString().isBlank() ? null : node.asString().strip();
 		}
-		catch (DateTimeParseException ex) {
-			return null;
+		JsonNode name = node.path(SKILL_NAME);
+		if (name.isString()) {
+			return name.asString().isBlank() ? null : name.asString().strip();
 		}
+		if (name.isObject()) {
+			for (String language : PREFERRED_LANGUAGES) {
+				String value = text(name, language);
+				if (value != null) {
+					return value;
+				}
+			}
+			for (JsonNode value : name) {
+				if (value.isString() && !value.asString().isBlank()) {
+					return value.asString().strip();
+				}
+			}
+		}
+		return null;
 	}
 }

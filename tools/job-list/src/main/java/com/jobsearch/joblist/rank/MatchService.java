@@ -2,7 +2,9 @@ package com.jobsearch.joblist.rank;
 
 import com.jobsearch.joblist.common.BadRequestException;
 import com.jobsearch.joblist.common.NotFoundException;
+import com.jobsearch.joblist.config.JobListProperties;
 import com.jobsearch.joblist.job.Job;
+import com.jobsearch.joblist.job.PostingAge;
 import com.jobsearch.joblist.profile.SearchProfile;
 import com.jobsearch.joblist.profile.SearchProfileService;
 import com.jobsearch.joblist.rank.MatchDtos.JobSummary;
@@ -15,7 +17,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Reading ranked matches and marking them delivered, for the calling client's profiles. */
+/**
+ * Reading ranked matches and marking them delivered, for the calling client's profiles. A match whose job is older than
+ * the posting age limit at the time of the request is not returned (it ages out of the list by itself).
+ */
 @Service
 @Transactional
 public class MatchService {
@@ -28,10 +33,12 @@ public class MatchService {
 
 	private final MatchRepository matches;
 	private final SearchProfileService profiles;
+	private final int maxPostingAgeDays;
 
-	public MatchService(MatchRepository matches, SearchProfileService profiles) {
+	public MatchService(MatchRepository matches, SearchProfileService profiles, JobListProperties properties) {
 		this.matches = matches;
 		this.profiles = profiles;
+		this.maxPostingAgeDays = properties.maxPostingAgeDays();
 	}
 
 	/** Query options of one page; null values mean "use the default" (matches not yet delivered, the profile's minimum score). */
@@ -47,6 +54,7 @@ public class MatchService {
 				profileId,
 				query.minScore() == null ? profile.getMinScore() : query.minScore(),
 				since(query.since()),
+				PostingAge.cutoff(Instant.now(), maxPostingAgeDays),
 				Boolean.TRUE.equals(query.delivered()),
 				(int) cursor[0],
 				cursor[1],

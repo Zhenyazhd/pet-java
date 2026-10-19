@@ -1,6 +1,7 @@
 package com.jobsearch.joblist.api;
 
 import com.jobsearch.joblist.common.BadRequestException;
+import com.jobsearch.joblist.common.ConflictException;
 import com.jobsearch.joblist.common.NotFoundException;
 import com.jobsearch.joblist.common.TooManyRequestsException;
 import org.slf4j.Logger;
@@ -32,6 +33,11 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 	@ExceptionHandler(NotFoundException.class)
 	ResponseEntity<Object> notFound(NotFoundException ex) {
 		return body(HttpStatus.NOT_FOUND, ex.getMessage());
+	}
+
+	@ExceptionHandler(ConflictException.class)
+	ResponseEntity<Object> conflict(ConflictException ex) {
+		return body(HttpStatus.CONFLICT, ex.getMessage());
 	}
 
 	@ExceptionHandler(TooManyRequestsException.class)

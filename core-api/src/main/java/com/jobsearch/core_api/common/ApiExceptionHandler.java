@@ -107,6 +107,16 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 		return response.body(apiErrorResponses.body(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage()));
 	}
 
+	@ExceptionHandler(TooManyRequestsException.class)
+	public ResponseEntity<Map<String, Object>> handleTooManyRequests(TooManyRequestsException ex) {
+		log.info("Too many requests: {}", ex.getMessage());
+		ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS);
+		if (ex.getRetryAfter() != null) {
+			response.header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfter().toSeconds()));
+		}
+		return response.body(apiErrorResponses.body(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage()));
+	}
+
 	@ExceptionHandler(UnauthorizedException.class)
 	public ResponseEntity<Map<String, Object>> handleUnauthorized(UnauthorizedException ex) {
 		log.info("Unauthorized: {}", ex.getMessage());

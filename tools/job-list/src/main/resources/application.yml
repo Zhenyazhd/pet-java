@@ -82,6 +82,10 @@ job-list:
   mapper-drop-threshold: ${JOB_LIST_MAPPER_DROP_THRESHOLD:0.3}
   retention-days: ${JOB_LIST_RETENTION_DAYS:60}
   run-retention-days: ${JOB_LIST_RUN_RETENTION_DAYS:90}
+  # Hard limit on the age of a vacancy (1..30): only postings dated within the last N days are asked for, stored, ranked
+  # and returned. A posting dated D with no time counts from the start of D (UTC), so with the default 3 the effective window for
+  # date-only sources is the last 2 full days plus today. Undated postings age from when they were fetched.
+  max-posting-age-days: ${JOB_LIST_MAX_POSTING_AGE_DAYS:3}
   rank-window-days: ${JOB_LIST_RANK_WINDOW_DAYS:7}
   max-profiles-per-owner: ${JOB_LIST_MAX_PROFILES_PER_OWNER:2}
   # Every profile and every run can spend money, and a client chooses the owner names itself, so the totals per client
@@ -89,6 +93,9 @@ job-list:
   max-profiles-per-client: ${JOB_LIST_MAX_PROFILES_PER_CLIENT:100}
   max-runs-per-owner-per-day: ${JOB_LIST_MAX_RUNS_PER_OWNER_PER_DAY:3}
   max-runs-per-client-per-day: ${JOB_LIST_MAX_RUNS_PER_CLIENT_PER_DAY:200}
+  # Rank-only runs ("continue ranking": no Apify, only the model) are not counted above; they have their own cap per owner, in 24 hours (1..200).
+  max-rank-runs-per-owner-per-day: ${JOB_LIST_MAX_RANK_RUNS_PER_OWNER_PER_DAY:20}
+  max-rank-runs-per-client-per-day: ${JOB_LIST_MAX_RANK_RUNS_PER_CLIENT_PER_DAY:200}
   worker-poll-interval: ${JOB_LIST_WORKER_POLL_SECONDS:10}s
   scheduling-enabled: ${JOB_LIST_SCHEDULING_ENABLED:true}
 

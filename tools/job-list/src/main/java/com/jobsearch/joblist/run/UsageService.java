@@ -23,13 +23,14 @@ public class UsageService {
 	 * @param llmSpentUsd model calls this month (settled costs plus reservations), against {@code llmBudgetUsd}; of it
 	 *                    {@code llmReservedUsd} is for calls in flight and {@code llmLostUsd} is counted at the worst case
 	 *                    because the call's cost was never reported (every call lands here when the provider omits usage.cost)
+	 * @param maxPostingAgeDays the limit on the age of a vacancy ({@code job-list.max-posting-age-days}): older postings are never fetched, ranked or returned
 	 * @param spentUsd    everything counted against the Apify budget: settled costs plus what is reserved or lost at the cap
 	 * @param reservedUsd the part of it reserved for calls that are running now
 	 * @param lostUsd     the part of it counted at the cap for calls whose end was never recorded
 	 */
 	public record Usage(String month, BigDecimal spentUsd, BigDecimal budgetUsd, List<SourceSpend> bySource,
 			BigDecimal reservedUsd, BigDecimal lostUsd, BigDecimal llmSpentUsd, BigDecimal llmBudgetUsd,
-			BigDecimal llmReservedUsd, BigDecimal llmLostUsd) {
+			BigDecimal llmReservedUsd, BigDecimal llmLostUsd, int maxPostingAgeDays) {
 	}
 
 	public Usage current() {
@@ -43,6 +44,7 @@ public class UsageService {
 				ledger.llmSpentThisMonth(),
 				properties.llm().monthlyBudgetUsd(),
 				ledger.llmReservedThisMonth(),
-				ledger.llmLostThisMonth());
+				ledger.llmLostThisMonth(),
+				properties.maxPostingAgeDays());
 	}
 }

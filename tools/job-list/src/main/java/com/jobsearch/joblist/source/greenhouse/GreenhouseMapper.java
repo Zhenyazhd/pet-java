@@ -6,13 +6,10 @@ import com.jobsearch.joblist.job.Job;
 import com.jobsearch.joblist.job.Remote;
 import com.jobsearch.joblist.source.HtmlText;
 import static com.jobsearch.joblist.source.JsonFields.decimal;
+import static com.jobsearch.joblist.source.JsonFields.instant;
 import static com.jobsearch.joblist.source.JsonFields.text;
 import com.jobsearch.joblist.source.SourceName;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeParseException;
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -152,15 +149,5 @@ class GreenhouseMapper {
 		Set<String> values = new LinkedHashSet<>();
 		node.forEach(value -> values.add(value.asString()));
 		return List.copyOf(values);
-	}
-
-	/** The date-time has no zone; UTC is the best guess. */
-	private static Instant instant(String value) {
-		try {
-			return value == null ? null : LocalDateTime.parse(value).toInstant(ZoneOffset.UTC);
-		}
-		catch (DateTimeParseException ex) {
-			return null;
-		}
 	}
 }

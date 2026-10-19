@@ -76,5 +76,99 @@ services:
     cpus: 1
     mem_limit: 1g
 
+  # --- Job matches (optional): `npm run infra:jobs` -------------------------------------------------------------
+  # Not started by the default `docker compose up` / `npm run dev`; needs Apify + OpenRouter keys and costs money
+  # per search. See "Job matches (optional)" in README.md.
+
+  # One-shot and idempotent: creates the job_list role and database in the shared Postgres (or just re-syncs the
+  # role's password). The Postgres volume's init scripts only run on an empty volume, so this does it explicitly.
+  job-list-db:
+    image: postgres:16-alpine
+    profiles: ["jobs"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-job_search}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-job_search}
+      PGDATABASE: ${POSTGRES_DB:-job_search}
+      JOB_LIST_DB_PASSWORD: ${JOB_LIST_DB_PASSWORD:-}
+      # Only checked here (job-list starts after this container succeeds). Compose cannot mark a variable of a
+      # profile-only service as required without breaking `docker compose config` for the default profile.
+      JOB_LIST_TOKEN: ${JOB_LIST_TOKEN:-}
+      JOB_LIST_CLIENT_1_TOKEN: ${JOB_LIST_CLIENT_1_TOKEN:-}
+      APIFY_TOKEN: ${APIFY_TOKEN:-}
+      JOB_LIST_OPENROUTER_API_KEY: ${JOB_LIST_OPENROUTER_API_KEY:-}
+    command:
+      - sh
+      - -c
+      - |
+        for v in JOB_LIST_DB_PASSWORD JOB_LIST_TOKEN JOB_LIST_CLIENT_1_TOKEN APIFY_TOKEN JOB_LIST_OPENROUTER_API_KEY; do
+          [ -n "$$(printenv "$$v")" ] || { echo "job-list: set $$v in .env (see README: Job matches)" >&2; exit 1; }
+        done
+        psql -v ON_ERROR_STOP=1 -v pw="$$JOB_LIST_DB_PASSWORD" <<'SQL'
+        SELECT format('CREATE ROLE job_list LOGIN PASSWORD %L', :'pw') WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'job_list') \gexec
+        SELECT format('ALTER ROLE job_list PASSWORD %L', :'pw') \gexec
+        SELECT 'CREATE DATABASE job_list OWNER job_list' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'job_list') \gexec
+        SQL
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  job-list:
+    build: tools/job-list
+    image: job-search-job-list
+    container_name: job-search-job-list
+    profiles: ["jobs"]
+    restart: unless-stopped
+    depends_on:
+      job-list-db:
+        condition: service_completed_successfully
+    # Localhost only: core-api runs on the host in local development and reaches it at JOB_LIST_BASE_URL.
+    ports:
+      - "127.0.0.1:${JOB_LIST_PORT:-8100}:8100"
+    environment:
+      JOB_LIST_DB_URL: jdbc:postgresql://postgres:5432/job_list
+      JOB_LIST_DB_USER: job_list
+      JOB_LIST_DB_PASSWORD: ${JOB_LIST_DB_PASSWORD:-}
+      # core-api's bearer token (the same value core-api reads as JOB_LIST_TOKEN).
+      JOB_LIST_CLIENT_0_TOKEN: ${JOB_LIST_TOKEN:-}
+      # The second client (Telegram bot) is not wired yet, but the service refuses to start without a token for it.
+      JOB_LIST_CLIENT_1_TOKEN: ${JOB_LIST_CLIENT_1_TOKEN:-}
+      APIFY_TOKEN: ${APIFY_TOKEN:-}
+      # A key of its own (with a credit limit), not core-api's OPENROUTER_API_KEY.
+      OPENROUTER_API_KEY: ${JOB_LIST_OPENROUTER_API_KEY:-}
+      JOB_LIST_LLM_MODEL: ${JOB_LIST_LLM_MODEL:-deepseek/deepseek-chat}
+      APIFY_MONTHLY_BUDGET_USD: ${APIFY_MONTHLY_BUDGET_USD:-5}
+      JOB_LIST_LLM_MONTHLY_BUDGET_USD: ${JOB_LIST_LLM_MONTHLY_BUDGET_USD:-2}
+      JOB_LIST_MAX_RUNS_PER_OWNER_PER_DAY: ${JOB_LIST_MAX_RUNS_PER_OWNER_PER_DAY:-3}
+      JOB_LIST_MAX_RANK_RUNS_PER_OWNER_PER_DAY: ${JOB_LIST_MAX_RANK_RUNS_PER_OWNER_PER_DAY:-20}
+      JOB_LIST_MAX_RANK_RUNS_PER_CLIENT_PER_DAY: ${JOB_LIST_MAX_RANK_RUNS_PER_CLIENT_PER_DAY:-200}
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    cpus: 1
+    mem_limit: 1g
+    healthcheck:
+      # The JRE image has neither curl nor wget; bash can speak HTTP/1.0 through /dev/tcp.
+      test:
+        - CMD
+        - bash
+        - -c
+        - 'exec 3<>/dev/tcp/127.0.0.1/8100 && printf "GET /actuator/health/readiness HTTP/1.0\r\n\r\n" >&3 && head -n1 <&3 | grep -q " 200 "'
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+
 volumes:
   postgres_data:

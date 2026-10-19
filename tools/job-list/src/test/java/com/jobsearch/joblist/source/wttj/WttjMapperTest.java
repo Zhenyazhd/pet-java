@@ -57,13 +57,45 @@ class WttjMapperTest {
 		assertThat(job.getSkills()).isEmpty();
 	}
 
+	/** Items as the real actor returned them (run of 2026-10-19): skills are objects named in several languages. */
+	@Test
+	void mapsTheItemsTheRealActorReturned() {
+		JsonNode real = fixture("/fixtures/wttj-real.json");
+
+		Job first = mapper.map(real.get(0)).orElseThrow();
+		assertThat(first.getSkills()).containsExactly("Goal setting", "React", "GitHub");
+		assertThat(first.getContractType()).isEqualTo(ContractType.INTERNSHIP);
+		assertThat(first.getRemote()).isEqualTo(Remote.HYBRID);
+		assertThat(first.getSalaryMin()).isNull();
+		assertThat(first.getPostedAt()).isEqualTo(Instant.parse("2026-10-19T12:05:35Z"));
+
+		Job second = mapper.map(real.get(1)).orElseThrow();
+		assertThat(second.getSkills()).containsExactly("Teamwork", "Méthode Agile", "Hibernate");
+
+		assertThat(mapper.map(real.get(2)).orElseThrow().getSkills()).isEmpty();
+	}
+
+	@Test
+	void anOddSkillShapeIsSkippedNotAnError() {
+		JsonNode item = JsonMapper.builder().build().readTree("""
+				{"id":"1","url":"https://x.test/1","name":"Dev","organizationName":"Acme","description":"Text",
+				 "skills":[{"name":{}}, 42, null, {"reference":"r"}, "Rust", {"name":["a"]}], "tools":[{"name":""}]}
+				""");
+
+		assertThat(mapper.map(item).orElseThrow().getSkills()).containsExactly("Rust");
+	}
+
 	@Test
 	void neverThrowsOnAnEmptyItem() {
 		assertThat(mapper.map(JsonMapper.builder().build().createObjectNode())).isEmpty();
 	}
 
 	private static JsonNode fixture() {
-		try (InputStream stream = WttjMapperTest.class.getResourceAsStream("/fixtures/wttj.json")) {
+		return fixture("/fixtures/wttj.json");
+	}
+
+	private static JsonNode fixture(String path) {
+		try (InputStream stream = WttjMapperTest.class.getResourceAsStream(path)) {
 			return JsonMapper.builder().build().readTree(stream);
 		}
 		catch (IOException ex) {

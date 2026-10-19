@@ -3,14 +3,13 @@ package com.jobsearch.joblist.run;
 import com.jobsearch.joblist.config.JobListProperties;
 import com.jobsearch.joblist.source.SourceQuery;
 import com.jobsearch.joblist.job.Job;
-import com.jobsearch.joblist.job.JobRepository;
 import com.jobsearch.joblist.job.JobStore;
+import com.jobsearch.joblist.job.PostingAge;
 import com.jobsearch.joblist.profile.SearchProfile;
 import com.jobsearch.joblist.profile.SearchProfileRepository;
 import com.jobsearch.joblist.profile.SearchProfileService;
 import com.jobsearch.joblist.rank.JobRanker;
-import com.jobsearch.joblist.rank.MatchRepository;
-import com.jobsearch.joblist.rank.RankFailures;
+import com.jobsearch.joblist.rank.RankCandidates;
 import com.jobsearch.joblist.rank.RankReport;
 import com.jobsearch.joblist.source.JobSource;
 import com.jobsearch.joblist.source.SourceName;
@@ -19,7 +18,6 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,16 +34,17 @@ public class RunPipeline {
 
 	private static final Logger log = LoggerFactory.getLogger(RunPipeline.class);
 
+	/** Sources whose actor has no server-side date filter, so the posting date is the only protection. */
+	private static final Set<SourceName> NO_DATE_FILTER = Set.of(SourceName.HELLOWORK, SourceName.GREENHOUSE);
+
 	private final RunRepository runs;
 	private final RunSourceRepository runSources;
 	private final SearchProfileRepository profiles;
-	private final JobRepository jobs;
 	private final JobStore jobStore;
-	private final MatchRepository matches;
+	private final RankCandidates rankCandidates;
 	private final SearchProfileService profileService;
 	private final JobRanker ranker;
 	private final SpendLedger ledger;
-	private final RankFailures rankFailures;
 	private final JobListProperties properties;
 	private final Map<SourceName, JobSource> sources;
 
@@ -53,26 +52,22 @@ public class RunPipeline {
 			RunRepository runs,
 			RunSourceRepository runSources,
 			SearchProfileRepository profiles,
-			JobRepository jobs,
 			JobStore jobStore,
-			MatchRepository matches,
+			RankCandidates rankCandidates,
 			SearchProfileService profileService,
 			JobRanker ranker,
 			SpendLedger ledger,
-			RankFailures rankFailures,
 			JobListProperties properties,
 			List<JobSource> jobSources
 	) {
 		this.runs = runs;
 		this.runSources = runSources;
 		this.profiles = profiles;
-		this.jobs = jobs;
 		this.jobStore = jobStore;
-		this.matches = matches;
+		this.rankCandidates = rankCandidates;
 		this.profileService = profileService;
 		this.ranker = ranker;
 		this.ledger = ledger;
-		this.rankFailures = rankFailures;
 		this.properties = properties;
 		this.sources = jobSources.stream().collect(Collectors.toMap(JobSource::name, Function.identity()));
 	}
@@ -95,13 +90,18 @@ public class RunPipeline {
 		boolean released = false;
 		try {
 			SearchProfile profile = profiles.findById(run.getProfileId()).orElseThrow();
+			// One instant for the whole run, so the age cutoffs of fetching and ranking agree.
+			Instant now = Instant.now();
 			List<SourceStatus> statuses = new ArrayList<>();
-			for (String name : profile.getSources()) {
-				renewLease(run);
-				statuses.add(fetchSource(run, profile, sources.get(SourceName.valueOf(name))));
+			// A rank-only run never calls a source (no Apify): it only ranks what is stored.
+			if (run.getMode() == RunMode.FULL) {
+				for (String name : profile.getSources()) {
+					renewLease(run);
+					statuses.add(fetchSource(run, profile, sources.get(SourceName.valueOf(name)), now));
+				}
 			}
 			renewLease(run);
-			RankReport ranking = rankCandidates(run, profile);
+			RankReport ranking = rankCandidates(run, profile, now);
 			run.addRanked(ranking.ranked(), ranking.costUsd());
 			finish(run, statuses, ranking.problem());
 		}
@@ -181,8 +181,7 @@ public class RunPipeline {
 		}
 	}
 
-	private SourceStatus fetchSource(Run run, SearchProfile profile, JobSource source) {
-		Instant now = Instant.now();
+	private SourceStatus fetchSource(Run run, SearchProfile profile, JobSource source, Instant now) {
 		SourceQuery query = profileService.query(profile);
 		String skipReason = skipReason(source, query);
 		if (skipReason != null) {
@@ -190,7 +189,7 @@ public class RunPipeline {
 		}
 		String queryKey = source.queryKey(query);
 		Instant lastSuccess = ledger.lastSuccess(source.name(), queryKey);
-		query.setWindow(LookbackWindow.days(lastSuccess, now, properties.firstRunLookbackDays()), properties.maxItemsPerSource());
+		query.setWindow(LookbackWindow.days(lastSuccess, now, properties.firstRunLookbackDays(), properties.maxPostingAgeDays()), properties.maxItemsPerSource());
 
 		Duration interval = Duration.ofHours(properties.source(source.name()).minIntervalHours());
 		SpendLedger.Reservation reservation = ledger.reserveApify(run.getId(), profile.getId(), source.name(), queryKey, interval);
@@ -207,6 +206,7 @@ public class RunPipeline {
 		// never throws away what was paid for. A reservation left open is closed by the janitor as LOST, at the cap.
 		int newJobs = 0;
 		if (result.ok()) {
+			result = withoutTooOld(result, source.name(), now);
 			try {
 				newJobs = jobStore.saveNew(result.jobs(), now);
 			}
@@ -222,6 +222,27 @@ public class RunPipeline {
 				.withResult(result.apifyRunId(), result.fetched(), newJobs, result.dropped(), result.costUsd(), result.error()));
 		log.info("Source done source={} status={} fetched={} new={} costUsd={}", source.name(), status, result.fetched(), newJobs, result.costUsd());
 		return status;
+	}
+
+	/**
+	 * Sources may ignore or loosely apply their date filter: a posting dated before the age limit is counted as dropped, not
+	 * stored. Postings without a date are kept (new in this run) but counted in the log; a source without a server-side date
+	 * filter that mostly returns undated items has probably changed its date field.
+	 */
+	private SourceResult withoutTooOld(SourceResult result, SourceName source, Instant now) {
+		Instant cutoff = PostingAge.cutoff(now, properties.maxPostingAgeDays());
+		List<Job> fresh = result.jobs().stream().filter(job -> !PostingAge.tooOldToFetch(job.getPostedAt(), cutoff)).toList();
+		int tooOld = result.jobs().size() - fresh.size();
+		long undated = fresh.stream().filter(job -> job.getPostedAt() == null).count();
+		log.info("Postings checked source={} kept={} tooOld={} mapperDropped={} undated={} maxPostingAgeDays={}",
+				source, fresh.size(), tooOld, result.dropped(), undated, properties.maxPostingAgeDays());
+		if (NO_DATE_FILTER.contains(source) && !result.jobs().isEmpty() && undated * 2 > result.jobs().size()) {
+			log.warn("Most postings have no date source={} undated={} of={}: date field missing or renamed?", source, undated, result.jobs().size());
+		}
+		if (tooOld == 0) {
+			return result;
+		}
+		return new SourceResult(fresh, result.fetched(), result.dropped() + tooOld, result.costUsd(), result.apifyRunId(), result.error());
 	}
 
 	private void settleQuietly(long reservationId, SourceResult result) {
@@ -263,25 +284,19 @@ public class RunPipeline {
 		}
 	}
 
-	/**
-	 * The jobs to rank: stored recently, not yet ranked for this profile with the current
-	 * prompt and expectations; newest first, up to the cap. This also covers jobs another profile's run stored and
-	 * jobs a previous run had no room for.
-	 */
-	private RankReport rankCandidates(Run run, SearchProfile profile) {
-		Instant since = Instant.now().minus(Duration.ofDays(properties.rankWindowDays()));
-		String promptHash = ranker.promptHash(profile);
-		Set<Long> ranked = new HashSet<>(matches.rankedJobIds(profile.getId(), promptHash));
-		ranked.addAll(rankFailures.givenUp(profile.getId(), promptHash));
-		List<Job> candidates = jobs.findByFetchedAtAfterOrderByIdDesc(since).stream()
-				.filter(job -> !ranked.contains(job.getId()))
-				.limit(properties.maxRankedPerRun())
-				.toList();
+	/** The jobs to rank (see {@link RankCandidates}), newest first, up to the cap per run. */
+	private RankReport rankCandidates(Run run, SearchProfile profile, Instant now) {
+		List<Job> candidates = rankCandidates.find(profile, now).stream().limit(properties.maxRankedPerRun()).toList();
 		return candidates.isEmpty() ? RankReport.none() : ranker.rank(profile, candidates, callGuard(run, profile));
 	}
 
 	/** SUCCEEDED when no source failed, PARTIAL when some did and some worked, FAILED when none worked. */
 	private static void finish(Run run, List<SourceStatus> statuses, String rankingError) {
+		if (run.getMode() == RunMode.RANK_ONLY && rankingError != null && run.getRanked() == 0) {
+			// Nothing else was done in this run, so nothing worked: FAILED (PARTIAL only when something was ranked).
+			run.finish(RunStatus.FAILED, rankingError);
+			return;
+		}
 		boolean anyFailed = statuses.contains(SourceStatus.FAILED);
 		boolean anySucceeded = statuses.contains(SourceStatus.SUCCEEDED);
 		if (anyFailed && !anySucceeded) {

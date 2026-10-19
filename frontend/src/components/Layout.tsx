@@ -41,6 +41,9 @@ export function AppLayout() {
         <div className="topbar__inner">
           <Wordmark />
           <nav className="topbar__nav" aria-label="Main">
+            <NavLink to="/jobs" className="nav-link">
+              Job matches
+            </NavLink>
             <NavLink to="/vacancies" className="nav-link">
               Vacancies
             </NavLink>
@@ -61,8 +64,9 @@ export function AppLayout() {
       </header>
       <main id="main" className="main">
         {signOutError && <Banner tone="error">{signOutError}</Banner>}
-        {/* Per page, so a render error keeps the header; the key resets it on navigation. */}
-        <ErrorBoundary key={location.pathname} inline>
+        {/* Per page, so a render error keeps the header; the key resets it on navigation. The jobs pages share
+            one layout (polling, draft), so moving between them must not remount it. */}
+        <ErrorBoundary key={/^\/jobs(\/|$)/.test(location.pathname) ? '/jobs' : location.pathname} inline>
           <Outlet />
         </ErrorBoundary>
       </main>

@@ -14,6 +14,7 @@ public final class RunDtos {
 	public record RunResponse(
 			long id,
 			String status,
+			String mode,
 			String createdAt,
 			String startedAt,
 			String finishedAt,
@@ -30,6 +31,7 @@ public final class RunDtos {
 		return new RunResponse(
 				run.getId(),
 				run.getStatus().name(),
+				run.getMode().name(),
 				run.getCreatedAt().toString(),
 				run.getStartedAt() == null ? null : run.getStartedAt().toString(),
 				run.getFinishedAt() == null ? null : run.getFinishedAt().toString(),

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 
+/** Asks the browser to confirm closing the tab while there is something unsaved. */
 export function useBeforeUnload(active: boolean) {
   useEffect(() => {
     if (!active) return

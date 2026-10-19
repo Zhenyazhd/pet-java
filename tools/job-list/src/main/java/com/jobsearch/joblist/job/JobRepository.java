@@ -15,7 +15,9 @@ public interface JobRepository extends JpaRepository<Job, Long> {
 
 	boolean existsByFingerprint(String fingerprint);
 
-	List<Job> findByFetchedAtAfterOrderByIdDesc(Instant since);
+	/** Fetched after {@code since} and not older than {@code postedAfter} by posting date (fetch date when it has none), newest first. */
+	@Query("select j from Job j where j.fetchedAt > :since and coalesce(j.postedAt, j.fetchedAt) >= :postedAfter order by j.id desc")
+	List<Job> findCandidates(@Param("since") Instant since, @Param("postedAfter") Instant postedAfter);
 
 	@Transactional
 	@Modifying

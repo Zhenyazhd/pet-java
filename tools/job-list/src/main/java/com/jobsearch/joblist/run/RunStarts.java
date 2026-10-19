@@ -5,7 +5,7 @@ import java.time.Instant;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-/** The runs each client and owner started recently; it outlives the profiles, so deleting a profile does not reset a limit. */
+/** Full runs are counted per owner and per client, rank-only runs per owner (own cap). The runs each client and owner started recently; it outlives the profiles, so deleting a profile does not reset a limit. */
 @Component
 public class RunStarts {
 
@@ -15,20 +15,20 @@ public class RunStarts {
 		this.jdbc = jdbc;
 	}
 
-	public long byOwnerSince(String client, String ownerRef, Instant since) {
-		Long count = jdbc.queryForObject("select count(*) from client_run_start where client = ? and owner_ref = ? and created_at >= ?",
-				Long.class, client, ownerRef, Timestamp.from(since));
+	public long byOwnerSince(String client, String ownerRef, RunMode mode, Instant since) {
+		Long count = jdbc.queryForObject("select count(*) from client_run_start where client = ? and owner_ref = ? and mode = ? and created_at >= ?",
+				Long.class, client, ownerRef, mode.name(), Timestamp.from(since));
 		return count == null ? 0 : count;
 	}
 
-	public long byClientSince(String client, Instant since) {
-		Long count = jdbc.queryForObject("select count(*) from client_run_start where client = ? and created_at >= ?",
-				Long.class, client, Timestamp.from(since));
+	public long byClientSince(String client, RunMode mode, Instant since) {
+		Long count = jdbc.queryForObject("select count(*) from client_run_start where client = ? and mode = ? and created_at >= ?",
+				Long.class, client, mode.name(), Timestamp.from(since));
 		return count == null ? 0 : count;
 	}
 
-	public void record(String client, String ownerRef) {
-		jdbc.update("insert into client_run_start (client, owner_ref, created_at) values (?, ?, now())", client, ownerRef);
+	public void record(String client, String ownerRef, RunMode mode) {
+		jdbc.update("insert into client_run_start (client, owner_ref, mode, created_at) values (?, ?, ?, now())", client, ownerRef, mode.name());
 	}
 
 	public int deleteBefore(Instant before) {

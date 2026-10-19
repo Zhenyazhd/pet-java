@@ -64,6 +64,8 @@ class PipelineTest {
 	@Autowired
 	private MatchRepository matches;
 	@Autowired
+	private com.jobsearch.joblist.job.JobRepository jobRepository;
+	@Autowired
 	private UsageService usage;
 	@Autowired
 	private com.jobsearch.joblist.run.Janitor janitor;
@@ -737,6 +739,61 @@ class PipelineTest {
 		assertEquals(0, jdbc.queryForObject("select count(*) from spend_ledger where status = 'RESERVED'", Integer.class), "the model calls' reservations are closed too");
 		assertEquals(0, new BigDecimal("0.30").compareTo(usage.current().lostUsd()));
 		assertEquals(0, BigDecimal.ZERO.compareTo(usage.current().reservedUsd()));
+	}
+
+	@Test
+	void postingsOlderThanTheAgeLimitAreDroppedAndCountedButUndatedAndRecentOnesAreKept() {
+		Instant now = Instant.now();
+		Job old = dated("Old", now.minus(java.time.Duration.ofDays(3)).minusSeconds(60));
+		Job recent = dated("Recent", now.minus(java.time.Duration.ofDays(2)));
+		Job undated = dated("Undated", null);
+		java.time.LocalDate today = now.atZone(java.time.ZoneOffset.UTC).toLocalDate();
+		Job dateOnly3d = dated("Date only, 3 days ago", today.minusDays(3).atStartOfDay().toInstant(java.time.ZoneOffset.UTC));
+		Job dateOnly2d = dated("Date only, 2 days ago", today.minusDays(2).atStartOfDay().toInstant(java.time.ZoneOffset.UTC));
+		Job dateOnlyToday = dated("Date only, today", today.atStartOfDay().toInstant(java.time.ZoneOffset.UTC));
+		fetchReturns(List.of(old, recent, undated, dateOnly3d, dateOnly2d, dateOnlyToday), "0.25");
+		modelScores(80);
+
+		Run run = runOnce();
+
+		assertEquals(6, run.getFetched());
+		assertEquals(4, run.getNewJobs());
+		assertEquals(4, run.getRanked());
+		RunSource source = runSources.findByRunIdIn(List.of(run.getId())).getFirst();
+		assertEquals(2, source.getDropped(), "the too old postings are counted as dropped; a date-only posting dated now-3d starts 3 days + hours ago");
+		assertEquals(4, source.getNewJobs());
+		assertEquals(0, jdbc.queryForObject("select count(*) from job where title in ('Old', 'Date only, 3 days ago')", Integer.class));
+	}
+
+	@Test
+	void candidatesAreStoredJobsWithinTheAgeLimitAndTheRankWindow() {
+		Instant now = Instant.now();
+		insertJob("Fresh by posting date", now.minus(java.time.Duration.ofDays(1)), now.minus(java.time.Duration.ofDays(1)));
+		insertJob("Fetched now, posted long ago", now.minus(java.time.Duration.ofDays(10)), now);
+		insertJob("Undated, fetched 2 days ago", null, now.minus(java.time.Duration.ofDays(2)));
+		insertJob("Undated, fetched 4 days ago", null, now.minus(java.time.Duration.ofDays(4)));
+		insertJob("Posted 4 days ago", now.minus(java.time.Duration.ofDays(4)), now.minus(java.time.Duration.ofHours(1)));
+		fetchReturns(List.of(), "0.25");
+		modelScores(80);
+
+		Run run = runOnce();
+
+		assertEquals(2, run.getRanked());
+		assertEquals(java.util.Set.of("Fresh by posting date", "Undated, fetched 2 days ago"),
+				new java.util.HashSet<>(jdbc.queryForList("select j.title from match m join job j on j.id = m.job_id", String.class)));
+	}
+
+	private Job dated(String title, Instant postedAt) {
+		Job job = TestData.job(SourceName.HELLOWORK, title);
+		job.setPostedAt(postedAt);
+		return job;
+	}
+
+	private void insertJob(String title, Instant postedAt, Instant fetchedAt) {
+		Job job = dated(title, postedAt);
+		job.setFingerprint(job.getExternalId());
+		job.setFetchedAt(fetchedAt);
+		jobRepository.save(job);
 	}
 
 	private Run runOnce() {

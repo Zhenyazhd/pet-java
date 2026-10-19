@@ -26,6 +26,6 @@ public final class TestProperties {
 						new BigDecimal("0.30"), new BigDecimal("5")),
 				new JobListProperties.Llm("key", "http://localhost", "test-model", 10, Duration.ofSeconds(5), new BigDecimal("0.01"), new BigDecimal("2")),
 				Map.of(SourceName.LINKEDIN, daily, SourceName.HELLOWORK, daily, SourceName.GREENHOUSE, daily, SourceName.WTTJ, daily),
-				50, 3, 40, 6000, 0.3, 60, 90, 7, 2, 50, 4, 6);
+				50, 3, 40, 6000, 0.3, 60, 90, 7, 3, 2, 50, 4, 6, 20, 200);
 	}
 }

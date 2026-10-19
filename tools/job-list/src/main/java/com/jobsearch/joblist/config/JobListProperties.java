@@ -2,6 +2,8 @@ package com.jobsearch.joblist.config;
 
 import com.jobsearch.joblist.source.SourceName;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -30,10 +32,13 @@ public record JobListProperties(
 		@Positive int retentionDays,
 		@Positive int runRetentionDays,
 		@Positive int rankWindowDays,
+		@Min(1) @Max(30) int maxPostingAgeDays,
 		@Positive int maxProfilesPerOwner,
 		@Positive int maxProfilesPerClient,
 		@Positive int maxRunsPerOwnerPerDay,
-		@Positive int maxRunsPerClientPerDay
+		@Positive int maxRunsPerClientPerDay,
+		@Min(1) @Max(200) int maxRankRunsPerOwnerPerDay,
+		@Min(1) @Max(5000) int maxRankRunsPerClientPerDay
 ) {
 
 	public record Client(@NotBlank String name, @NotBlank @Size(min = 16) String token) {

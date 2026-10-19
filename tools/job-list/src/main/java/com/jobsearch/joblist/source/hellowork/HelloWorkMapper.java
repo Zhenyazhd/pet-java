@@ -6,11 +6,10 @@ import com.jobsearch.joblist.job.Job;
 import com.jobsearch.joblist.job.Remote;
 import com.jobsearch.joblist.source.HtmlText;
 import static com.jobsearch.joblist.source.JsonFields.decimal;
+import static com.jobsearch.joblist.source.JsonFields.instant;
 import static com.jobsearch.joblist.source.JsonFields.text;
 import com.jobsearch.joblist.source.SourceName;
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -97,14 +96,5 @@ class HelloWorkMapper {
 		List<String> skills = new ArrayList<>();
 		node.forEach(skill -> skills.add(skill.asString()));
 		return skills;
-	}
-
-	private static Instant instant(String value) {
-		try {
-			return value == null ? null : Instant.parse(value);
-		}
-		catch (DateTimeParseException ex) {
-			return null;
-		}
 	}
 }

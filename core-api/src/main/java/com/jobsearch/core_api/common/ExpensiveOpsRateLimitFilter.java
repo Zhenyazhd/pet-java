@@ -20,16 +20,20 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Per-user rate limit for expensive operations: AI suggest, ATS match, vacancy import,
+ * starting a job search run or a rank-only run (both cost real money, one shared bucket),
  * queuing a resume PDF compile (each one occupies a pdf-worker slot) and a PDF readability check.
  */
 public class ExpensiveOpsRateLimitFilter extends OncePerRequestFilter {
 
 	private static final Logger log = LoggerFactory.getLogger(ExpensiveOpsRateLimitFilter.class);
+	private static final int SEEN_FACTOR = 6;
 	private static final long WINDOW_MS = TimeUnit.MINUTES.toMillis(1);
 	private static final Set<String> LIMITED_EXACT_PATHS = Set.of(
 			"/api/vacancies/import",
 			"/api/resume/compile",
-			"/api/resume/readability"
+			"/api/resume/readability",
+			"/api/job-search/runs",
+			"/api/job-search/runs/rank"
 	);
 
 	private final FixedWindowRateLimiter rateLimiter;
@@ -52,7 +56,12 @@ public class ExpensiveOpsRateLimitFilter extends OncePerRequestFilter {
 			return true;
 		}
 		String path = RequestPaths.routed(request);
-		return !path.startsWith("/api/ai/") && !LIMITED_EXACT_PATHS.contains(path);
+		return !path.startsWith("/api/ai/") && !LIMITED_EXACT_PATHS.contains(path) && !isSeen(path);
+	}
+
+	/** POST /api/job-search/matches/{id}/seen: each call walks up to several job-list pages, so it has a bucket of its own. */
+	private static boolean isSeen(String path) {
+		return path.startsWith("/api/job-search/matches/") && path.endsWith("/seen");
 	}
 
 	@Override
@@ -61,9 +70,12 @@ public class ExpensiveOpsRateLimitFilter extends OncePerRequestFilter {
 			HttpServletResponse response,
 			FilterChain filterChain
 	) throws ServletException, IOException {
-		int limit = appProperties.getExpensiveOpsRateLimit().getPerUserPerMinute();
+		int base = appProperties.getExpensiveOpsRateLimit().getPerUserPerMinute();
+		boolean seen = isSeen(RequestPaths.routed(request));
+		// "seen" is cheaper than a run or an AI call, so its separate per-user bucket is 6 times as large (0 = off).
+		int limit = seen ? base * SEEN_FACTOR : base;
 		String userKey = currentUserKey();
-		String key = "expensive|" + userKey;
+		String key = (seen ? "expensive-seen|" : "expensive|") + userKey;
 		long retryAfter = rateLimiter.tryAcquire(key, limit, WINDOW_MS);
 		if (retryAfter > 0) {
 			if (SecurityContextHolder.getContext().getAuthentication() != null
@@ -77,7 +89,7 @@ public class ExpensiveOpsRateLimitFilter extends OncePerRequestFilter {
 			apiErrorResponses.write(
 					response,
 					HttpStatus.TOO_MANY_REQUESTS,
-					"Too many AI/ATS/compile requests — try again later",
+					"Too many expensive requests (AI, import, PDF, job search). Try again in a moment.",
 					Map.of("Retry-After", String.valueOf(retryAfter))
 			);
 			return;

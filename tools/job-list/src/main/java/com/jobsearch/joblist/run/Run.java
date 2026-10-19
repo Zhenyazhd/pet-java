@@ -26,6 +26,9 @@ public class Run {
 	@Enumerated(EnumType.STRING)
 	private RunStatus status;
 
+	@Enumerated(EnumType.STRING)
+	private RunMode mode = RunMode.FULL;
+
 	@Column(name = "created_at")
 	private Instant createdAt;
 
@@ -51,7 +54,12 @@ public class Run {
 	private String error;
 
 	public static Run queued(long profileId) {
+		return queued(profileId, RunMode.FULL);
+	}
+
+	public static Run queued(long profileId, RunMode mode) {
 		Run run = new Run();
+		run.mode = mode;
 		run.profileId = profileId;
 		run.status = RunStatus.QUEUED;
 		run.createdAt = Instant.now();
@@ -88,6 +96,10 @@ public class Run {
 
 	public Long getProfileId() {
 		return profileId;
+	}
+
+	public RunMode getMode() {
+		return mode;
 	}
 
 	public RunStatus getStatus() {

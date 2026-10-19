@@ -1,15 +1,18 @@
 package com.jobsearch.joblist.api;
 
+import com.jobsearch.joblist.common.BadRequestException;
 import com.jobsearch.joblist.run.RunDtos.RunResponse;
 import com.jobsearch.joblist.run.RunService;
 import com.jobsearch.joblist.run.UsageService;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -27,8 +30,21 @@ public class RunController {
 
 	@PostMapping("/profiles/{id}/runs")
 	@ResponseStatus(HttpStatus.ACCEPTED)
-	RunResponse start(@RequestAttribute(ClientAuthFilter.CLIENT) String client, @PathVariable long id) {
-		return runs.start(client, id);
+	RunResponse start(@RequestAttribute(ClientAuthFilter.CLIENT) String client, @PathVariable long id,
+			@RequestParam(required = false) String mode) {
+		if (mode == null || "full".equals(mode)) {
+			return runs.start(client, id);
+		}
+		if ("rank".equals(mode)) {
+			return runs.startRankOnly(client, id);
+		}
+		throw new BadRequestException("mode must be 'full' or 'rank'");
+	}
+
+	/** How many stored postings wait for a score. */
+	@GetMapping("/profiles/{id}/unranked")
+	Map<String, Integer> unranked(@RequestAttribute(ClientAuthFilter.CLIENT) String client, @PathVariable long id) {
+		return Map.of("count", runs.unranked(client, id));
 	}
 
 	@GetMapping("/profiles/{id}/runs")

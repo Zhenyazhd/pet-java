@@ -11,11 +11,18 @@ import type {
   AuthUser,
   Job,
   JobApplication,
+  JobMatchPage,
+  JobMatchQuery,
+  JobRun,
+  JobSearchProfile,
+  JobSearchProfileInput,
+  JobSearchState,
   LoginRequest,
   Profile,
   PromptPart,
   RegisterRequest,
   Vacancy,
+  VacancyCreateRequest,
   VacancyImportRequest,
   VacancyImportResult,
 } from './types'
@@ -47,7 +54,7 @@ export function isUnauthorized(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401
 }
 
-/** A save rejected because the resume changed elsewhere (stale `version`). */
+/** A 409: the change clashes with the current state (a stale resume `version`, a duplicate vacancy). */
 export function isConflict(error: unknown): boolean {
   return error instanceof ApiError && error.status === 409
 }
@@ -252,6 +259,32 @@ export const api = {
 
   getVacancyImportJob: (jobId: string) =>
     request<Job<VacancyImportResult>>(`/api/vacancies/import/${jobId}`),
+
+  createVacancy: (body: VacancyCreateRequest) =>
+    request<Vacancy>('/api/vacancies', json('POST', body)),
+
+  getJobSearch: (signal?: AbortSignal) =>
+    request<JobSearchState>('/api/job-search', undefined, { signal }),
+
+  saveJobSearchProfile: (body: JobSearchProfileInput) =>
+    request<JobSearchProfile>('/api/job-search/profile', json('PUT', body)),
+
+  startJobSearchRun: () => request<JobRun>('/api/job-search/runs', { method: 'POST' }),
+
+  startJobRankRun: () => request<JobRun>('/api/job-search/runs/rank', { method: 'POST' }),
+
+  listJobMatches: ({ minScore, seen, cursor }: JobMatchQuery, signal?: AbortSignal) => {
+    const params = new URLSearchParams({
+      minScore: String(minScore),
+      delivered: String(seen),
+      limit: '20',
+    })
+    if (cursor) params.set('cursor', cursor)
+    return request<JobMatchPage>(`/api/job-search/matches?${params}`, undefined, { signal })
+  },
+
+  markJobMatchSeen: (id: number | string) =>
+    request<void>(`/api/job-search/matches/${encodeURIComponent(id)}/seen`, { method: 'POST' }),
 
   createApplication: (vacancyId: number, status: ApplicationStatus) =>
     request<JobApplication>('/api/applications', json('POST', { vacancyId, status })),

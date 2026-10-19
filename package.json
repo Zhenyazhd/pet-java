@@ -6,7 +6,10 @@
   "scripts": {
     "setup": "npm install && npm --prefix frontend install",
     "infra:up": "docker compose up -d --wait",
-    "infra:down": "docker compose down",
+    "infra:down": "docker compose --profile jobs down",
+    "infra:jobs:db": "docker compose --profile jobs run --rm job-list-db",
+    "infra:jobs": "docker compose --profile jobs up -d --build --wait job-list",
+    "infra:jobs:down": "docker compose --profile jobs rm -sf job-list job-list-db",
     "dev:api": "cd core-api && ./mvnw spring-boot:run",
     "dev:web": "npm --prefix frontend run dev",
     "predev": "npm run infra:up",

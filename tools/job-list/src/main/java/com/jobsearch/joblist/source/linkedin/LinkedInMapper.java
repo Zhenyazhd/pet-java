@@ -5,13 +5,10 @@ import com.jobsearch.joblist.job.ContractType;
 import com.jobsearch.joblist.job.Job;
 import com.jobsearch.joblist.job.Remote;
 import com.jobsearch.joblist.source.HtmlText;
+import static com.jobsearch.joblist.source.JsonFields.instant;
 import static com.jobsearch.joblist.source.JsonFields.text;
 import com.jobsearch.joblist.source.SourceName;
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -57,7 +54,7 @@ class LinkedInMapper {
 		job.setRemote(remote(item));
 		job.setContractType(contractType(text(item, "employmentType")));
 		applySalary(job, item.path("salaryInfo"));
-		job.setPostedAt(postedAt(text(item, "postedAt")));
+		job.setPostedAt(instant(text(item, "postedAt")));
 		return Optional.of(job);
 	}
 
@@ -119,14 +116,4 @@ class LinkedInMapper {
 		}
 		return text.contains("$") ? "USD" : null;
 	}
-
-	private static Instant postedAt(String date) {
-		try {
-			return date == null ? null : LocalDate.parse(date).atStartOfDay().toInstant(ZoneOffset.UTC);
-		}
-		catch (DateTimeParseException ex) {
-			return null;
-		}
-	}
-
 }
