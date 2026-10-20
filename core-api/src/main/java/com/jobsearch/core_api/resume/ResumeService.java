@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
-/** Loads/saves structured resume JSON for the current user and renders it to LaTeX. */
+/** Loads/saves structured resume JSON for the current user and renders it to Typst. */
 @Service
 @Transactional
 public class ResumeService {
@@ -26,19 +26,19 @@ public class ResumeService {
 	private final CurrentUserService currentUserService;
 	private final AppUserRepository appUserRepository;
 	private final ObjectMapper objectMapper;
-	private final ResumeLatexRenderer latexRenderer;
+	private final ResumeTypstRenderer typstRenderer;
 	private final ResumeDocument defaultResume;
 
 	public ResumeService(
 			CurrentUserService currentUserService,
 			AppUserRepository appUserRepository,
 			ObjectMapper objectMapper,
-			ResumeLatexRenderer latexRenderer
+			ResumeTypstRenderer typstRenderer
 	) {
 		this.currentUserService = currentUserService;
 		this.appUserRepository = appUserRepository;
 		this.objectMapper = objectMapper;
-		this.latexRenderer = latexRenderer;
+		this.typstRenderer = typstRenderer;
 		this.defaultResume = loadDefault();
 	}
 
@@ -129,8 +129,8 @@ public class ResumeService {
 	}
 
 	@Transactional(readOnly = true)
-	public String toLatex() {
-		return latexRenderer.render(get());
+	public String toTypst() {
+		return typstRenderer.render(get());
 	}
 
 	private static ResumeDocument withVersion(ResumeDocument doc, int version) {

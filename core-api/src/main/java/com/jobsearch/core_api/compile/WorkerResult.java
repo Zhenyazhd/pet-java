@@ -1,9 +1,14 @@
 package com.jobsearch.core_api.compile;
 
-/** What {@link LatexWorkerClient} got back from the worker; {@link CompileJobHandler} maps it to a JobOutcome. */
+/** What {@link PdfWorkerClient} got back from the worker; {@link CompileJobHandler} maps it to a JobOutcome. */
 public sealed interface WorkerResult {
 
-	record Pdf(byte[] bytes) implements WorkerResult {
+	/** {@code layout} is null when the worker did not report page metrics. */
+	record Pdf(byte[] bytes, PageLayout layout) implements WorkerResult {
+
+		public Pdf(byte[] bytes) {
+			this(bytes, null);
+		}
 	}
 
 	/** The worker refused the document itself (e.g. it does not compile); retrying will not help. */

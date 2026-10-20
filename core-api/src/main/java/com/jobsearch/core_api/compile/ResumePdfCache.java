@@ -5,7 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-/** Compiled PDF keyed by the sha256 of its LaTeX source; written only by {@link ResumePdfCacheRepository#upsert}. */
+/** Compiled PDF keyed by the sha256 of its Typst source; written only by {@link ResumePdfCacheRepository#upsert}. */
 @Entity
 @Table(name = "resume_pdf_cache")
 public class ResumePdfCache {
