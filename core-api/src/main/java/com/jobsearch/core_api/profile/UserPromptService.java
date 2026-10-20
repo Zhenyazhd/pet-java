@@ -5,6 +5,7 @@ import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.common.BadRequestException;
 import com.jobsearch.core_api.common.NotFoundException;
 import com.jobsearch.core_api.profile.PromptDtos.PromptPartResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
@@ -61,7 +62,7 @@ public class UserPromptService {
 		if (clean.length() > MAX_CHARS) {
 			throw new BadRequestException("The text is too long: at most " + MAX_CHARS + " UTF-16 characters.");
 		}
-		if (FORBIDDEN.matcher(clean).find() || hasUnpairedSurrogate(clean)) {
+		if (FORBIDDEN.matcher(clean).find() || !StandardCharsets.UTF_8.newEncoder().canEncode(clean)) {
 			throw new BadRequestException("The text contains characters that are not allowed "
 					+ "(control characters, line or paragraph separators, or broken Unicode).");
 		}
@@ -100,18 +101,6 @@ public class UserPromptService {
 
 	private static PromptPart requirePart(String key) {
 		return PromptPart.byKey(key).orElseThrow(() -> new NotFoundException("Unknown prompt part"));
-	}
-
-	private static boolean hasUnpairedSurrogate(String text) {
-		for (int i = 0; i < text.length(); i++) {
-			char c = text.charAt(i);
-			if (Character.isHighSurrogate(c) && i + 1 < text.length() && Character.isLowSurrogate(text.charAt(i + 1))) {
-				i++;
-			} else if (Character.isSurrogate(c)) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 	private static PromptPartResponse toResponse(PromptPart part, UserPromptPart row) {

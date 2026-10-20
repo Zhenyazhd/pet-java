@@ -9,8 +9,6 @@ class PromptStartupCheck {
 
 	@PostConstruct
 	void load() {
-		if (PromptPart.values().length == 0 || SystemPromptComposer.defaultPrompt().isBlank()) {
-			throw new IllegalStateException("No prompt text");
-		}
+		SystemPromptComposer.defaultPrompt();
 	}
 }

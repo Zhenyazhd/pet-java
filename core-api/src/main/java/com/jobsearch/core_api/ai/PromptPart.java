@@ -1,13 +1,11 @@
 package com.jobsearch.core_api.ai;
 
+import com.jobsearch.core_api.common.Hashes;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import java.util.HexFormat;
 import java.util.Optional;
 
 /**
@@ -57,15 +55,7 @@ public enum PromptPart {
 
 	/** Hex sha256 of the default text; stored with a customised part to tell later that the default has changed. */
 	public String defaultHash() {
-		return sha256(defaultText);
-	}
-
-	public static String sha256(String text) {
-		try {
-			return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)));
-		} catch (NoSuchAlgorithmException e) {
-			throw new IllegalStateException(e);
-		}
+		return Hashes.sha256(defaultText);
 	}
 
 	public static Optional<PromptPart> byKey(String key) {
