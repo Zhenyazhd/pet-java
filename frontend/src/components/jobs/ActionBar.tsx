@@ -44,7 +44,7 @@ export function ActionBar({ search, state }: ActionBarProps) {
           </p>
         )}
       </div>
-      {latestRun && <RunPanel run={latestRun} pollError={search.pollError} pollStopped={search.pollStopped} />}
+      {latestRun && <RunPanel run={latestRun} profile={state.profile} pollError={search.pollError} pollStopped={search.pollStopped} />}
     </section>
   )
 }

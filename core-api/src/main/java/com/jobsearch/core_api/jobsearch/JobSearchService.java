@@ -193,6 +193,6 @@ public class JobSearchService {
 
 	private static ProfileResponse toResponse(JobListProfile p) {
 		return new ProfileResponse(p.id(), p.name(), p.expectations(), p.roles(),
-				p.regions() == null ? List.of() : p.regions(), p.minScore());
+				p.regions() == null ? List.of() : p.regions(), p.sources(), p.enabledSources(), p.minScore());
 	}
 }

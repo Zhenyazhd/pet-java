@@ -35,6 +35,8 @@ public final class ProfileDtos {
 			List<String> roles,
 			List<Region> regions,
 			List<SourceName> sources,
+			/** Every source switched on in this deployment; the profile's own {@code sources} are a subset fixed when it was saved. */
+			List<SourceName> enabledSources,
 			int minScore,
 			String createdAt,
 			String updatedAt

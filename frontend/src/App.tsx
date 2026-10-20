@@ -29,7 +29,7 @@ export default function App() {
 
           <Route element={<RequireAuth />}>
             <Route element={<AppLayout />}>
-              <Route index element={<Navigate to="/vacancies" replace />} />
+              <Route index element={<Navigate to="/jobs" replace />} />
               <Route path="vacancies/:id?" element={<VacanciesPage />} />
               <Route path="jobs" element={<JobsLayout />}>
                 <Route index element={<JobMatchesPage />} />

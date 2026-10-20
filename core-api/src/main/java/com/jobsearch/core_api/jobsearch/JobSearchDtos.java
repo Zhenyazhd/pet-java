@@ -33,7 +33,8 @@ public final class JobSearchDtos {
 	}
 
 	@JsonIgnoreProperties(ignoreUnknown = true)
-	public record ProfileResponse(long id, String name, String expectations, List<String> roles, List<RegionDto> regions, int minScore) {
+	public record ProfileResponse(long id, String name, String expectations, List<String> roles, List<RegionDto> regions, List<String> sources,
+			List<String> enabledSources, int minScore) {
 	}
 
 	@JsonIgnoreProperties(ignoreUnknown = true)

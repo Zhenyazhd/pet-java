@@ -43,7 +43,8 @@ public class JobListClient {
 
 	/** A job-list profile as it comes back: the owner is needed for the ownership check. */
 	@JsonIgnoreProperties(ignoreUnknown = true)
-	public record JobListProfile(long id, String ownerRef, String name, String expectations, List<String> roles, List<RegionDto> regions, int minScore) {
+	public record JobListProfile(long id, String ownerRef, String name, String expectations, List<String> roles, List<RegionDto> regions, List<String> sources,
+			List<String> enabledSources, int minScore) {
 	}
 
 	@JsonIgnoreProperties(ignoreUnknown = true)

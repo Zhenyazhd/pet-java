@@ -200,6 +200,8 @@ public class RunPipeline {
 			return skipped(run, source, reservation.refusal(), now);
 		}
 
+		// Visible to the page while the actor runs; the same row is completed below.
+		RunSource row = runSources.save(RunSource.of(run.getId(), source.name(), SourceStatus.RUNNING, now));
 		SourceResult result = fetchSafely(source, query);
 		// The jobs are stored before the ledger says "succeeded", so a failure in between never leaves a success on the
 		// ledger (which moves the next lookback window past them) for jobs that were not saved; and a failure to settle
@@ -218,7 +220,7 @@ public class RunPipeline {
 		settleQuietly(reservation.id(), result);
 		run.addFetched(result.fetched(), newJobs, result.costUsd());
 		SourceStatus status = result.ok() ? SourceStatus.SUCCEEDED : SourceStatus.FAILED;
-		runSources.save(RunSource.of(run.getId(), source.name(), status, now)
+		runSources.save(row.withStatus(status)
 				.withResult(result.apifyRunId(), result.fetched(), newJobs, result.dropped(), result.costUsd(), result.error()));
 		log.info("Source done source={} status={} fetched={} new={} costUsd={}", source.name(), status, result.fetched(), newJobs, result.costUsd());
 		return status;

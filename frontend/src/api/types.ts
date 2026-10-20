@@ -110,10 +110,13 @@ export type JobSearchProfile = {
   expectations: string
   roles: string[]
   regions: JobRegion[]
+  // Boards the profile uses, and boards switched on at the server; absent in answers of an older server.
+  sources?: string[]
+  enabledSources?: string[]
   minScore: number
 }
 
-export type JobSearchProfileInput = Omit<JobSearchProfile, 'id' | 'name'>
+export type JobSearchProfileInput = Omit<JobSearchProfile, 'id' | 'name' | 'sources' | 'enabledSources'>
 
 export type JobRunStatus = 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'PARTIAL' | 'FAILED'
 

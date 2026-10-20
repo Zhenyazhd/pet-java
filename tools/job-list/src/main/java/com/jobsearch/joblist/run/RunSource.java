@@ -57,6 +57,11 @@ public class RunSource {
 		return row;
 	}
 
+	public RunSource withStatus(SourceStatus status) {
+		this.status = status;
+		return this;
+	}
+
 	public RunSource withResult(String apifyRunId, int fetched, int newJobs, int dropped, BigDecimal costUsd, String error) {
 		this.apifyRunId = apifyRunId;
 		this.fetched = fetched;

@@ -1,14 +1,29 @@
-import type { JobRun } from '../../api/types'
+import type { JobRun, JobSearchProfile } from '../../api/types'
 import { formatUsd, formatWhen, isActive, isModelRateLimited, isRankOnly } from '../../lib/jobSearch'
 import { Banner } from '../ui/Banner'
 
 type RunPanelProps = {
   run: JobRun
+  profile: JobSearchProfile | null
   pollError: boolean
   pollStopped: boolean
 }
 
-export function RunPanel({ run, pollError, pollStopped }: RunPanelProps) {
+// Every board the service knows; one that is switched off or not in the profile has no row in the run.
+const SOURCES = ['LINKEDIN', 'HELLOWORK', 'GREENHOUSE', 'WTTJ']
+
+// Why a board has no row in this run: off at the server, left out of the profile (saved before it was switched on), or still to come.
+function idleLabel(name: string, profile: JobSearchProfile | null, runActive: boolean) {
+  if (profile?.enabledSources && !profile.enabledSources.includes(name)) return 'disabled on server'
+  if (profile?.sources && !profile.sources.includes(name)) return 'not in profile: save the profile'
+  return runActive ? 'waiting' : 'not in this run'
+}
+
+// A source left RUNNING in a run that is over was cut short.
+const sourceLabel = (status: string, runActive: boolean) =>
+  status === 'RUNNING' ? (runActive ? 'fetching now…' : 'interrupted') : status.toLowerCase()
+
+export function RunPanel({ run, profile, pollError, pollStopped }: RunPanelProps) {
   const active = isActive(run.status)
   const rankOnly = isRankOnly(run)
   const when = formatWhen(run.finishedAt ?? run.startedAt ?? run.createdAt, true)
@@ -34,6 +49,35 @@ export function RunPanel({ run, pollError, pollStopped }: RunPanelProps) {
         <p className="field__hint">The model provider limited the requests. Press Score unscored to score the rest.</p>
       )}
 
+      {!rankOnly && (
+        <ul className="source-list" aria-label="Sources">
+          {SOURCES.map((name) => {
+            const source = run.sources.find((row) => row.source === name)
+            if (!source) {
+              return (
+                <li key={name} className="source-row source-row--inactive">
+                  <span className="source-row__name">{name}</span>
+                  <span className="badge">{idleLabel(name, profile, active)}</span>
+                </li>
+              )
+            }
+            return (
+              <li key={name} className="source-row">
+                <span className="source-row__name">{name}</span>
+                <span className="badge">{sourceLabel(source.status, active)}</span>
+                {source.status !== 'RUNNING' && (
+                  <span className="source-row__stats">
+                    fetched {source.fetched} · new {source.newJobs} · dropped {source.dropped} ·{' '}
+                    {formatUsd(source.costUsd)}
+                  </span>
+                )}
+                {source.error && <span className="source-row__error">{source.error}</span>}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
       <dl className="totals">
         {!rankOnly && (
           <>
@@ -57,24 +101,6 @@ export function RunPanel({ run, pollError, pollStopped }: RunPanelProps) {
         </div>
       </dl>
 
-      {!rankOnly && run.sources.length > 0 && (
-        <details className="run-details">
-          <summary>Details per source</summary>
-          <ul className="source-list" aria-label="Sources">
-            {run.sources.map((source) => (
-              <li key={source.source} className="source-row">
-                <span className="source-row__name">{source.source}</span>
-                <span className="badge">{source.status}</span>
-                <span className="source-row__stats">
-                  fetched {source.fetched} · new {source.newJobs} · dropped {source.dropped} ·{' '}
-                  {formatUsd(source.costUsd)}
-                </span>
-                {source.error && <span className="source-row__error">{source.error}</span>}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
     </section>
   )
 }

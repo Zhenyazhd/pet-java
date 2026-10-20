@@ -28,8 +28,8 @@ export function JobMatchesPage() {
       <div className="jobs">
         {state.profile ? (
           <>
-            <ActionBar search={search} state={state} />
             <ProfileSummary profile={state.profile} />
+            <ActionBar search={search} state={state} />
             <MatchesSection refreshKey={search.finishedCount} />
           </>
         ) : (

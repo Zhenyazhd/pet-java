@@ -165,6 +165,7 @@ public class SearchProfileService {
 				profile.getRoles(),
 				objectMapper.readValue(profile.getRegions(), REGIONS),
 				profile.getSources().stream().map(SourceName::valueOf).toList(),
+				enabledSources(),
 				profile.getMinScore(),
 				profile.getCreatedAt().toString(),
 				profile.getUpdatedAt().toString()
