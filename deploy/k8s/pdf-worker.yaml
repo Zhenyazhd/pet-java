@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pdf-worker
+spec:
+  selector: { app: pdf-worker }
+  ports:
+    - { name: http, port: 8090 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pdf-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: pdf-worker }
+  template:
+    metadata:
+      labels: { app: pdf-worker }
+    spec:
+      automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: ghcr
+      shareProcessNamespace: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: pdf-worker
+          image: pdf-worker
+          ports: [{ name: http, containerPort: 8090 }]
+          env:
+            - { name: WORKER_PORT, value: "8090" }
+            - { name: WORKER_CONCURRENCY, value: "2" }
+            - name: WORKER_TOKEN
+              valueFrom: { secretKeyRef: { name: cvhelper-secrets, key: PDF_WORKER_TOKEN } }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 200m, memory: 512Mi }
+            limits: { cpu: "2", memory: 1280Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: { medium: Memory, sizeLimit: 256Mi }

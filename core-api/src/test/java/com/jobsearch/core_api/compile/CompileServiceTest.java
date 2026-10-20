@@ -36,7 +36,7 @@ class CompileServiceTest {
 	@Autowired
 	private AppUserRepository userRepository;
 	@MockitoBean
-	private LatexWorkerClient workerClient;
+	private PdfWorkerClient workerClient;
 
 	@BeforeEach
 	void setUp() {

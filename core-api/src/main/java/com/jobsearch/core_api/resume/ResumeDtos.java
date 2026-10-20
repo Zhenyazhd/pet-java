@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 /**
- * Size caps keep a resume within what the LaTeX renderer/LLM prompts can reasonably handle
+ * Size caps keep a resume within what the Typst renderer/LLM prompts can reasonably handle
  * and stop an authenticated user from writing unbounded TEXT into the database — none of
  * these endpoints sit behind the per-user rate limiter, so validation is the only guard.
  */

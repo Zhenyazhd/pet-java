@@ -8,5 +8,5 @@ app:
     enabled: true
   admin-email: admin@test.local
   scheduling-enabled: false
-  latex-worker:
+  pdf-worker:
     token: test-token

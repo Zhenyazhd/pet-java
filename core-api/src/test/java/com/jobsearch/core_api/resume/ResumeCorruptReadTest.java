@@ -46,7 +46,7 @@ class ResumeCorruptReadTest {
 		jdbc.update("update app_user set resume_json = '0', resume_version = 7 where id = ?", userId);
 
 		assertThrows(ConflictException.class, () -> resumeService.get());
-		assertThrows(ConflictException.class, () -> resumeService.toLatex());
+		assertThrows(ConflictException.class, () -> resumeService.toTypst());
 	}
 
 	@Test
