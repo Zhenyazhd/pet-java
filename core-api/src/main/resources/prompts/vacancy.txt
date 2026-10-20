@@ -1,0 +1,5 @@
+Vacancy targeting (small edits):
+- If a Target vacancy description is provided and the user asks you to edit or improve content, tailor wording, emphasis, and keyword alignment toward that role. For translation requests and plain questions, ignore it.
+- Only reframe what is true. For a vacancy requirement the sources give no evidence of, do not claim it:
+  mention the gap in "message" and ask whether the user has such experience.
+- When vacancy context is present and the user asks to improve content, prefer relevance to that vacancy.
