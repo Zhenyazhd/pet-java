@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
@@ -22,8 +23,8 @@ public class ResumeTypstRenderer {
 
 	private static final String TEMPLATE_PATH = "typst/resume.typ";
 
-	/** List-valued keys of the document and of its items; a missing one reads as an empty list, never null. */
-	private static final String[] DOCUMENT_LISTS = { "experience", "education", "achievements", "skills" };
+	/** Keys whose value is a list, here and in the items; a missing one reads as an empty list, never null. */
+	private static final Set<String> LISTS = Set.of("experience", "education", "achievements", "skills", "bullets");
 
 	private final ObjectMapper objectMapper;
 	private final String template;
@@ -45,48 +46,34 @@ public class ResumeTypstRenderer {
 	JsonNode normalized(ResumeDocument document) {
 		ObjectNode root = objectMapper.valueToTree(document);
 		root.remove("version");
-		String locale = root.path("locale").asString("").strip();
-		root.put("locale", "en".equalsIgnoreCase(locale) ? "en" : "fr");
-		for (String key : DOCUMENT_LISTS) {
-			ArrayNode items = list(root, key);
-			for (JsonNode item : items) {
-				if (item instanceof ObjectNode obj) {
-					fillStrings(obj);
-					if ("experience".equals(key)) {
-						ArrayNode bullets = list(obj, "bullets");
-						for (int i = 0; i < bullets.size(); i++) {
-							if (!bullets.get(i).isString()) {
-								bullets.set(i, "");
-							}
-						}
-					}
-				}
-			}
-		}
-		fillStrings(root);
+		root.put("locale", "en".equalsIgnoreCase(root.path("locale").asString("").strip()) ? "en" : "fr");
+		fillNulls(root);
 		return root;
 	}
 
-	private static ArrayNode list(ObjectNode parent, String key) {
-		JsonNode existing = parent.get(key);
-		if (existing instanceof ArrayNode array) {
-			// A null item would break the template's field access; drop it.
-			for (int i = array.size() - 1; i >= 0; i--) {
-				if (array.get(i).isNull()) {
-					array.remove(i);
-				}
-			}
-			return array;
-		}
-		return parent.putArray(key);
-	}
-
-	/** Null (or any non-container non-string) values of the object become "". */
-	private static void fillStrings(ObjectNode obj) {
+	/** Null values become "" (or [] for a list key); a null item of a list is dropped, as the template would fail on it. */
+	private static void fillNulls(ObjectNode obj) {
 		for (String name : obj.propertyNames().stream().toList()) {
 			JsonNode value = obj.get(name);
-			if (value == null || value.isNull() || value.isMissingNode()) {
-				obj.put(name, "");
+			if (value.isNull()) {
+				if (LISTS.contains(name)) {
+					obj.putArray(name);
+				}
+				else {
+					obj.put(name, "");
+				}
+			}
+			else if (value instanceof ArrayNode array) {
+				for (int i = array.size() - 1; i >= 0; i--) {
+					if (array.get(i).isNull()) {
+						array.remove(i);
+					}
+				}
+				array.forEach(item -> {
+					if (item instanceof ObjectNode nested) {
+						fillNulls(nested);
+					}
+				});
 			}
 		}
 	}

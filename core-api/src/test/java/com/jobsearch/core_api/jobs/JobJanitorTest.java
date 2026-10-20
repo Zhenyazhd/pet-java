@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import com.jobsearch.core_api.TestSupport;
 import com.jobsearch.core_api.TestcontainersConfiguration;
-import com.jobsearch.core_api.compile.LatexWorkerClient;
+import com.jobsearch.core_api.compile.PdfWorkerClient;
 import com.jobsearch.core_api.compile.ResumePdfCacheRepository;
 import com.jobsearch.core_api.profile.AppUserRepository;
 import java.util.UUID;
@@ -36,7 +36,7 @@ class JobJanitorTest {
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@MockitoBean
-	private LatexWorkerClient workerClient;
+	private PdfWorkerClient workerClient;
 
 	private long userId;
 

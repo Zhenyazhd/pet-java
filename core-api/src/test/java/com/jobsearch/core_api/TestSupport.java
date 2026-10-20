@@ -40,7 +40,7 @@ public final class TestSupport {
 	}
 
 	/**
-	 * Every new user has the same default resume and so the same LaTeX hash: a PDF cached by one
+	 * Every new user has the same default resume and so the same Typst hash: a PDF cached by one
 	 * test would turn the next test's compile into a cache hit.
 	 */
 	public static void clearPdfCache(ResumePdfCacheRepository cacheRepository) {

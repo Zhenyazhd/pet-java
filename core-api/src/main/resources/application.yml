@@ -87,7 +87,7 @@ app:
     enabled: ${ATS_SCREENER_ENABLED:false}
     base-url: ${ATS_SCREENER_BASE_URL:http://127.0.0.1:5174}
     timeout-seconds: ${ATS_SCREENER_TIMEOUT_SECONDS:180}
-  latex-worker:
-    base-url: ${LATEX_WORKER_BASE_URL:http://127.0.0.1:8090}
-    token: ${LATEX_WORKER_TOKEN:}
-    read-timeout-seconds: ${LATEX_WORKER_READ_TIMEOUT_SECONDS:75}
+  pdf-worker:
+    base-url: ${PDF_WORKER_BASE_URL:http://127.0.0.1:8090}
+    token: ${PDF_WORKER_TOKEN:}
+    read-timeout-seconds: ${PDF_WORKER_READ_TIMEOUT_SECONDS:75}

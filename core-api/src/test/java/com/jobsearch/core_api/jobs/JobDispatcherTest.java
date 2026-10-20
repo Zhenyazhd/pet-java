@@ -9,7 +9,7 @@ import static org.mockito.Mockito.when;
 import com.jobsearch.core_api.TestSupport;
 import com.jobsearch.core_api.TestcontainersConfiguration;
 import com.jobsearch.core_api.compile.CompileService;
-import com.jobsearch.core_api.compile.LatexWorkerClient;
+import com.jobsearch.core_api.compile.PdfWorkerClient;
 import com.jobsearch.core_api.compile.ResumePdfCacheRepository;
 import com.jobsearch.core_api.compile.WorkerResult;
 import com.jobsearch.core_api.profile.AppUserRepository;
@@ -29,7 +29,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-/** Queue mechanics and the RESUME_PDF handler, with a mocked latex-worker. */
+/** Queue mechanics and the RESUME_PDF handler, with a mocked pdf-worker. */
 @SpringBootTest
 @ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
@@ -48,7 +48,7 @@ class JobDispatcherTest {
 	@Autowired
 	private AppUserRepository userRepository;
 	@MockitoBean
-	private LatexWorkerClient workerClient;
+	private PdfWorkerClient workerClient;
 
 	private long userId;
 
@@ -77,7 +77,7 @@ class JobDispatcherTest {
 	}
 
 	@Test
-	void compileErrorFailsWithTheLatexLog() {
+	void compileErrorFailsWithTheCompilerLog() {
 		when(workerClient.compile(anyString()))
 				.thenReturn(new WorkerResult.Rejected("compile_error", "Undefined control sequence"));
 		UUID jobId = UUID.fromString(compileService.enqueue().id());
