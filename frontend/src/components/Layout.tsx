@@ -32,8 +32,11 @@ export function AppLayout() {
     }
   }
 
+  // The job matches pages are on the dark theme; the others follow as they are restyled.
+  const onJobsPages = /^\/jobs(\/|$)/.test(location.pathname)
+
   return (
-    <div className="shell">
+    <div className={onJobsPages ? 'shell shell--dark' : 'shell'}>
       <a className="skip-link" href="#main">
         Skip to content
       </a>
@@ -66,7 +69,7 @@ export function AppLayout() {
         {signOutError && <Banner tone="error">{signOutError}</Banner>}
         {/* Per page, so a render error keeps the header; the key resets it on navigation. The jobs pages share
             one layout (polling, draft), so moving between them must not remount it. */}
-        <ErrorBoundary key={/^\/jobs(\/|$)/.test(location.pathname) ? '/jobs' : location.pathname} inline>
+        <ErrorBoundary key={onJobsPages ? '/jobs' : location.pathname} inline>
           <Outlet />
         </ErrorBoundary>
       </main>
