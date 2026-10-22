@@ -5,7 +5,6 @@ import com.jobsearch.core_api.ai.OpenRouterClient;
 import com.jobsearch.core_api.common.ConflictException;
 import com.jobsearch.core_api.common.UniqueConstraint;
 import com.jobsearch.core_api.config.AppProperties;
-import com.jobsearch.core_api.jobapplication.JobApplication;
 import com.jobsearch.core_api.jobs.Job;
 import com.jobsearch.core_api.jobs.JobHandler;
 import com.jobsearch.core_api.jobs.JobOutcome;
@@ -172,7 +171,6 @@ public class VacancyImportHandler implements JobHandler {
 					for (SkillService.Resolved skill : skills) {
 						vacancy.addRequirement(skill.skill(), skill.required());
 					}
-					vacancy.setApplication(new JobApplication());
 
 					Vacancy saved = vacancyRepository.saveAndFlush(vacancy);
 					log.info(

@@ -1,14 +1,14 @@
 package com.jobsearch.core_api.vacancy;
 
-import com.jobsearch.core_api.jobapplication.JobApplication;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -58,8 +58,15 @@ public class Vacancy {
 	@OneToMany(mappedBy = "vacancy", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<VacancyRequirement> requirements = new ArrayList<>();
 
-	@OneToOne(mappedBy = "vacancy", cascade = CascadeType.ALL, orphanRemoval = true)
-	private JobApplication application;
+	@Enumerated(EnumType.STRING)
+	@Column(name = "application_status", nullable = false, length = 32)
+	private ApplicationStatus applicationStatus = ApplicationStatus.NOT_APPLIED;
+
+	@Column(name = "applied_at")
+	private Instant appliedAt;
+
+	@Column(columnDefinition = "TEXT")
+	private String notes;
 
 	@PrePersist
 	void onCreate() {
@@ -167,14 +174,26 @@ public class Vacancy {
 		return requirements;
 	}
 
-	public JobApplication getApplication() {
-		return application;
+	public ApplicationStatus getApplicationStatus() {
+		return applicationStatus;
 	}
 
-	public void setApplication(JobApplication application) {
-		this.application = application;
-		if (application != null) {
-			application.setVacancy(this);
+	/** The date of the first application is kept through later statuses and cleared when back to NOT_APPLIED. */
+	public void setApplicationStatus(ApplicationStatus status) {
+		this.applicationStatus = status;
+		if (status == ApplicationStatus.NOT_APPLIED) {
+			appliedAt = null;
 		}
+		else if (appliedAt == null) {
+			appliedAt = Instant.now();
+		}
+	}
+
+	public String getNotes() {
+		return notes;
+	}
+
+	public void setNotes(String notes) {
+		this.notes = notes;
 	}
 }

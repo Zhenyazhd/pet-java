@@ -46,8 +46,14 @@ public final class VacancyDtos {
 	) {
 	}
 
+	/** Status of the application for a vacancy; {@code notes} left out (null) on a change means unchanged. */
+	public record ApplicationRequest(
+			@NotNull ApplicationStatus status,
+			@Size(max = 10_000) String notes
+	) {
+	}
+
 	public record ApplicationSummaryResponse(
-			Long id,
 			String status,
 			boolean applied,
 			String notes

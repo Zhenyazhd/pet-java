@@ -52,7 +52,6 @@ export type Requirement = {
 }
 
 export type ApplicationSummary = {
-  id: number
   status: ApplicationStatus
   notes: string | null
 }
@@ -64,15 +63,9 @@ export type Vacancy = {
   company: string | null
   description: string | null
   requirements: Requirement[]
-  /** Null only for a vacancy that has never had a status set. */
+  /** Sent for every vacancy; null only while an unsaved change is being rolled back. */
   application: ApplicationSummary | null
   createdAt: string
-}
-
-export type JobApplication = {
-  id: number
-  status: ApplicationStatus
-  notes: string | null
 }
 
 export type VacancyImportRequest = {
