@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Shared resume AI chat: builds prompts from full resume or a focused section,
@@ -56,7 +57,13 @@ public class ResumeAiService {
 	);
 
 	private static final int MAX_HISTORY_TURNS = 20;
-	private static final int MAX_HISTORY_CHARS = 8_000;
+	/**
+	 * Roomy enough to keep the stage-1 analysis of a vacancy (a few thousand characters) together with the answers
+	 * that follow it, which the rewrite of stage 2 is built on; the oldest turns are dropped first beyond this.
+	 */
+	private static final int MAX_HISTORY_CHARS = 30_000;
+	/** One long turn (a pasted posting, a very long answer) must not push the analysis out on its own. */
+	private static final int MAX_TURN_CHARS = 12_000;
 
 	private final OpenRouterClient openRouterClient;
 	private final ResumeService resumeService;
@@ -211,7 +218,7 @@ public class ResumeAiService {
 			parsed = objectMapper.readTree(content);
 		}
 		catch (JacksonException ex) {
-			log.warn("AI answer is not valid JSON: {}", ex.getOriginalMessage());
+			log.warn("AI answer is not valid JSON chars={}", content.length());
 			throw new ServiceUnavailableException("The AI did not answer. Please try again.", null);
 		}
 		String message = parsed.path("message").asString("").strip();
@@ -219,6 +226,9 @@ public class ResumeAiService {
 		JsonNode proposed = parsed.get("proposed");
 		boolean rejected = false;
 		if (proposed != null && !proposed.isNull() && !proposed.isMissingNode()) {
+			if (wholeResume && proposed.isObject()) {
+				proposed = keepMissingFields(proposed, current);
+			}
 			JsonNode checked = proposedValidator.check(wholeResume ? SCOPE_ALL : section, itemIndex, proposed);
 			if (checked == null) {
 				rejected = true;
@@ -255,6 +265,9 @@ public class ResumeAiService {
 		}
 		List<ChatTurn> turns = history.stream()
 				.filter(t -> t != null && t.role() != null && t.content() != null)
+				.map(t -> t.content().length() <= MAX_TURN_CHARS
+						? t
+						: new ChatTurn(t.role(), t.content().substring(0, MAX_TURN_CHARS) + "…"))
 				.toList();
 		if (turns.size() > MAX_HISTORY_TURNS) {
 			turns = turns.subList(turns.size() - MAX_HISTORY_TURNS, turns.size());
@@ -334,6 +347,20 @@ public class ResumeAiService {
 			safe = FENCE_TAGS.matcher(safe).replaceAll("");
 		}
 		return "<" + tag + ">\n" + safe + "\n</" + tag + ">";
+	}
+
+	/**
+	 * A whole-resume answer that leaves a key out must not erase it: the validator reads a missing key as empty, which
+	 * would wipe a list or the contact details the model simply did not repeat. An explicit null still means empty.
+	 */
+	private static JsonNode keepMissingFields(JsonNode proposed, JsonNode current) {
+		ObjectNode merged = (ObjectNode) proposed.deepCopy();
+		for (Map.Entry<String, JsonNode> field : current.properties()) {
+			if (!merged.has(field.getKey())) {
+				merged.set(field.getKey(), field.getValue());
+			}
+		}
+		return merged;
 	}
 
 	private static boolean changes(JsonNode checked, JsonNode current, String section) {

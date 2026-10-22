@@ -1,6 +1,5 @@
 package com.jobsearch.core_api.ai;
 
-import com.jobsearch.core_api.common.Strings;
 import com.jobsearch.core_api.config.AppProperties;
 import java.time.Duration;
 import java.util.List;
@@ -76,7 +75,8 @@ public class OpenRouterClient {
 		}
 		catch (RestClientResponseException ex) {
 			int status = ex.getStatusCode().value();
-			log.error("OpenRouter HTTP {} body={}", status, Strings.abbreviate(ex.getResponseBodyAsString(), 400));
+			// Not the body: an error or an answer can echo the prompt, which holds the resume.
+			log.error("OpenRouter HTTP {} bodyChars={}", status, ex.getResponseBodyAsString().length());
 			String reason = "OpenRouter HTTP " + status;
 			return switch (status) {
 				case 429 -> new ChatResult.Busy(retryAfter(ex.getResponseHeaders()));
@@ -93,7 +93,7 @@ public class OpenRouterClient {
 
 		Completion completion = parse(raw);
 		if (completion == null || completion.content() == null) {
-			log.error("OpenRouter answer has no message content: {}", Strings.abbreviate(raw, 400));
+			log.error("OpenRouter answer has no message content chars={}", raw == null ? 0 : raw.length());
 			return new ChatResult.Unavailable("OpenRouter answer has no message content");
 		}
 		if (completion.cutOff()) {

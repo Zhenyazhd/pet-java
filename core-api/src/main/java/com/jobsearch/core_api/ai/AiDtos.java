@@ -2,6 +2,7 @@ package com.jobsearch.core_api.ai;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import tools.jackson.databind.JsonNode;
@@ -12,13 +13,13 @@ public final class AiDtos {
 	}
 
 	public record ChatTurn(
-			@NotBlank @Size(max = 20) String role,
+			@NotBlank @Pattern(regexp = "user|assistant") String role,
 			@NotBlank @Size(max = 20_000) String content
 	) {
 	}
 
 	public record SuggestRequest(
-			@NotBlank String section,
+			@NotBlank @Size(max = 50) String section,
 			@NotBlank @Size(max = 4_000) String instruction,
 			Integer itemIndex,
 			@Size(max = 100) List<@Valid ChatTurn> history,
