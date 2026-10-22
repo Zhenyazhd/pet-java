@@ -32,13 +32,27 @@ public class FixedWindowRateLimiter {
 				return new Window(1, now + windowMillis);
 			}
 			if (existing.count >= limitPerWindow) {
-				deniedRetryAfter[0] = Math.max(1L, (existing.resetAtMs - now + 999) / 1000);
+				deniedRetryAfter[0] = secondsUntil(existing.resetAtMs, now);
 				return existing;
 			}
 			return new Window(existing.count + 1, existing.resetAtMs);
 		});
 		maybeCleanup(now);
 		return deniedRetryAfter[0];
+	}
+
+	/** Like {@link #tryAcquire} but only looks: retry-after seconds if {@code key} is already at the limit, else {@code -1}. */
+	public long retryAfterIfFull(String key, int limitPerWindow) {
+		Window window = windows.get(key);
+		long now = System.currentTimeMillis();
+		if (limitPerWindow <= 0 || window == null || now >= window.resetAtMs || window.count < limitPerWindow) {
+			return -1;
+		}
+		return secondsUntil(window.resetAtMs, now);
+	}
+
+	private static long secondsUntil(long resetAtMs, long now) {
+		return Math.max(1L, (resetAtMs - now + 999) / 1000);
 	}
 
 	public void clear() {

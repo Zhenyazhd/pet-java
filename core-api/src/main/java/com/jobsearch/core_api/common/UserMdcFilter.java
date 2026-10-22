@@ -7,8 +7,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import org.slf4j.MDC;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 public class UserMdcFilter extends OncePerRequestFilter {
@@ -21,8 +19,8 @@ public class UserMdcFilter extends OncePerRequestFilter {
 			HttpServletResponse response,
 			FilterChain filterChain
 	) throws ServletException, IOException {
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		if (authentication != null && authentication.getPrincipal() instanceof AppUserPrincipal principal) {
+		AppUserPrincipal principal = AppUserPrincipal.current();
+		if (principal != null) {
 			MDC.put(KEY, String.valueOf(principal.getId()));
 		}
 		try {

@@ -7,15 +7,12 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
@@ -55,6 +52,10 @@ public class ExpensiveOpsRateLimitFilter extends OncePerRequestFilter {
 		if (!HttpMethod.POST.matches(request.getMethod())) {
 			return true;
 		}
+		// Anonymous calls are rejected with 401 further down the chain; they must not use up a bucket.
+		if (AppUserPrincipal.current() == null) {
+			return true;
+		}
 		String path = RequestPaths.routed(request);
 		return !path.startsWith("/api/ai/") && !LIMITED_EXACT_PATHS.contains(path) && !isSeen(path);
 	}
@@ -74,34 +75,15 @@ public class ExpensiveOpsRateLimitFilter extends OncePerRequestFilter {
 		boolean seen = isSeen(RequestPaths.routed(request));
 		// "seen" is cheaper than a run or an AI call, so its separate per-user bucket is 6 times as large (0 = off).
 		int limit = seen ? base * SEEN_FACTOR : base;
-		String userKey = currentUserKey();
+		String userKey = "user:" + AppUserPrincipal.current().getId();
 		String key = (seen ? "expensive-seen|" : "expensive|") + userKey;
 		long retryAfter = rateLimiter.tryAcquire(key, limit, WINDOW_MS);
 		if (retryAfter > 0) {
-			if (SecurityContextHolder.getContext().getAuthentication() != null
-					&& SecurityContextHolder.getContext().getAuthentication().getPrincipal() instanceof AppUserPrincipal) {
-				log.warn("Expensive-ops rate limit hit path={} user={} retryAfter={}s",
-						RequestPaths.routed(request), userKey, retryAfter);
-			} else {
-				log.debug("Expensive-ops rate limit hit path={} user={} retryAfter={}s",
-						RequestPaths.routed(request), userKey, retryAfter);
-			}
-			apiErrorResponses.write(
-					response,
-					HttpStatus.TOO_MANY_REQUESTS,
-					"Too many expensive requests (AI, import, PDF, job search). Try again in a moment.",
-					Map.of("Retry-After", String.valueOf(retryAfter))
-			);
+			log.info("Expensive-ops rate limit hit path={} user={} retryAfter={}s",
+					RequestPaths.routed(request), userKey, retryAfter);
+			apiErrorResponses.writeTooManyRequests(response, "Too many expensive requests (AI, import, PDF, job search). Try again in a moment.", retryAfter);
 			return;
 		}
 		filterChain.doFilter(request, response);
-	}
-
-	private static String currentUserKey() {
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		if (authentication != null && authentication.getPrincipal() instanceof AppUserPrincipal principal) {
-			return "user:" + principal.getId();
-		}
-		return "anon";
 	}
 }

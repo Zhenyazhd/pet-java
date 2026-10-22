@@ -1,5 +1,7 @@
 package com.jobsearch.core_api.common;
 
+import java.sql.SQLException;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -100,21 +102,21 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 	@ExceptionHandler(ServiceUnavailableException.class)
 	public ResponseEntity<Map<String, Object>> handleServiceUnavailable(ServiceUnavailableException ex) {
 		log.warn("Service unavailable: {}", ex.getMessage());
-		ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE);
-		if (ex.getRetryAfter() != null) {
-			response.header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfter().toSeconds()));
-		}
-		return response.body(apiErrorResponses.body(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage()));
+		return withRetryAfter(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), ex.getRetryAfter());
 	}
 
 	@ExceptionHandler(TooManyRequestsException.class)
 	public ResponseEntity<Map<String, Object>> handleTooManyRequests(TooManyRequestsException ex) {
 		log.info("Too many requests: {}", ex.getMessage());
-		ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS);
-		if (ex.getRetryAfter() != null) {
-			response.header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfter().toSeconds()));
+		return withRetryAfter(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), ex.getRetryAfter());
+	}
+
+	private ResponseEntity<Map<String, Object>> withRetryAfter(HttpStatus status, String message, Duration retryAfter) {
+		ResponseEntity.BodyBuilder response = ResponseEntity.status(status);
+		if (retryAfter != null) {
+			response.header(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfter.toSeconds()));
 		}
-		return response.body(apiErrorResponses.body(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage()));
+		return response.body(apiErrorResponses.body(status, message));
 	}
 
 	@ExceptionHandler(UnauthorizedException.class)
@@ -147,9 +149,10 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 	public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException ex) {
 		// Expected unique races should already be ConflictException via UniqueConstraint.
 		// Do not map every integrity failure to 409 — CHECK/FK need diagnostics, not a fake conflict.
-		String detail = ex.getMostSpecificCause().getMessage();
-		String lower = detail == null ? "" : detail.toLowerCase();
-		if (lower.contains("check constraint") || lower.contains("violates check")) {
+		Throwable cause = ex.getMostSpecificCause();
+		String detail = cause.getMessage();
+		// SQLState 23514 = check_violation; unlike the message text it does not depend on the server locale.
+		if (cause instanceof SQLException sql && "23514".equals(sql.getSQLState())) {
 			log.warn("Check constraint violated: {}", detail);
 			return ResponseEntity.badRequest()
 					.body(apiErrorResponses.body(HttpStatus.BAD_REQUEST, "Invalid data"));

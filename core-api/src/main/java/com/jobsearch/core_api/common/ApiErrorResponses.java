@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -41,21 +42,15 @@ public class ApiErrorResponses {
 	}
 
 	public void write(HttpServletResponse response, HttpStatus status, String message) throws IOException {
-		write(response, status, message, null);
-	}
-
-	public void write(
-			HttpServletResponse response,
-			HttpStatus status,
-			String message,
-			Map<String, String> extraHeaders
-	) throws IOException {
 		response.setStatus(status.value());
 		response.setCharacterEncoding(StandardCharsets.UTF_8.name());
 		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-		if (extraHeaders != null) {
-			extraHeaders.forEach(response::setHeader);
-		}
 		objectMapper.writeValue(response.getWriter(), body(status, message));
+	}
+
+	public void writeTooManyRequests(HttpServletResponse response, String message, long retryAfterSeconds)
+			throws IOException {
+		response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfterSeconds));
+		write(response, HttpStatus.TOO_MANY_REQUESTS, message);
 	}
 }
