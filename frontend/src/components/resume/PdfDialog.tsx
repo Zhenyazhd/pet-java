@@ -1,4 +1,4 @@
-import { Dialog } from '../Dialog'
+import { Dialog } from '../ui/Dialog'
 import { Button } from '../ui/Button'
 
 const TITLE_ID = 'pdf-dialog-title'
