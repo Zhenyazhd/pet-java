@@ -1,10 +1,11 @@
+import { errorMessage } from '../../lib/abort'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ApplicationStatus, Vacancy } from '../../api/types'
 import { classNames } from '../../lib/classNames'
 import { formatDate, safeHttpUrl } from '../../lib/format'
 import { companyLabel, statusOf } from '../../lib/vacancies/vacancy'
-import { Dialog } from '../Dialog'
+import { Dialog } from '../ui/Dialog'
 import { Banner } from '../ui/Banner'
 import { Button } from '../ui/Button'
 import { DeleteFooter } from './DeleteFooter'
@@ -42,7 +43,7 @@ export function VacancyDialog({
       await action()
       return true
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setError(errorMessage(err, 'Something went wrong'))
       return false
     } finally {
       setBusy(false)

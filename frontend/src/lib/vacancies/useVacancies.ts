@@ -1,3 +1,4 @@
+import { errorMessage } from '../abort'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../../api/client'
 import type { ApplicationStatus, Vacancy } from '../../api/types'
@@ -22,7 +23,7 @@ export function useVacancies() {
       setState({ vacancies, loading: false, error: null })
     } catch (err) {
       if (seq !== latestReload.current) return
-      const error = err instanceof Error ? err.message : 'Failed to load vacancies'
+      const error = errorMessage(err, 'Failed to load vacancies')
       setState((prev) => ({ ...prev, loading: false, error }))
     }
   }, [])

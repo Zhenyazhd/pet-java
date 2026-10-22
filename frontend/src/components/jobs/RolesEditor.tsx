@@ -1,6 +1,7 @@
-import { useId, useRef, type KeyboardEvent } from 'react'
+import { useId, useRef } from 'react'
 import { ROLES_MAX, ROLE_LENGTH_MAX } from '../../lib/jobSearch'
 import { Button } from '../ui/Button'
+import { TagEditor, enterToAdd } from '../ui/TagEditor'
 
 type RolesEditorProps = {
   roles: string[]
@@ -31,52 +32,27 @@ export function RolesEditor({
   const input = useRef<HTMLInputElement>(null)
   const message = note ?? error
 
-  function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== 'Enter') return
-    event.preventDefault()
-    onAdd()
-  }
-
   return (
-    <div className="field">
-      <div className="field__row">
-        <label className="field__label small-caps" htmlFor={id}>
-          Roles
-        </label>
-        <span className="field__counter small-caps">
-          {roles.length} / {ROLES_MAX}
-        </span>
-      </div>
-      <p className="field__hint">
-        Job titles you are looking for, for example “Backend engineer”. Put the most important role first: LinkedIn and
-        Welcome to the Jungle search only the first role; HelloWork searches all of them.
-      </p>
-      {roles.length > 0 && (
-        <ul className="tag-list" aria-label="Roles to search for">
-          {roles.map((role, index) => (
-            <li key={role} className="tag">
-              <span className="tag__text">{role}</span>
-              <button
-                type="button"
-                className="tag__remove"
-                aria-label={`Remove role ${role}`}
-                disabled={disabled}
-                onClick={() => {
-                  onRemove(index)
-                  onTouch()
-                  // The removed tag's button is gone; keep the focus in the editor.
-                  input.current?.focus()
-                }}
-              >
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+    <TagEditor
+      id={id}
+      label="Roles"
+      labelFor={`${id}-input`}
+      counter={`${roles.length} / ${ROLES_MAX}`}
+      hint="Job titles you are looking for, for example “Backend engineer”. Put the most important role first: LinkedIn and Welcome to the Jungle search only the first role; HelloWork searches all of them."
+      tags={roles}
+      noun="role"
+      disabled={disabled}
+      onRemove={(index) => {
+        onRemove(index)
+        onTouch()
+      }}
+      focusAfterRemove={input}
+      message={message}
+      alert={alert}
+    >
       <div className="add-row">
         <input
-          id={id}
+          id={`${id}-input`}
           ref={input}
           className="input"
           value={draft}
@@ -87,7 +63,7 @@ export function RolesEditor({
           readOnly={disabled}
           onBlur={onTouch}
           onChange={(e) => onDraft(e.target.value)}
-          onKeyDown={onKeyDown}
+          onKeyDown={enterToAdd(onAdd)}
         />
         <Button
           variant="outline"
@@ -101,11 +77,6 @@ export function RolesEditor({
           Add
         </Button>
       </div>
-      {message && (
-        <p id={`${id}-msg`} className="field__error" role={alert ? 'alert' : undefined}>
-          {message}
-        </p>
-      )}
-    </div>
+    </TagEditor>
   )
 }

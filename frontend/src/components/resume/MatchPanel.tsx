@@ -16,8 +16,8 @@ type MatchPanelProps = {
 
 export function MatchPanel({ available, hasVacancy, matching, blocked, report, error, note, onCheck }: MatchPanelProps) {
   return (
-    <section className="match" aria-labelledby="match-title">
-      <div className="match__bar">
+    <section className="match-report" aria-labelledby="match-title">
+      <div className="match-report__bar">
         <div>
           <h2 id="match-title" className="section-title">
             Vacancy match
@@ -49,16 +49,16 @@ export function MatchPanel({ available, hasVacancy, matching, blocked, report, e
 
       {report && (
         <div>
-          <p className="match__average">
-            <span className="match__score">{report.averageScore}</span>
+          <p className="match-report__average">
+            <span className="match-report__score">{report.averageScore}</span>
             <span className="small-caps"> / 100 average</span>
           </p>
           {report.platforms.length > 0 && (
-            <ul className="match__platforms">
+            <ul className="match-report__platforms">
               {report.platforms.map((platform) => (
                 <li key={platform.system}>
                   <span>{platform.system}</span>
-                  <span className="match__platform-score">{platform.overallScore}</span>
+                  <span className="match-report__platform-score">{platform.overallScore}</span>
                   <span className={platform.passesFilter ? 'badge badge--pass' : 'badge badge--fail'}>
                     {platform.passesFilter ? 'Passes' : 'Fails'}
                   </span>
@@ -69,7 +69,7 @@ export function MatchPanel({ available, hasVacancy, matching, blocked, report, e
           {report.suggestions.length > 0 && (
             <>
               <h3 className="small-caps">Suggestions</h3>
-              <ul className="match__suggestions">
+              <ul className="match-report__suggestions">
                 {report.suggestions.map((suggestion, index) => (
                   <li key={index}>
                     <p>

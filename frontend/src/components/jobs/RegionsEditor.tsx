@@ -1,7 +1,8 @@
-import { useId, useRef, type KeyboardEvent } from 'react'
+import { useId, useRef } from 'react'
 import type { JobRegion } from '../../api/types'
 import { CITY_MAX, REGIONS_MAX, regionLabel } from '../../lib/jobSearch'
 import { Button } from '../ui/Button'
+import { TagEditor, enterToAdd } from '../ui/TagEditor'
 
 type RegionsEditorProps = {
   regions: JobRegion[]
@@ -23,47 +24,20 @@ export function RegionsEditor(props: RegionsEditorProps) {
   const countryInput = useRef<HTMLInputElement>(null)
   const message = note ?? error
 
-  function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== 'Enter') return
-    event.preventDefault()
-    onAdd()
-  }
-
   return (
-    <div className="field">
-      <div className="field__row">
-        <span className="field__label small-caps" id={`${id}-label`}>
-          Regions
-        </span>
-        <span className="field__counter small-caps">
-          {regions.length} / {REGIONS_MAX}
-        </span>
-      </div>
-      <p className="field__hint">
-        Optional. A 2-letter country code (for example FR) and, if you like, a city. Put the most important place first:
-        LinkedIn and Welcome to the Jungle use only the first region; HelloWork uses only the first French city.
-      </p>
-      {regions.length > 0 && (
-        <ul className="tag-list" aria-labelledby={`${id}-label`}>
-          {regions.map((region, index) => (
-            <li key={regionLabel(region)} className="tag">
-              <span className="tag__text">{regionLabel(region)}</span>
-              <button
-                type="button"
-                className="tag__remove"
-                aria-label={`Remove region ${regionLabel(region)}`}
-                disabled={disabled}
-                onClick={() => {
-                  onRemove(index)
-                  countryInput.current?.focus()
-                }}
-              >
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+    <TagEditor
+      id={id}
+      label="Regions"
+      counter={`${regions.length} / ${REGIONS_MAX}`}
+      hint="Optional. A 2-letter country code (for example FR) and, if you like, a city. Put the most important place first: LinkedIn and Welcome to the Jungle use only the first region; HelloWork uses only the first French city."
+      tags={regions.map(regionLabel)}
+      noun="region"
+      disabled={disabled}
+      onRemove={onRemove}
+      focusAfterRemove={countryInput}
+      message={message}
+      alert={alert}
+    >
       <div className="add-row add-row--region">
         <input
           ref={countryInput}
@@ -78,7 +52,7 @@ export function RegionsEditor(props: RegionsEditorProps) {
           aria-invalid={error !== null}
           readOnly={disabled}
           onChange={(e) => onCountry(e.target.value)}
-          onKeyDown={onKeyDown}
+          onKeyDown={enterToAdd(onAdd)}
         />
         <input
           className="input"
@@ -89,7 +63,7 @@ export function RegionsEditor(props: RegionsEditorProps) {
           autoComplete="off"
           readOnly={disabled}
           onChange={(e) => onCity(e.target.value)}
-          onKeyDown={onKeyDown}
+          onKeyDown={enterToAdd(onAdd)}
         />
         <Button
           variant="outline"
@@ -99,11 +73,6 @@ export function RegionsEditor(props: RegionsEditorProps) {
           Add
         </Button>
       </div>
-      {message && (
-        <p id={`${id}-msg`} className="field__error" role={alert ? 'alert' : undefined}>
-          {message}
-        </p>
-      )}
-    </div>
+    </TagEditor>
   )
 }

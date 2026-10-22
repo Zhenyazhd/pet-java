@@ -1,3 +1,5 @@
+import { errorMessage } from '../lib/abort'
+import { formatCounter } from '../lib/format'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import type { Profile } from '../api/types'
@@ -10,7 +12,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { useBeforeUnload } from '../lib/useBeforeUnload'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 
-const CAREER_PATH_MAX = 20_000
+const CAREER_PATH_MAX = 40_000
 const EMPTY: Profile = { displayName: '', email: '', careerPath: '' }
 
 export function ProfilePage() {
@@ -42,7 +44,7 @@ export function ProfilePage() {
       })
       .catch((err) => {
         if (!cancelled)
-          setLoadError(err instanceof Error ? err.message : 'Failed to load the profile')
+          setLoadError(errorMessage(err, 'Failed to load the profile'))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -80,7 +82,7 @@ export function ProfilePage() {
       updateUser({ displayName: data.displayName, email: data.email })
       setJustSaved(true)
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Failed to save the profile')
+      setSaveError(errorMessage(err, 'Failed to save the profile'))
     } finally {
       setSaving(false)
     }
@@ -136,7 +138,7 @@ export function ProfilePage() {
           <TextAreaField
             label="Career path"
             hint="Roles, projects, studies, skills and the turns between them. The fuller the story, the better the drafts."
-            counter={`${profile.careerPath.length.toLocaleString('en-US')} / ${CAREER_PATH_MAX.toLocaleString('en-US')}`}
+            counter={`${formatCounter(profile.careerPath.length, CAREER_PATH_MAX)}`}
             value={profile.careerPath}
             onChange={(e) => update('careerPath', e.target.value)}
             disabled={loading}

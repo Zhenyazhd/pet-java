@@ -1,3 +1,4 @@
+import { errorMessage } from '../lib/abort'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
@@ -23,7 +24,7 @@ export function LoginPage() {
     try {
       await login({ email: email.trim(), password })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign-in failed')
+      setError(errorMessage(err, 'Sign-in failed'))
     } finally {
       setPending(false)
     }

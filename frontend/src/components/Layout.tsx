@@ -1,3 +1,4 @@
+import { errorMessage } from '../lib/abort'
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
@@ -26,11 +27,13 @@ export function AppLayout() {
     try {
       await logout()
     } catch (err) {
-      setSignOutError(err instanceof Error ? err.message : 'Sign-out failed. Try again.')
+      setSignOutError(errorMessage(err, 'Sign-out failed. Try again.'))
     } finally {
       setSigningOut(false)
     }
   }
+
+  const onJobsPages = /^\/jobs(\/|$)/.test(location.pathname)
 
   return (
     <div className="shell">
@@ -66,7 +69,7 @@ export function AppLayout() {
         {signOutError && <Banner tone="error">{signOutError}</Banner>}
         {/* Per page, so a render error keeps the header; the key resets it on navigation. The jobs pages share
             one layout (polling, draft), so moving between them must not remount it. */}
-        <ErrorBoundary key={/^\/jobs(\/|$)/.test(location.pathname) ? '/jobs' : location.pathname} inline>
+        <ErrorBoundary key={onJobsPages ? '/jobs' : location.pathname} inline>
           <Outlet />
         </ErrorBoundary>
       </main>

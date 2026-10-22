@@ -4,7 +4,8 @@ A personal tool that ties together the three things I needed for my own job sear
 
 ## Demo
 
-![Resume editor with AI chat](./screen.png)
+![Resume editor with AI chat](./screens/screen.png)
+![Resume editor with AI chat](./screens/screen1.png)
 
 ## Repository layout
 

@@ -1,0 +1,173 @@
+/* Signed-in shell: page surface, top bar, main column */
+.shell {
+  min-height: 100vh;
+}
+
+.topbar {
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
+}
+
+.topbar__inner {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+  color: var(--foreground);
+  text-decoration: none;
+}
+
+.topbar__nav {
+  display: flex;
+  gap: 1.5rem;
+  margin-right: auto;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 8px;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  color: var(--foreground);
+  text-decoration-color: var(--accent);
+}
+
+.topbar__account {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.topbar__user {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-foreground);
+}
+
+.main {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 4rem 1rem 6rem;
+}
+
+/* The colors are the tokens in tokens.css. */
+.auth,
+.shell {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  overflow-x: clip;
+  background:
+    linear-gradient(rgb(255 255 255 / 0.02) 1px, transparent 1px) 0 0 / 64px 64px,
+    linear-gradient(90deg, rgb(255 255 255 / 0.02) 1px, transparent 1px) 0 0 / 64px 64px,
+    radial-gradient(ellipse at top, #0a0a0f 0%, #050506 50%, #020203 100%);
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+  letter-spacing: 0;
+}
+
+/* Noise over the whole screen. */
+.auth::before,
+.shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.015;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* One soft indigo blob at the top, drifting slowly. */
+.auth::after,
+.shell::after {
+  content: '';
+  position: absolute;
+  top: -14rem;
+  left: 22%;
+  z-index: -1;
+  width: 36rem;
+  height: 36rem;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.2;
+  filter: blur(120px);
+  pointer-events: none;
+  animation: auth-float 9s ease-in-out infinite alternate;
+}
+
+@keyframes auth-float {
+  to {
+    transform: translate(3rem, 2rem);
+  }
+}
+
+.auth .wordmark,
+.shell .wordmark {
+  font-weight: 600;
+  font-size: 1.0625rem;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
+
+/* Top bar of the dark shell. */
+.shell .topbar {
+  position: relative;
+  z-index: 1;
+  background: rgb(5 5 6 / 0.7);
+  backdrop-filter: blur(12px);
+}
+
+.shell .nav-link.active {
+  text-decoration-color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth::after,
+  .shell::after {
+    animation: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .topbar__inner {
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+  }
+
+  .topbar__user {
+    display: none;
+  }
+
+  .main {
+    padding-top: 2.5rem;
+  }
+}

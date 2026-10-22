@@ -1,0 +1,293 @@
+/* Buttons, fields, banners, page header, forms (and their look on the dark surfaces) */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.625rem 1.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: all var(--duration) var(--ease);
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn--block {
+  width: 100%;
+}
+
+.btn--primary {
+  background: var(--accent-strong);
+  color: var(--accent-foreground);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn--primary:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--accent);
+  box-shadow: var(--shadow-accent);
+}
+
+.btn--outline {
+  background: transparent;
+  border-color: var(--foreground);
+  color: var(--foreground);
+}
+
+.btn--outline:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--muted);
+  border-color: var(--accent-strong);
+  color: var(--accent-strong);
+}
+
+.btn--ghost {
+  padding-inline: 0.75rem;
+  background: transparent;
+  color: var(--muted-foreground);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+}
+
+.btn--ghost:hover:not(:disabled):not([aria-disabled='true']) {
+  color: var(--foreground);
+  text-decoration-color: var(--accent);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.field__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.field__label {
+  color: var(--foreground);
+}
+
+.field__counter {
+  color: var(--muted-foreground);
+}
+
+.field__hint {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+}
+
+.field__error {
+  color: var(--danger);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--foreground);
+  font: inherit;
+  letter-spacing: inherit;
+  transition: all var(--duration-fast) var(--ease);
+}
+
+/* Own chevron: the native arrow sits hard against the edge and differs per browser. */
+select.input {
+  padding-right: 2.5rem;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%23777' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.875rem center;
+  cursor: pointer;
+}
+
+.input::placeholder {
+  color: var(--muted-foreground);
+  opacity: 1;
+}
+
+.input:hover:not(:disabled) {
+  border-color: var(--control-border-hover);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+}
+
+.input:disabled {
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+  cursor: not-allowed;
+}
+
+.input--area {
+  min-height: 22rem;
+  padding: 1rem 1.125rem;
+  background: var(--card);
+  line-height: 1.75;
+  resize: vertical;
+}
+
+.banner {
+  padding: 0.75rem 1rem;
+  border: 1px solid;
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.banner--error {
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.banner--ok {
+  border-color: color-mix(in srgb, var(--ok) 35%, transparent);
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-bottom: 2rem;
+  margin-bottom: 2.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.page-header__eyebrow {
+  margin-bottom: 0.75rem;
+  color: var(--accent-strong);
+}
+
+.page-header__title:focus {
+  outline: none;
+}
+
+.page-header__title {
+  font-size: clamp(2rem, 5vw, 2.5rem);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.page-header__lead {
+  max-width: var(--reading-width);
+  margin-top: 1rem;
+  color: var(--muted-foreground);
+}
+
+/* Title and lead share one line, so the workspace below starts near the top of the window. */
+.page-header--compact {
+  align-items: baseline;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+
+.page-header--compact .page-header__text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1.25rem;
+}
+
+.page-header--compact .page-header__title {
+  font-size: 1.75rem;
+}
+
+.page-header--compact .page-header__lead {
+  max-width: none;
+  margin-top: 0;
+  font-size: 0.9375rem;
+}
+
+.auth .field__label,
+.shell .field__label {
+  color: var(--muted-foreground);
+}
+
+.auth .input,
+.shell .input {
+  background-color: #0f0f12;
+}
+
+.auth .input::placeholder,
+.shell .input::placeholder {
+  color: var(--foreground-subtle);
+}
+
+.auth .btn,
+.shell .btn {
+  letter-spacing: 0;
+}
+
+.auth .btn--primary,
+.shell .btn--primary {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  box-shadow:
+    0 0 0 1px rgb(94 106 210 / 0.5),
+    0 4px 12px rgb(94 106 210 / 0.3),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.2);
+}
+
+.auth .btn--primary:hover:not(:disabled):not([aria-disabled='true']),
+.shell .btn--primary:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--accent-hover);
+  box-shadow:
+    0 0 0 1px rgb(94 106 210 / 0.5),
+    0 4px 12px rgb(94 106 210 / 0.3),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.2);
+}
+
+.auth .btn--primary:active:not(:disabled):not([aria-disabled='true']),
+.shell .btn--primary:active:not(:disabled):not([aria-disabled='true']) {
+  transform: scale(0.98);
+}
+
+/* Secondary and ghost buttons on the dark theme. */
+.shell .btn--outline {
+  border-color: transparent;
+  background: rgb(255 255 255 / 0.05);
+  color: var(--foreground);
+}
+
+.shell .btn--outline:hover:not(:disabled):not([aria-disabled='true']) {
+  background: rgb(255 255 255 / 0.08);
+  border-color: transparent;
+  color: var(--foreground);
+}
+
+.shell .btn--ghost:hover:not(:disabled):not([aria-disabled='true']) {
+  background: rgb(255 255 255 / 0.05);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
