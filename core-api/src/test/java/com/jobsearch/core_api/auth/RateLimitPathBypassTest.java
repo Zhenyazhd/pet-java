@@ -11,6 +11,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 /**
@@ -47,10 +49,14 @@ class RateLimitPathBypassTest {
 	private FixedWindowRateLimiter rateLimiter;
 
 	private final HttpClient client = HttpClient.newHttpClient();
+	@Autowired
+	private JdbcTemplate jdbc;
+
 	private String csrfToken;
+	private String sessionCookie;
 
 	@BeforeEach
-	void fetchCsrfTokenAndForgetEarlierAttempts() throws Exception {
+	void signInAndForgetEarlierAttempts() throws Exception {
 		rateLimiter.clear();
 		HttpResponse<String> response = client.send(
 				HttpRequest.newBuilder(uri("/api/auth/csrf")).GET().build(), HttpResponse.BodyHandlers.ofString());
@@ -60,6 +66,18 @@ class RateLimitPathBypassTest {
 				.map(cookie -> cookie.substring("XSRF-TOKEN=".length(), cookie.indexOf(';')))
 				.findFirst()
 				.orElseThrow();
+		// The expensive paths only count signed-in users (anonymous calls are refused with 401), so sign in first.
+		String invite = "INVITE-" + UUID.randomUUID().toString().toUpperCase();
+		jdbc.update("insert into invite_code (code, created_at) values (?, now())", invite);
+		HttpResponse<String> registered = post("/api/auth/register", "{\"email\":\"limit-" + UUID.randomUUID()
+				+ "@example.com\",\"password\":\"correct horse battery\",\"inviteCode\":\"" + invite + "\"}");
+		assertEquals(201, registered.statusCode(), registered.body());
+		sessionCookie = registered.headers().allValues("set-cookie").stream()
+				.filter(cookie -> cookie.startsWith("JSESSIONID="))
+				.map(cookie -> cookie.substring(0, cookie.indexOf(';')))
+				.findFirst()
+				.orElseThrow();
+		rateLimiter.clear();
 	}
 
 	/** Every limited path, once as the plain route and once with a percent-escape in it. */
@@ -117,7 +135,7 @@ class RateLimitPathBypassTest {
 	@ParameterizedTest
 	@MethodSource("lookalikePaths")
 	void lookalikePathsNeverReachTheController(String path) throws Exception {
-		HttpResponse<String> response = post(path, LOGIN_BODY);
+		HttpResponse<String> response = post(path, LOGIN_BODY, false);
 
 		assertEquals(401, response.statusCode());
 		assertTrue(response.body().contains("Unauthorized"), response.body());
@@ -128,9 +146,13 @@ class RateLimitPathBypassTest {
 	}
 
 	private HttpResponse<String> post(String path, String json) throws Exception {
+		return post(path, json, true);
+	}
+
+	private HttpResponse<String> post(String path, String json, boolean signedIn) throws Exception {
 		HttpRequest request = HttpRequest.newBuilder(uri(path))
 				.header("Content-Type", "application/json")
-				.header("Cookie", "XSRF-TOKEN=" + csrfToken)
+				.header("Cookie", "XSRF-TOKEN=" + csrfToken + (signedIn && sessionCookie != null ? "; " + sessionCookie : ""))
 				.header("X-XSRF-TOKEN", csrfToken)
 				.POST(HttpRequest.BodyPublishers.ofString(json))
 				.build();

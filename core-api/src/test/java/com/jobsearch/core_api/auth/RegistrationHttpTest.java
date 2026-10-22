@@ -127,7 +127,7 @@ class RegistrationHttpTest {
 		assertEquals(200, liveness.statusCode());
 		assertTrue(readiness.body().contains("\"db\""), readiness.body());
 		assertFalse(liveness.body().contains("\"db\""), liveness.body());
-		assertEquals(404, send("GET", "/actuator/env", null).statusCode(), "nothing but health is exposed");
+		assertEquals(401, send("GET", "/actuator/env", null).statusCode(), "nothing but health is open");
 	}
 
 	@Test
@@ -170,7 +170,8 @@ class RegistrationHttpTest {
 	}
 
 	private String newInvite() {
-		String code = "invite-" + UUID.randomUUID();
+		// Invite codes are generated in upper case and looked up as such.
+		String code = "INVITE-" + UUID.randomUUID().toString().toUpperCase();
 		jdbc.update("insert into invite_code (code, created_at) values (?, now())", code);
 		return code;
 	}
