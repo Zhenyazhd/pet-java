@@ -32,9 +32,9 @@ export function AppLayout() {
     }
   }
 
-  // The job matches and vacancies pages are on the dark theme; the others follow as they are restyled.
+  // Everything but the profile page is on the dark theme; the profile page follows when it is restyled.
   const onJobsPages = /^\/jobs(\/|$)/.test(location.pathname)
-  const dark = onJobsPages || /^\/vacancies(\/|$)/.test(location.pathname)
+  const dark = /^\/(jobs|vacancies|resume)(\/|$)/.test(location.pathname)
 
   return (
     <div className={dark ? 'shell shell--dark' : 'shell'}>
