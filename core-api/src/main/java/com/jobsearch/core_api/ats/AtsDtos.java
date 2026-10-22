@@ -1,7 +1,9 @@
 package com.jobsearch.core_api.ats;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
+import java.util.UUID;
 
 public final class AtsDtos {
 
@@ -11,7 +13,9 @@ public final class AtsDtos {
 	public record MatchRequest(
 			@NotBlank String vacancyContext,
 			/** When set, persist {@code averageScore} onto this owned vacancy's {@code matchPercent}. */
-			Long vacancyId
+			Long vacancyId,
+			/** The finished PDF build to score: the model is given the text an ATS reads from that PDF. */
+			@NotNull UUID compileJobId
 	) {
 	}
 

@@ -17,8 +17,8 @@ public class AppProperties {
 	private final ExpensiveOpsRateLimit expensiveOpsRateLimit = new ExpensiveOpsRateLimit();
 	private final S3 s3 = new S3();
 	private final OpenRouter openRouter = new OpenRouter();
-	private final AtsScreener atsScreener = new AtsScreener();
 	private final PdfWorker pdfWorker = new PdfWorker();
+	private final AtsWorker atsWorker = new AtsWorker();
 
 	public boolean isStrictSecrets() {
 		return strictSecrets;
@@ -64,12 +64,12 @@ public class AppProperties {
 		return openRouter;
 	}
 
-	public AtsScreener getAtsScreener() {
-		return atsScreener;
-	}
-
 	public PdfWorker getPdfWorker() {
 		return pdfWorker;
+	}
+
+	public AtsWorker getAtsWorker() {
+		return atsWorker;
 	}
 
 	public static class ExpensiveOpsRateLimit {
@@ -137,42 +137,6 @@ public class AppProperties {
 		}
 	}
 
-	public static class AtsScreener {
-		/** Base URL of tools/ats-screener Vite/SvelteKit app (e.g. http://127.0.0.1:5174). */
-		private String baseUrl = "http://127.0.0.1:5174";
-		/** Read timeout for /api/analyze — full Gemini scoring often exceeds 90s. */
-		private int timeoutSeconds = 180;
-		/**
-		 * Whether the vacancy match is offered at all. Off by default: the screener is a separate app with no
-		 * production setup in this repository, and it must be reachable only from core-api.
-		 */
-		private boolean enabled = false;
-
-		public boolean isEnabled() {
-			return enabled;
-		}
-
-		public void setEnabled(boolean enabled) {
-			this.enabled = enabled;
-		}
-
-		public String getBaseUrl() {
-			return baseUrl;
-		}
-
-		public void setBaseUrl(String baseUrl) {
-			this.baseUrl = baseUrl;
-		}
-
-		public int getTimeoutSeconds() {
-			return timeoutSeconds;
-		}
-
-		public void setTimeoutSeconds(int timeoutSeconds) {
-			this.timeoutSeconds = timeoutSeconds;
-		}
-	}
-
 	public static class PdfWorker {
 		/** Base URL of tools/pdf-worker. */
 		private String baseUrl = "http://127.0.0.1:8090";
@@ -222,6 +186,74 @@ public class AppProperties {
 
 		public void setLayoutReadTimeoutSeconds(int layoutReadTimeoutSeconds) {
 			this.layoutReadTimeoutSeconds = layoutReadTimeoutSeconds;
+		}
+	}
+
+	public static class AtsWorker {
+		/**
+		 * Whether the ATS features are offered: the PDF readability check and the vacancy match score. Off by
+		 * default: they need the separate tools/ats-worker service, which must be reachable only from core-api.
+		 */
+		private boolean enabled = false;
+		/** Base URL of tools/ats-worker. */
+		private String baseUrl = "http://127.0.0.1:8091";
+		/** Shared secret sent as X-Worker-Token; required while the check is enabled. */
+		private String token = "";
+		private int connectTimeoutSeconds = 3;
+		/** Must be longer than the worker's own check timeout (20s by default). */
+		private int readTimeoutSeconds = 30;
+		/**
+		 * Read timeout for POST /score, a model call; must be longer than the worker's SCORE_TIMEOUT_SECONDS (90).
+		 * It covers the wait for the response only: if it expires the worker still finishes the call (and its cost).
+		 */
+		private int scoreTimeoutSeconds = 100;
+
+		public boolean isEnabled() {
+			return enabled;
+		}
+
+		public void setEnabled(boolean enabled) {
+			this.enabled = enabled;
+		}
+
+		public String getBaseUrl() {
+			return baseUrl;
+		}
+
+		public void setBaseUrl(String baseUrl) {
+			this.baseUrl = baseUrl;
+		}
+
+		public String getToken() {
+			return token;
+		}
+
+		public void setToken(String token) {
+			this.token = token;
+		}
+
+		public int getConnectTimeoutSeconds() {
+			return connectTimeoutSeconds;
+		}
+
+		public void setConnectTimeoutSeconds(int connectTimeoutSeconds) {
+			this.connectTimeoutSeconds = connectTimeoutSeconds;
+		}
+
+		public int getReadTimeoutSeconds() {
+			return readTimeoutSeconds;
+		}
+
+		public void setReadTimeoutSeconds(int readTimeoutSeconds) {
+			this.readTimeoutSeconds = readTimeoutSeconds;
+		}
+
+		public int getScoreTimeoutSeconds() {
+			return scoreTimeoutSeconds;
+		}
+
+		public void setScoreTimeoutSeconds(int scoreTimeoutSeconds) {
+			this.scoreTimeoutSeconds = scoreTimeoutSeconds;
 		}
 	}
 

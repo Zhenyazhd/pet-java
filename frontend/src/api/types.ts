@@ -3,7 +3,7 @@ export type AuthUser = {
   email: string
   displayName: string
   /** What this deployment offers; a switched-off feature is hidden or disabled instead of failing on click. */
-  features?: { atsMatch: boolean }
+  features?: { atsMatch: boolean; pdfReadability?: boolean }
 }
 
 export type LoginRequest = {

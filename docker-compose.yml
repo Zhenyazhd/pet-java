@@ -41,5 +41,40 @@ services:
     cpus: 2
     mem_limit: 2g
 
+  ats-worker:
+    build: tools/ats-worker
+    image: job-search-ats-worker
+    container_name: job-search-ats-worker
+    restart: unless-stopped
+    # Bound to localhost only: core-api runs on the host in local development. In production put the
+    # worker on an `internal: true` network shared only with core-api. The vacancy match (POST /score) calls the
+    # model provider, so it needs outbound access to it; the PDF check does not.
+    ports:
+      - "127.0.0.1:${ATS_WORKER_PORT:-8091}:8091"
+    environment:
+      WORKER_TOKEN: ${ATS_WORKER_TOKEN:?set ATS_WORKER_TOKEN in .env}
+      # Optional: enables POST /score (LLM scoring). Same key as core-api; unset means that endpoint answers 503.
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      SCORE_MODEL: ${SCORE_MODEL:-}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-}
+      SCORE_TIMEOUT_SECONDS: ${SCORE_TIMEOUT_SECONDS:-}
+      SCORE_CONCURRENCY: ${SCORE_CONCURRENCY:-}
+      # core-api runs two checks at once; with `cpus: 1` the default (the CPU count) would make the second one wait.
+      WORKER_CONCURRENCY: ${ATS_WORKER_CONCURRENCY:-2}
+    init: true
+    # On stop the worker reports "draining" for 5 s, then waits up to 25 s for requests in flight (SHUTDOWN_GRACE_SECONDS).
+    stop_grace_period: 45s
+    read_only: true
+    tmpfs:
+      # PDFBox spills decoded streams to temp files; this is the ceiling for a PDF that decodes to far more than a
+      # resume should. It counts against mem_limit, which also holds the 512 MB heap (see the Dockerfile).
+      - /tmp:size=128m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    cpus: 1
+    mem_limit: 1g
+
 volumes:
   postgres_data:

@@ -26,7 +26,7 @@ export function MatchPanel({ available, hasVacancy, matching, blocked, report, e
             {!available
               ? 'Not available yet. Scoring your CV against a vacancy will come later.'
               : hasVacancy
-                ? 'Scores your saved CV against the chosen vacancy on six ATS platforms. It takes a few minutes.'
+                ? 'Builds the PDF of your saved CV and scores the text an ATS reads from it against the chosen vacancy on six ATS platforms. It takes a few minutes.'
                 : 'Pick a vacancy above to check how your CV scores against it.'}
           </p>
         </div>

@@ -2,6 +2,7 @@ import type {
   AiScope,
   ChatTurn,
   MatchResponse,
+  ReadabilityReport,
   ResumeDocument,
   SuggestResponse,
 } from './resumeTypes'
@@ -227,10 +228,16 @@ export const api = {
     signal?: AbortSignal,
   ) => request<SuggestResponse>('/api/ai/resume/suggest', json('POST', body), { signal }),
 
-  startMatch: (vacancyContext: string, vacancyId: number | null, signal?: AbortSignal) =>
+  startReadability: (compileJobId: string, signal?: AbortSignal) =>
+    request<Job<ReadabilityReport>>('/api/resume/readability', json('POST', { compileJobId }), { signal }),
+
+  getReadabilityJob: (jobId: string) => request<Job<ReadabilityReport>>(`/api/resume/readability/${jobId}`),
+
+  /** `compileJobId` is the finished PDF build: the match scores the text an ATS reads from that PDF. */
+  startMatch: (vacancyContext: string, vacancyId: number | null, compileJobId: string, signal?: AbortSignal) =>
     request<Job<MatchResponse>>(
       '/api/ai/resume/match',
-      json('POST', { vacancyContext, ...(vacancyId === null ? {} : { vacancyId }) }),
+      json('POST', { vacancyContext, compileJobId, ...(vacancyId === null ? {} : { vacancyId }) }),
       { signal },
     ),
 

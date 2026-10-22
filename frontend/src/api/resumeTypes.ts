@@ -75,6 +75,28 @@ export type MatchSuggestion = {
   platforms: string[]
 }
 
+export type ReadabilityIssue = {
+  code: string
+  severity: 'error' | 'warning' | 'info'
+  message: string
+}
+
+/** What the ats-worker says about a built PDF; `text` is what an ATS reads from it. */
+export type ReadabilityReport = {
+  verdict: 'ok' | 'warnings' | 'issues'
+  score: number
+  pages: number
+  coverage: number | null
+  orderScore: number | null
+  lostLines: string[]
+  sectionsFound: string[]
+  sectionsMissing: string[]
+  contacts: { email: boolean; phone: boolean; url: boolean; nameAtTop: boolean }
+  issues: ReadabilityIssue[]
+  text: string
+  textTruncated: boolean
+}
+
 export type MatchResponse = {
   averageScore: number
   platforms: MatchPlatformScore[]

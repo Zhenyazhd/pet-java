@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Vacancy match via local ATS Screener (tools/ats-screener): queue a match, then poll for the report. */
+/** Vacancy match via tools/ats-worker (an LLM scores the resume on six ATS platforms): queue a match, then poll for the report. */
 @RestController
 @RequestMapping("/api/ai/resume/match")
 public class AtsMatchController {

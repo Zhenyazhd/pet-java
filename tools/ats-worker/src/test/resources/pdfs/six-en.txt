@@ -1,0 +1,44 @@
+Jane Doe
+Backend Engineer
++33 6 12 34 56 78 | jane.doe@example.com | linkedin.com/in/jane-doe
+Profile
+Backend engineer with six years of experience building payment services in Java and PostgreSQL, focused on reliability, observability and clear ownership of production systems.
+
+Professional Experience
+Senior Engineer — 2022 – 2024
+Acme Corp, Paris
+- Built a payment gateway handling two million transactions a day
+- Reduced the p99 latency of the checkout API by forty percent
+Backend Engineer — 2020 – 2022
+Beta SAS, Lyon
+- Maintained the billing platform and wrote the infrastructure as code
+- Introduced contract tests between the billing and ledger services
+Software Engineer — 2018 – 2020
+Gamma Labs, Berlin
+- Migrated a monolith to services without downtime
+- Mentored three junior engineers through their first production releases
+Junior Developer — 2016 – 2018
+Delta GmbH, Munich
+- Wrote reporting queries on PostgreSQL for the finance team
+- Automated the nightly export of invoices to the accounting system
+Intern — 2015 – 2016
+Epsilon AG, Zurich
+- Built an internal dashboard for monitoring batch jobs
+- Documented the deployment process for the platform team
+Student Assistant — 2014 – 2015
+Zeta University, Munich
+- Graded programming assignments for a course of two hundred students
+- Held weekly exercise sessions on data structures
+
+Education
+BSc Computer Science — Munich
+Technical University of Munich
+Graduated with distinction
+
+Achievements
+Hackathon: First place at the 2022 fintech hackathon
+
+Skills
+Languages: Java, Kotlin, SQL
+Tools: Docker, Kubernetes, Terraform
+Practices: Code review, Contract testing, Incident response

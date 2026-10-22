@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext'
 import { CvSheet } from '../components/resume/CvSheet'
 import { AiPanel } from '../components/resume/AiPanel'
 import { MatchPanel } from '../components/resume/MatchPanel'
+import { ReadabilityPanel } from '../components/resume/ReadabilityPanel'
 import { PdfDialog } from '../components/resume/PdfDialog'
 import { ResumeToolbar } from '../components/resume/ResumeToolbar'
 import { VacancyPicker } from '../components/resume/VacancyPicker'
@@ -42,6 +43,7 @@ export function ResumePage() {
   const { user } = useAuth()
   // An API from before this field existed (the minutes of a deploy) reads as "switched off", not as a crash.
   const matchAvailable = user?.features?.atsMatch ?? false
+  const readabilityAvailable = user?.features?.pdfReadability ?? false
   const { vacancies, loading: vacanciesLoading, error: vacanciesError } = useVacancies()
   const [params, setParams] = useSearchParams()
 
@@ -287,6 +289,16 @@ export function ResumePage() {
         error={jobs.matchError}
         note={jobs.matchNote}
         onCheck={() => matchAvailable && void jobs.checkMatch(vacancyContext, vacancy?.id ?? null)}
+      />
+
+      <ReadabilityPanel
+        available={readabilityAvailable}
+        checking={jobs.checking}
+        blocked={conflictBlocked}
+        report={jobs.readability}
+        error={jobs.readabilityError}
+        note={jobs.readabilityNote}
+        onCheck={() => readabilityAvailable && void jobs.checkReadability()}
       />
 
       {jobs.pdfUrl && <PdfDialog url={jobs.pdfUrl} onClose={jobs.closePdf} />}
