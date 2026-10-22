@@ -15,7 +15,6 @@ public class AppProperties {
 	private final Cors cors = new Cors();
 	private final AuthRateLimit authRateLimit = new AuthRateLimit();
 	private final ExpensiveOpsRateLimit expensiveOpsRateLimit = new ExpensiveOpsRateLimit();
-	private final S3 s3 = new S3();
 	private final OpenRouter openRouter = new OpenRouter();
 	private final PdfWorker pdfWorker = new PdfWorker();
 	private final AtsWorker atsWorker = new AtsWorker();
@@ -55,10 +54,6 @@ public class AppProperties {
 
 	public ExpensiveOpsRateLimit getExpensiveOpsRateLimit() {
 		return expensiveOpsRateLimit;
-	}
-
-	public S3 getS3() {
-		return s3;
 	}
 
 	public OpenRouter getOpenRouter() {
@@ -392,63 +387,6 @@ public class AppProperties {
 
 		public void setMaxTokens(int maxTokens) {
 			this.maxTokens = maxTokens;
-		}
-	}
-
-	public static class S3 {
-		private String endpoint = "http://localhost:9090";
-		private String region = "us-east-1";
-		private String accessKey = "local";
-		private String secretKey = "local";
-		private String bucket = "job-search-cvs";
-		private boolean pathStyleAccess = true;
-
-		public String getEndpoint() {
-			return endpoint;
-		}
-
-		public void setEndpoint(String endpoint) {
-			this.endpoint = endpoint;
-		}
-
-		public String getRegion() {
-			return region;
-		}
-
-		public void setRegion(String region) {
-			this.region = region;
-		}
-
-		public String getAccessKey() {
-			return accessKey;
-		}
-
-		public void setAccessKey(String accessKey) {
-			this.accessKey = accessKey;
-		}
-
-		public String getSecretKey() {
-			return secretKey;
-		}
-
-		public void setSecretKey(String secretKey) {
-			this.secretKey = secretKey;
-		}
-
-		public String getBucket() {
-			return bucket;
-		}
-
-		public void setBucket(String bucket) {
-			this.bucket = bucket;
-		}
-
-		public boolean isPathStyleAccess() {
-			return pathStyleAccess;
-		}
-
-		public void setPathStyleAccess(boolean pathStyleAccess) {
-			this.pathStyleAccess = pathStyleAccess;
 		}
 	}
 }
