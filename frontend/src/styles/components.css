@@ -538,6 +538,22 @@ select.input {
   color: var(--muted-foreground);
 }
 
+/* Dialogs on the dark theme. */
+.shell--dark .dialog {
+  border: 0;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.02)),
+    var(--card);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.1),
+    0 8px 40px rgb(0 0 0 / 0.5),
+    0 0 80px rgb(94 106 210 / 0.1);
+}
+
+.shell--dark .dialog::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}
+
 /* Secondary and ghost buttons on the dark theme. */
 .shell--dark .btn--outline {
   border-color: transparent;

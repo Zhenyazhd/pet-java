@@ -21,10 +21,14 @@
 .add-panel {
   margin-bottom: 2rem;
   padding: 1.25rem 1.5rem;
-  border: 1px solid var(--border);
-  border-left: 2px solid var(--accent);
   border-radius: var(--radius-lg);
-  background: var(--card);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.02)),
+    var(--card);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.06),
+    0 2px 20px rgb(0 0 0 / 0.4),
+    0 0 40px rgb(0 0 0 / 0.2);
 }
 
 .section-title {
@@ -217,10 +221,14 @@
   align-items: flex-start;
   gap: 0.5rem;
   padding: 2rem;
-  border: 1px solid var(--border);
-  border-top: 2px solid var(--accent);
   border-radius: var(--radius-lg);
-  background: var(--card);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.02)),
+    var(--card);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.06),
+    0 2px 20px rgb(0 0 0 / 0.4),
+    0 0 40px rgb(0 0 0 / 0.2);
 }
 
 .empty h3 {

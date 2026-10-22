@@ -32,11 +32,12 @@ export function AppLayout() {
     }
   }
 
-  // The job matches pages are on the dark theme; the others follow as they are restyled.
+  // The job matches and vacancies pages are on the dark theme; the others follow as they are restyled.
   const onJobsPages = /^\/jobs(\/|$)/.test(location.pathname)
+  const dark = onJobsPages || /^\/vacancies(\/|$)/.test(location.pathname)
 
   return (
-    <div className={onJobsPages ? 'shell shell--dark' : 'shell'}>
+    <div className={dark ? 'shell shell--dark' : 'shell'}>
       <a className="skip-link" href="#main">
         Skip to content
       </a>
