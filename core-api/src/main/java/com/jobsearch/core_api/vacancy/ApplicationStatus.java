@@ -1,4 +1,4 @@
-package com.jobsearch.core_api.jobapplication;
+package com.jobsearch.core_api.vacancy;
 
 public enum ApplicationStatus {
 	NOT_APPLIED,

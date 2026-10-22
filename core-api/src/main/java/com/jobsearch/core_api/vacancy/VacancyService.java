@@ -4,7 +4,7 @@ import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.common.NotFoundException;
 import com.jobsearch.core_api.common.Strings;
 import com.jobsearch.core_api.common.UniqueConstraint;
-import com.jobsearch.core_api.jobapplication.JobApplication;
+import com.jobsearch.core_api.vacancy.VacancyDtos.ApplicationRequest;
 import com.jobsearch.core_api.vacancy.VacancyDtos.ApplicationSummaryResponse;
 import com.jobsearch.core_api.vacancy.VacancyDtos.RequirementRequest;
 import com.jobsearch.core_api.vacancy.VacancyDtos.RequirementResponse;
@@ -55,7 +55,6 @@ public class VacancyService {
 		Vacancy vacancy = new Vacancy();
 		vacancy.setUserId(userId);
 		applyRequest(vacancy, request);
-		vacancy.setApplication(new JobApplication());
 		Vacancy saved = saveChecked(vacancy);
 		log.info(
 				"Created vacancy id={} userId={} title={} applicationStatus=NOT_APPLIED",
@@ -121,21 +120,30 @@ public class VacancyService {
 		vacancy.syncRequirements(skills);
 	}
 
+	public ApplicationSummaryResponse updateApplication(Long id, ApplicationRequest request) {
+		long userId = currentUserService.requireUserId();
+		Vacancy vacancy = vacancyRepository.findByIdAndUserId(id, userId)
+				.orElseThrow(() -> new NotFoundException("Vacancy not found: " + id));
+		vacancy.setApplicationStatus(request.status());
+		if (request.notes() != null) {
+			vacancy.setNotes(Strings.blankToNull(request.notes()));
+		}
+		log.info("Updated application vacancyId={} userId={} status={}", id, userId, vacancy.getApplicationStatus());
+		return toSummary(vacancy);
+	}
+
+	private static ApplicationSummaryResponse toSummary(Vacancy vacancy) {
+		return new ApplicationSummaryResponse(
+				vacancy.getApplicationStatus().name(),
+				vacancy.getApplicationStatus().isApplied(),
+				vacancy.getNotes()
+		);
+	}
+
 	private VacancyResponse toResponse(Vacancy vacancy) {
 		List<RequirementResponse> requirements = vacancy.getRequirements().stream()
 				.map(item -> new RequirementResponse(item.getId(), item.getName(), item.isRequired()))
 				.toList();
-
-		JobApplication application = vacancy.getApplication();
-		ApplicationSummaryResponse applicationSummary = null;
-		if (application != null) {
-			applicationSummary = new ApplicationSummaryResponse(
-					application.getId(),
-					application.getStatus().name(),
-					application.getStatus().isApplied(),
-					application.getNotes()
-			);
-		}
 
 		return new VacancyResponse(
 				vacancy.getId(),
@@ -145,7 +153,7 @@ public class VacancyService {
 				vacancy.getDescription(),
 				vacancy.getMatchPercent(),
 				requirements,
-				applicationSummary,
+				toSummary(vacancy),
 				vacancy.getCreatedAt().toString(),
 				vacancy.getUpdatedAt().toString()
 		);

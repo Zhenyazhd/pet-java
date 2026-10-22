@@ -48,23 +48,16 @@ export function useVacancies() {
       const optimistic = (current: Vacancy): Vacancy => ({
         ...current,
         application: {
-          id: previous?.id ?? 0,
           status,
           notes: notes ?? previous?.notes ?? null,
         },
       })
       patch(vacancy.id, optimistic)
       try {
-        const saved = previous
-          ? await api.updateApplication(previous.id, { status, notes })
-          : await api.createApplication(vacancy.id, status)
+        const saved = await api.updateApplication(vacancy.id, { status, notes })
         patch(vacancy.id, (current) => ({
           ...current,
-          application: {
-            id: saved.id,
-            status: saved.status,
-            notes: saved.notes,
-          },
+          application: { status: saved.status, notes: saved.notes },
         }))
       } catch (err) {
         patch(vacancy.id, (current) => ({ ...current, application: previous }))

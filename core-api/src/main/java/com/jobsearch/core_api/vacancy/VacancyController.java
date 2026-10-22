@@ -3,6 +3,8 @@ package com.jobsearch.core_api.vacancy;
 import com.jobsearch.core_api.jobs.JobDtos.JobResponse;
 import com.jobsearch.core_api.jobs.JobService;
 import com.jobsearch.core_api.jobs.JobType;
+import com.jobsearch.core_api.vacancy.VacancyDtos.ApplicationRequest;
+import com.jobsearch.core_api.vacancy.VacancyDtos.ApplicationSummaryResponse;
 import com.jobsearch.core_api.vacancy.VacancyDtos.VacancyImportRequest;
 import com.jobsearch.core_api.vacancy.VacancyDtos.VacancyRequest;
 import com.jobsearch.core_api.vacancy.VacancyDtos.VacancyResponse;
@@ -70,6 +72,11 @@ public class VacancyController {
 	@PutMapping("/{id}")
 	public VacancyResponse update(@PathVariable Long id, @Valid @RequestBody VacancyRequest request) {
 		return vacancyService.update(id, request);
+	}
+
+	@PutMapping("/{id}/application")
+	public ApplicationSummaryResponse updateApplication(@PathVariable Long id, @Valid @RequestBody ApplicationRequest request) {
+		return vacancyService.updateApplication(id, request);
 	}
 
 	@DeleteMapping("/{id}")
