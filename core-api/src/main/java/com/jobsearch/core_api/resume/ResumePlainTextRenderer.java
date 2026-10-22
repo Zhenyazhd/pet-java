@@ -9,15 +9,14 @@ import org.springframework.stereotype.Component;
 
 /**
  * Flattens structured resume JSON into the plain text the PDF is expected to contain, for the ats-worker's
- * readability check. It follows {@link ResumeLatexRenderer}: the same section headings and the same order of the parts
- * of a line (the template puts the dates of a role next to its title and the company on the next line), because
- * the check compares the order of the words.
+ * readability check. The headings match {@code typst/resume.typ}, and a role is written as the template typesets it
+ * (title and dates on one line, the company on the next), because the check compares the order of the words.
  */
 @Component
 public class ResumePlainTextRenderer {
 
 	public String render(ResumeDocument r) {
-		ResumeLatexRenderer.SectionTitles titles = ResumeLatexRenderer.SectionTitles.forLocale(r.locale());
+		Titles titles = Titles.forLocale(r.locale());
 		StringBuilder sb = new StringBuilder(4096);
 		line(sb, r.name());
 		line(sb, r.headline());
@@ -108,5 +107,33 @@ public class ResumePlainTextRenderer {
 
 	private static boolean blank(String s) {
 		return s == null || s.isBlank();
+	}
+
+	/** The section headings of typst/resume.typ. */
+	private record Titles(
+			String profile,
+			String experience,
+			String education,
+			String achievements,
+			String skills
+	) {
+		static Titles forLocale(String locale) {
+			if (locale != null && locale.strip().equalsIgnoreCase("en")) {
+				return new Titles(
+						"Profile",
+						"Professional Experience",
+						"Education",
+						"Achievements",
+						"Skills"
+				);
+			}
+			return new Titles(
+					"Profil",
+					"Expérience professionnelle",
+					"Formation",
+					"Réalisations",
+					"Compétences"
+			);
+		}
 	}
 }

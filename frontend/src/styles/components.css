@@ -405,6 +405,50 @@ select.input {
   color: var(--accent-strong);
 }
 
+/* ---------- AI assistant instructions ---------- */
+.prompts {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 52rem;
+  margin-top: 2.5rem;
+}
+
+.prompts__title {
+  margin: 0 0 0.5rem;
+}
+
+.prompts__block {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.prompts__head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.prompts__name {
+  margin: 0;
+}
+
+.prompts__text {
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+}
+
+.prompts__over {
+  color: var(--danger);
+}
+
+.prompts__warning {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--accent-strong);
+}
+
 /* ---------- Dialog ---------- */
 .dialog {
   width: calc(100% - 2rem);

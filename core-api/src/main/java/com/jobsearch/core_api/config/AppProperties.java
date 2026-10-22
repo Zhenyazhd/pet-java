@@ -17,7 +17,7 @@ public class AppProperties {
 	private final ExpensiveOpsRateLimit expensiveOpsRateLimit = new ExpensiveOpsRateLimit();
 	private final S3 s3 = new S3();
 	private final OpenRouter openRouter = new OpenRouter();
-	private final LatexWorker latexWorker = new LatexWorker();
+	private final PdfWorker pdfWorker = new PdfWorker();
 	private final AtsWorker atsWorker = new AtsWorker();
 
 	public boolean isStrictSecrets() {
@@ -64,8 +64,8 @@ public class AppProperties {
 		return openRouter;
 	}
 
-	public LatexWorker getLatexWorker() {
-		return latexWorker;
+	public PdfWorker getPdfWorker() {
+		return pdfWorker;
 	}
 
 	public AtsWorker getAtsWorker() {
@@ -137,14 +137,16 @@ public class AppProperties {
 		}
 	}
 
-	public static class LatexWorker {
-		/** Base URL of tools/latex-worker. */
+	public static class PdfWorker {
+		/** Base URL of tools/pdf-worker. */
 		private String baseUrl = "http://127.0.0.1:8090";
 		/** Shared secret sent as X-Worker-Token; required (core-api refuses to start without it). */
 		private String token = "";
 		private int connectTimeoutSeconds = 3;
 		/** Must be longer than the worker's own compile timeout (60s by default). */
 		private int readTimeoutSeconds = 75;
+		/** Read timeout of the quick compile the AI chat makes to measure page fit; the chat must not wait for long. */
+		private int layoutReadTimeoutSeconds = 6;
 
 		public String getBaseUrl() {
 			return baseUrl;
@@ -176,6 +178,14 @@ public class AppProperties {
 
 		public void setReadTimeoutSeconds(int readTimeoutSeconds) {
 			this.readTimeoutSeconds = readTimeoutSeconds;
+		}
+
+		public int getLayoutReadTimeoutSeconds() {
+			return layoutReadTimeoutSeconds;
+		}
+
+		public void setLayoutReadTimeoutSeconds(int layoutReadTimeoutSeconds) {
+			this.layoutReadTimeoutSeconds = layoutReadTimeoutSeconds;
 		}
 	}
 

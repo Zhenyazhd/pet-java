@@ -19,7 +19,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata: { name: worker-from-core-api }
 spec:
-  podSelector: { matchLabels: { app: latex-worker } }
+  podSelector: { matchLabels: { app: pdf-worker } }
   policyTypes: [Ingress]
   ingress:
     - from: [{ podSelector: { matchLabels: { app: core-api } } }]
@@ -51,7 +51,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata: { name: no-egress-worker }
 spec:
-  podSelector: { matchLabels: { app: latex-worker } }
+  podSelector: { matchLabels: { app: pdf-worker } }
   policyTypes: [Egress]
   egress: []
 ---

@@ -24,6 +24,16 @@ export type Profile = {
   careerPath: string
 }
 
+export type PromptPart = {
+  key: string
+  title: string
+  description: string
+  defaultText: string
+  customText: string | null
+  customized: boolean
+  defaultChanged: boolean
+}
+
 export const APPLICATION_STATUSES = [
   'NOT_APPLIED',
   'APPLIED',

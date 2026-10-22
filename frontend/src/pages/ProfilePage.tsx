@@ -4,8 +4,10 @@ import type { Profile } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { Banner } from '../components/ui/Banner'
 import { Button } from '../components/ui/Button'
+import { PromptsCard } from '../components/profile/PromptsCard'
 import { Field, TextAreaField } from '../components/ui/Field'
 import { PageHeader } from '../components/ui/PageHeader'
+import { useBeforeUnload } from '../lib/useBeforeUnload'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 const CAREER_PATH_MAX = 20_000
@@ -52,12 +54,7 @@ export function ProfilePage() {
 
   useEffect(() => load(), [load])
 
-  useEffect(() => {
-    if (!dirty) return
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault()
-    window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
-  }, [dirty])
+  useBeforeUnload(dirty)
 
   function update<K extends keyof Profile>(key: K, value: Profile[K]) {
     setProfile((prev) => ({ ...prev, [key]: value }))
@@ -161,6 +158,8 @@ export function ProfilePage() {
           </div>
         </form>
       )}
+
+      <PromptsCard />
     </section>
   )
 }

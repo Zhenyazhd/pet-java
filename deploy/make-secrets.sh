@@ -16,11 +16,11 @@ kubectl get ns cvhelper >/dev/null 2>&1 || kubectl create ns cvhelper
 # Keep existing generated values so a re-run does not lock the app out of its own database.
 existing() { kubectl -n cvhelper get secret cvhelper-secrets -o "jsonpath={.data.$1}" 2>/dev/null | base64 -d 2>/dev/null || true; }
 PG="$(existing POSTGRES_PASSWORD)"; PG="${PG:-$(rand)}"
-WT="$(existing LATEX_WORKER_TOKEN)"; WT="${WT:-$(rand)}"
+WT="$(existing PDF_WORKER_TOKEN)"; WT="${WT:-$(rand)}"
 
 kubectl -n cvhelper create secret generic cvhelper-secrets \
   --from-literal=POSTGRES_PASSWORD="$PG" \
-  --from-literal=LATEX_WORKER_TOKEN="$WT" \
+  --from-literal=PDF_WORKER_TOKEN="$WT" \
   --from-literal=OPENROUTER_API_KEY="$OPENROUTER_API_KEY" \
   --from-literal=APP_ADMIN_EMAIL="$APP_ADMIN_EMAIL" \
   --from-literal=APP_BOOTSTRAP_PASSWORD="$APP_BOOTSTRAP_PASSWORD" \

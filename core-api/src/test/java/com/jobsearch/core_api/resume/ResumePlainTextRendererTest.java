@@ -26,7 +26,7 @@ class ResumePlainTextRendererTest {
 	void aRoleIsWrittenAsTheTemplateTypesetsIt() {
 		String text = new ResumePlainTextRenderer().render(resume("en"));
 
-		// title and dates on one line, the company under them (see the \role macro of ResumeLatexRenderer)
+		// title and dates on one line, the company under them (see entry() in typst/resume.typ)
 		assertTrue(text.contains("Senior Engineer — 2020 – 2024\nAcme Corp, Paris\n- Built a gateway"), text);
 		assertTrue(text.contains("BSc Computer Science — Munich\nTU Munich\nWith distinction"), text);
 	}

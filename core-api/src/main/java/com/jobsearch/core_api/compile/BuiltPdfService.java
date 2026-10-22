@@ -7,8 +7,8 @@ import com.jobsearch.core_api.jobs.JobService;
 import com.jobsearch.core_api.jobs.JobStatus;
 import com.jobsearch.core_api.jobs.JobType;
 import com.jobsearch.core_api.resume.ResumeDtos.ResumeDocument;
-import com.jobsearch.core_api.resume.ResumeLatexRenderer;
 import com.jobsearch.core_api.resume.ResumeService;
+import com.jobsearch.core_api.resume.ResumeTypstRenderer;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
@@ -22,12 +22,12 @@ public class BuiltPdfService {
 
 	private final JobService jobService;
 	private final ResumeService resumeService;
-	private final ResumeLatexRenderer latexRenderer;
+	private final ResumeTypstRenderer typstRenderer;
 
-	public BuiltPdfService(JobService jobService, ResumeService resumeService, ResumeLatexRenderer latexRenderer) {
+	public BuiltPdfService(JobService jobService, ResumeService resumeService, ResumeTypstRenderer typstRenderer) {
 		this.jobService = jobService;
 		this.resumeService = resumeService;
-		this.latexRenderer = latexRenderer;
+		this.typstRenderer = typstRenderer;
 	}
 
 	/**
@@ -43,7 +43,7 @@ public class BuiltPdfService {
 		}
 		ResumeDocument resume = resumeService.get();
 		String sourceHash = compile.getDedupeKey();
-		if (!Hashes.sha256(latexRenderer.render(resume)).equals(sourceHash)) {
+		if (!Hashes.sha256(typstRenderer.render(resume)).equals(sourceHash)) {
 			throw new ConflictException("The resume changed after this PDF was built. Build the PDF again.");
 		}
 		return new BuiltPdf(sourceHash, resume);

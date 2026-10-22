@@ -15,11 +15,13 @@ import com.jobsearch.core_api.common.BadRequestException;
 import com.jobsearch.core_api.common.ServiceUnavailableException;
 import com.jobsearch.core_api.profile.ProfileDtos.ProfileResponse;
 import com.jobsearch.core_api.profile.ProfileService;
+import com.jobsearch.core_api.profile.UserPromptService;
 import com.jobsearch.core_api.resume.ResumeDtos.ResumeDocument;
 import com.jobsearch.core_api.resume.ResumeService;
 import jakarta.validation.Validation;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -32,6 +34,7 @@ class ResumeAiServiceTest {
 
 	private final OpenRouterClient openRouterClient = mock(OpenRouterClient.class);
 	private ResumeService resumeService;
+	private UserPromptService userPromptService;
 	private ResumeAiService service;
 
 	@BeforeEach
@@ -41,8 +44,9 @@ class ResumeAiServiceTest {
 		when(resumeService.get()).thenReturn(new ResumeDocument(
 				"Ada", "Engineer", "", "ada@example.com", "", "", "", List.of(), List.of(), List.of(), List.of(), "en", 1));
 		when(profileService.getProfile()).thenReturn(new ProfileResponse("Ada", "ada@example.com", ""));
+		userPromptService = mock(UserPromptService.class);
 		JsonMapper mapper = JsonMapper.builder().build();
-		service = new ResumeAiService(openRouterClient, resumeService, profileService, mapper,
+		service = new ResumeAiService(openRouterClient, resumeService, profileService, userPromptService, mapper,
 				new ProposedValidator(mapper, Validation.buildDefaultValidatorFactory().getValidator()));
 	}
 
@@ -177,6 +181,28 @@ class ResumeAiServiceTest {
 
 	private String promptSent() {
 		return captured(1);
+	}
+
+	@Test
+	void aCustomPartReachesTheModel() {
+		when(userPromptService.customTexts()).thenReturn(Map.of(PromptPart.VACANCY, "  MY OWN VACANCY RULES\n"));
+		answerWith(new ChatResult.Answer("{\"message\": \"Hi\", \"proposed\": null}"));
+
+		service.suggest(HELLO);
+
+		String system = systemSent();
+		assertTrue(system.contains("\n\nMY OWN VACANCY RULES\n\n"), system);
+		assertTrue(!system.contains(PromptPart.VACANCY.defaultText()));
+		assertTrue(system.contains(PromptPart.TRUTHFULNESS.defaultText()));
+	}
+
+	@Test
+	void withoutCustomPartsTheDefaultPromptIsSent() {
+		answerWith(new ChatResult.Answer("{\"message\": \"Hi\", \"proposed\": null}"));
+
+		service.suggest(HELLO);
+
+		assertEquals(SystemPromptComposer.defaultPrompt(), systemSent());
 	}
 
 	private String systemSent() {

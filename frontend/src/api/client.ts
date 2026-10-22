@@ -13,6 +13,7 @@ import type {
   JobApplication,
   LoginRequest,
   Profile,
+  PromptPart,
   RegisterRequest,
   Vacancy,
   VacancyImportRequest,
@@ -193,6 +194,15 @@ export const api = {
   getProfile: () => request<Profile>('/api/profile'),
 
   saveProfile: (profile: Profile) => request<Profile>('/api/profile', json('PUT', profile)),
+
+  getPromptParts: (signal?: AbortSignal) =>
+    request<PromptPart[]>('/api/profile/prompts', undefined, { signal }),
+
+  savePromptPart: (key: string, text: string) =>
+    request<PromptPart>(`/api/profile/prompts/${encodeURIComponent(key)}`, json('PUT', { text })),
+
+  resetPromptPart: (key: string) =>
+    request<void>(`/api/profile/prompts/${encodeURIComponent(key)}`, { method: 'DELETE' }),
 
   getResume: () => request<ResumeDocument>('/api/resume'),
 

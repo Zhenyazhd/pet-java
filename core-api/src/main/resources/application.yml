@@ -82,10 +82,10 @@ app:
     read-timeout-seconds: ${OPENROUTER_READ_TIMEOUT_SECONDS:90}
     max-concurrent-requests: ${OPENROUTER_MAX_CONCURRENT_REQUESTS:20}
     max-tokens: ${OPENROUTER_MAX_TOKENS:8000}
-  latex-worker:
-    base-url: ${LATEX_WORKER_BASE_URL:http://127.0.0.1:8090}
-    token: ${LATEX_WORKER_TOKEN:}
-    read-timeout-seconds: ${LATEX_WORKER_READ_TIMEOUT_SECONDS:75}
+  pdf-worker:
+    base-url: ${PDF_WORKER_BASE_URL:http://127.0.0.1:8090}
+    token: ${PDF_WORKER_TOKEN:}
+    read-timeout-seconds: ${PDF_WORKER_READ_TIMEOUT_SECONDS:75}
   ats-worker:
     # The PDF readability check and the vacancy match need the separate tools/ats-worker; off unless you run it.
     enabled: ${ATS_WORKER_ENABLED:false}

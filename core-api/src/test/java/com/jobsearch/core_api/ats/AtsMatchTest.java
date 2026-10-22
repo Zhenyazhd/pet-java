@@ -172,7 +172,7 @@ class AtsMatchTest {
 
 	/** A finished PDF build of the current resume, with the PDF in the cache. */
 	private UUID builtPdf() {
-		String hash = Hashes.sha256(resumeService.toLatex());
+		String hash = Hashes.sha256(resumeService.toTypst());
 		cacheRepository.upsert(hash, PDF);
 		return UUID.fromString(jobService.enqueueDone(JobType.RESUME_PDF, hash).id());
 	}
