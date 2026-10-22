@@ -10,7 +10,7 @@ import type {
   ApplicationStatus,
   AuthUser,
   Job,
-  JobApplication,
+  ApplicationSummary,
   JobMatchPage,
   JobMatchQuery,
   JobRun,
@@ -286,9 +286,6 @@ export const api = {
   markJobMatchSeen: (id: number | string) =>
     request<void>(`/api/job-search/matches/${encodeURIComponent(id)}/seen`, { method: 'POST' }),
 
-  createApplication: (vacancyId: number, status: ApplicationStatus) =>
-    request<JobApplication>('/api/applications', json('POST', { vacancyId, status })),
-
-  updateApplication: (id: number, changes: { status: ApplicationStatus; notes?: string }) =>
-    request<JobApplication>(`/api/applications/${id}`, json('PUT', changes)),
+  updateApplication: (vacancyId: number, changes: { status: ApplicationStatus; notes?: string }) =>
+    request<ApplicationSummary>(`/api/vacancies/${vacancyId}/application`, json('PUT', changes)),
 }
