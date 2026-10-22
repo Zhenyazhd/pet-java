@@ -50,7 +50,7 @@ a:hover {
 }
 
 ::selection {
-  background: var(--accent-muted);
+  background: var(--selection);
 }
 
 .small-caps {

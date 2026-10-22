@@ -32,12 +32,10 @@ export function AppLayout() {
     }
   }
 
-  // Everything but the profile page is on the dark theme; the profile page follows when it is restyled.
   const onJobsPages = /^\/jobs(\/|$)/.test(location.pathname)
-  const dark = /^\/(jobs|vacancies|resume)(\/|$)/.test(location.pathname)
 
   return (
-    <div className={dark ? 'shell shell--dark' : 'shell'}>
+    <div className="shell">
       <a className="skip-link" href="#main">
         Skip to content
       </a>
