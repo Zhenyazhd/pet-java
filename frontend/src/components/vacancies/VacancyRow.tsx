@@ -1,3 +1,4 @@
+import { errorMessage } from '../../lib/abort'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ApplicationStatus, Vacancy } from '../../api/types'
@@ -18,7 +19,7 @@ export function VacancyRow({ vacancy, onStatusChange }: VacancyRowProps) {
     try {
       await onStatusChange(vacancy, next)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not change the status')
+      setError(errorMessage(err, 'Could not change the status'))
     }
   }
 

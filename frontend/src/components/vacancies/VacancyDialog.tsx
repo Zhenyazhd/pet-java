@@ -1,3 +1,4 @@
+import { errorMessage } from '../../lib/abort'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ApplicationStatus, Vacancy } from '../../api/types'
@@ -42,7 +43,7 @@ export function VacancyDialog({
       await action()
       return true
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setError(errorMessage(err, 'Something went wrong'))
       return false
     } finally {
       setBusy(false)

@@ -1,3 +1,5 @@
+import { errorMessage } from '../../lib/abort'
+import { formatCounter } from '../../lib/format'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
 import { importVacancy } from '../../lib/vacancies/importVacancy'
@@ -45,7 +47,7 @@ export function AddVacancyForm({ onSaved, findSavedByUrl }: AddVacancyFormProps)
         await onSaved(savedId)
         return
       }
-      setError(err instanceof Error ? err.message : 'The vacancy could not be saved.')
+      setError(errorMessage(err, 'The vacancy could not be saved.'))
     } finally {
       setPending(false)
     }
@@ -68,7 +70,7 @@ export function AddVacancyForm({ onSaved, findSavedByUrl }: AddVacancyFormProps)
       <TextAreaField
         label="Posting text"
         hint="Paste the whole posting. AI picks out the title, company, requirements and description to save."
-        counter={`${pastedText.length.toLocaleString('en-US')} / ${POSTING_MAX.toLocaleString('en-US')}`}
+        counter={`${formatCounter(pastedText.length, POSTING_MAX)}`}
         rows={10}
         value={pastedText}
         onChange={(e) => setPastedText(e.target.value)}

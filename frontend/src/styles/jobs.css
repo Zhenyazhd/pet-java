@@ -119,7 +119,7 @@
 }
 
 .run-summary--succeeded {
-  color: var(--ok);
+  color: var(--foreground);
 }
 
 .run-summary--failed {

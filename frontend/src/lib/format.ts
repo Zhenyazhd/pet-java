@@ -12,3 +12,8 @@ export function safeHttpUrl(url: string): string | null {
     return null
   }
 }
+
+/** "1,234 / 20,000": the character counter under a limited text field. */
+export function formatCounter(length: number, max: number): string {
+  return `${length.toLocaleString('en-US')} / ${max.toLocaleString('en-US')}`
+}

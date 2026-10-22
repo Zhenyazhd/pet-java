@@ -1,3 +1,4 @@
+import { errorMessage } from '../lib/abort'
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, isUnauthorized, setUnauthorizedListener } from '../api/client'
@@ -41,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Only a 401 means "not signed in". A dropped network or a restarting server says nothing about the
         // session, and treating it as a sign-out would send a signed-in user to the login page.
         setUser(null)
-        setSessionError(isUnauthorized(err) ? null : err instanceof Error ? err.message : 'Could not check your session')
+        setSessionError(isUnauthorized(err) ? null : errorMessage(err, 'Could not check your session'))
       })
       .finally(() => !cancelled && setReady(true))
     return () => {

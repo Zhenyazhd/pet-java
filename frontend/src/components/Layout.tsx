@@ -1,3 +1,4 @@
+import { errorMessage } from '../lib/abort'
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
@@ -26,7 +27,7 @@ export function AppLayout() {
     try {
       await logout()
     } catch (err) {
-      setSignOutError(err instanceof Error ? err.message : 'Sign-out failed. Try again.')
+      setSignOutError(errorMessage(err, 'Sign-out failed. Try again.'))
     } finally {
       setSigningOut(false)
     }

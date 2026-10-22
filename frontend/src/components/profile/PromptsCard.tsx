@@ -1,3 +1,4 @@
+import { formatCounter } from '../../lib/format'
 import { useId, useState } from 'react'
 import type { PromptPart } from '../../api/types'
 import { errorMessage } from '../../lib/abort'
@@ -130,7 +131,7 @@ function PromptBlock({ part, onSave, onReset }: BlockProps) {
             id={`${id}-count`}
             className={classNames('field__counter small-caps', over && 'prompts__over')}
           >
-            {length.toLocaleString('en-US')} / {PROMPT_MAX.toLocaleString('en-US')}
+            {formatCounter(length, PROMPT_MAX)}
             {over && `, ${(length - PROMPT_MAX).toLocaleString('en-US')} over`}
           </span>
         </div>

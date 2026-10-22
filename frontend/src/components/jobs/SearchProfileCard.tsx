@@ -1,3 +1,4 @@
+import { formatCounter } from '../../lib/format'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import type { JobSearchProfile, JobSearchProfileInput } from '../../api/types'
@@ -66,7 +67,7 @@ export function SearchProfileCard({
           label="What you are looking for"
           hint="Seniority, stack, kind of company, what to avoid. The fuller, the better the ranking."
           placeholder="Example: Senior backend engineer, Java or Kotlin, product company with fewer than 500 people. Remote or hybrid. No consulting or outsourcing."
-          counter={`${values.expectations.length.toLocaleString('en-US')} / ${EXPECTATIONS_MAX.toLocaleString('en-US')}`}
+          counter={`${formatCounter(values.expectations.length, EXPECTATIONS_MAX)}`}
           rows={5}
           value={values.expectations}
           maxLength={EXPECTATIONS_MAX}

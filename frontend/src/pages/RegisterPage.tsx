@@ -1,3 +1,4 @@
+import { errorMessage } from '../lib/abort'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
@@ -45,7 +46,7 @@ export function RegisterPage() {
         inviteCode: invite,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed')
+      setError(errorMessage(err, 'Registration failed'))
     } finally {
       setPending(false)
     }

@@ -27,8 +27,8 @@ const CONTACTS = [
 
 export function ReadabilityPanel({ available, checking, blocked, report, error, note, onCheck }: ReadabilityPanelProps) {
   return (
-    <section className="match" aria-labelledby="readability-title">
-      <div className="match__bar">
+    <section className="match-report" aria-labelledby="readability-title">
+      <div className="match-report__bar">
         <div>
           <h2 id="readability-title" className="section-title">
             ATS readability
@@ -58,14 +58,14 @@ export function ReadabilityPanel({ available, checking, blocked, report, error, 
 
       {report && (
         <div>
-          <p className="match__average">
-            <span className="match__score">{report.score}</span>
+          <p className="match-report__average">
+            <span className="match-report__score">{report.score}</span>
             <span className="small-caps"> / 100</span>
           </p>
           <p className="muted-line">{VERDICT[report.verdict]}</p>
 
           {report.issues.length > 0 && (
-            <ul className="match__suggestions">
+            <ul className="match-report__suggestions">
               {report.issues.map((issue, index) => (
                 <li key={`${issue.code}-${index}`}>
                   <p>
