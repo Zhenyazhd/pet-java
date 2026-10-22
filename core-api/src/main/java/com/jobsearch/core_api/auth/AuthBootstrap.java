@@ -51,7 +51,7 @@ public class AuthBootstrap implements ApplicationRunner {
 		}
 
 		AppUser user = appUserRepository.findByEmailIgnoreCase(adminEmail).orElseGet(() -> {
-			log.info("Creating bootstrap ADMIN email={}", adminEmail);
+			log.info("Creating bootstrap ADMIN");
 			AppUser created = new AppUser();
 			created.setEmail(adminEmail);
 			created.setDisplayName(Emails.localPart(adminEmail));
@@ -61,28 +61,21 @@ public class AuthBootstrap implements ApplicationRunner {
 
 		if (user.getRole() != UserRole.ADMIN) {
 			user.setRole(UserRole.ADMIN);
-			log.info("Promoted user id={} email={} to ADMIN", user.getId(), adminEmail);
+			log.info("Promoted user id={} to ADMIN", user.getId());
 		}
 
 		boolean hasPassword = user.getPasswordHash() != null && !user.getPasswordHash().isBlank();
 		String bootstrapPassword = appProperties.getBootstrapPassword();
 		if (!hasPassword && bootstrapPassword != null && !bootstrapPassword.isBlank()) {
-			requireStrong(bootstrapPassword);
+			SecretStrength.require("APP_BOOTSTRAP_PASSWORD", bootstrapPassword);
 			user.setPasswordHash(passwordEncoder.encode(bootstrapPassword));
 			hasPassword = true;
-			log.info("Set bootstrap password for ADMIN email={}", adminEmail);
+			log.info("Set bootstrap password for ADMIN userId={}", user.getId());
 		}
 		if (!hasPassword) {
-			log.warn(
-					"ADMIN email={} has no password — set APP_BOOTSTRAP_PASSWORD or update the account before login",
-					adminEmail
-			);
+			log.warn("ADMIN has no password — set APP_BOOTSTRAP_PASSWORD or update the account before login");
 		}
 
 		appUserRepository.save(user);
-	}
-
-	private static void requireStrong(String password) {
-		SecretStrength.require("APP_BOOTSTRAP_PASSWORD", password);
 	}
 }

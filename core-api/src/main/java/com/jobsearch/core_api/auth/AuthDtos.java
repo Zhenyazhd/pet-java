@@ -17,6 +17,16 @@ public final class AuthDtos {
 			/** What this deployment offers, so the page can hide what is switched off instead of failing on click. */
 			Features features
 	) {
+
+		public static AuthUserResponse of(AppUserPrincipal principal, Features features) {
+			return new AuthUserResponse(
+					principal.getId(),
+					principal.getUsername(),
+					principal.getDisplayName(),
+					principal.getRole().name(),
+					features
+			);
+		}
 	}
 
 	public record Features(boolean atsMatch, boolean pdfReadability) {

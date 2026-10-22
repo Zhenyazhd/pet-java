@@ -5,19 +5,13 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 public interface InviteCodeRepository extends JpaRepository<InviteCode, Long> {
 
-	boolean existsByCodeIgnoreCase(String code);
-
 	List<InviteCode> findAllByOrderByCreatedAtDesc();
 
-	@Query("select count(c) > 0 from InviteCode c where lower(c.code) = lower(:code) and c.usedAt is null")
-	boolean existsAvailable(@Param("code") String code);
+	boolean existsByCodeAndUsedAtIsNull(String code);
 
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
-	@Query("select c from InviteCode c where lower(c.code) = lower(:code) and c.usedAt is null")
-	Optional<InviteCode> findAvailableForUpdate(@Param("code") String code);
+	Optional<InviteCode> findByCodeAndUsedAtIsNull(String code);
 }

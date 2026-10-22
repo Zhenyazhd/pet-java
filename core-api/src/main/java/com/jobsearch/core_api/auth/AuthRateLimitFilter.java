@@ -9,7 +9,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,12 +60,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 		long retryAfter = rateLimiter.tryAcquire(key, limit, WINDOW_MS);
 		if (retryAfter > 0) {
 			log.warn("Auth rate limit hit path={} ip={} retryAfter={}s", path, clientIp, retryAfter);
-			apiErrorResponses.write(
-					response,
-					HttpStatus.TOO_MANY_REQUESTS,
-					"Too many requests — try again later",
-					Map.of("Retry-After", String.valueOf(retryAfter))
-			);
+			apiErrorResponses.writeTooManyRequests(response, "Too many requests — try again later", retryAfter);
 			return;
 		}
 		filterChain.doFilter(request, response);

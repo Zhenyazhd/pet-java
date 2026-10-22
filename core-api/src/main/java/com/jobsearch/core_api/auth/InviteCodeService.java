@@ -6,6 +6,7 @@ import com.jobsearch.core_api.common.UnauthorizedException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -37,9 +38,8 @@ public class InviteCodeService {
 	@Transactional
 	public InviteCodeDtos.InviteCodeResponse create() {
 		long creatorId = currentUserService.requireUserId();
-		String code = generateUniqueCode();
 		InviteCode invite = new InviteCode();
-		invite.setCode(code);
+		invite.setCode(randomCode());
 		invite.setCreatedByUserId(creatorId);
 		InviteCode saved = inviteCodeRepository.save(invite);
 		log.info("Created invite code id={} by userId={}", saved.getId(), creatorId);
@@ -58,37 +58,28 @@ public class InviteCodeService {
 	}
 
 	public void requireAvailable(String rawCode) {
-		if (!inviteCodeRepository.existsAvailable(rawCode.strip())) {
+		if (!inviteCodeRepository.existsByCodeAndUsedAtIsNull(normalize(rawCode))) {
 			throw new UnauthorizedException("Invalid or already used invite code");
 		}
 	}
 
 	/**
-	 * Locks an unused invite for the current transaction. Call before creating the user so
+	 * Locks an unused invite for the current transaction (the caller must have one open). Call before creating the user so
 	 * invalid invites fail with 401 before any email-existence checks (no enumeration oracle).
 	 */
-	@Transactional
 	public InviteCode lockAvailable(String rawCode) {
-		return inviteCodeRepository.findAvailableForUpdate(rawCode.strip())
+		return inviteCodeRepository.findByCodeAndUsedAtIsNull(normalize(rawCode))
 				.orElseThrow(() -> new UnauthorizedException("Invalid or already used invite code"));
 	}
 
-	/** Marks a previously locked invite as used by {@code userId}. */
-	@Transactional
+	/** Marks a previously locked invite as used by {@code userId}; the open transaction flushes it. */
 	public void markUsed(InviteCode invite, Long userId) {
 		invite.setUsedAt(Instant.now());
 		invite.setUsedByUserId(userId);
-		inviteCodeRepository.save(invite);
 	}
 
-	private String generateUniqueCode() {
-		for (int attempt = 0; attempt < 20; attempt++) {
-			String candidate = randomCode();
-			if (!inviteCodeRepository.existsByCodeIgnoreCase(candidate)) {
-				return candidate;
-			}
-		}
-		throw new IllegalStateException("Failed to generate a unique invite code");
+	private static String normalize(String rawCode) {
+		return rawCode.strip().toUpperCase(Locale.ROOT);
 	}
 
 	private String randomCode() {

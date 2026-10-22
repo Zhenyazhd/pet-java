@@ -5,6 +5,8 @@ import com.jobsearch.core_api.auth.AuthDtos.Features;
 import com.jobsearch.core_api.auth.AuthDtos.LoginRequest;
 import com.jobsearch.core_api.auth.AuthDtos.RegisterRequest;
 import com.jobsearch.core_api.common.Emails;
+import com.jobsearch.core_api.common.FixedWindowRateLimiter;
+import com.jobsearch.core_api.common.TooManyRequestsException;
 import com.jobsearch.core_api.config.AppProperties;
 import com.jobsearch.core_api.common.UnauthorizedException;
 import com.jobsearch.core_api.common.UniqueConstraint;
@@ -13,6 +15,7 @@ import com.jobsearch.core_api.profile.AppUserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import java.time.Duration;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +46,8 @@ public class AuthService {
 	private final SecurityContextRepository securityContextRepository;
 	private final Features features;
 	private final TransactionTemplate transaction;
+	private final FixedWindowRateLimiter rateLimiter;
+	private final int loginFailuresPerMinute;
 
 	public AuthService(
 			AppUserRepository appUserRepository,
@@ -52,7 +57,8 @@ public class AuthService {
 			InviteCodeService inviteCodeService,
 			SecurityContextRepository securityContextRepository,
 			AppProperties appProperties,
-			PlatformTransactionManager transactionManager
+			PlatformTransactionManager transactionManager,
+			FixedWindowRateLimiter rateLimiter
 	) {
 		this.appUserRepository = appUserRepository;
 		this.currentUserService = currentUserService;
@@ -62,28 +68,38 @@ public class AuthService {
 		this.securityContextRepository = securityContextRepository;
 		this.features = new Features(appProperties.getAtsWorker().isEnabled(), appProperties.getAtsWorker().isEnabled());
 		this.transaction = new TransactionTemplate(transactionManager);
+		this.rateLimiter = rateLimiter;
+		this.loginFailuresPerMinute = appProperties.getAuthRateLimit().getLoginPerMinute();
 	}
 
 	@Transactional(readOnly = true)
 	public AuthUserResponse me() {
 		AppUser user = currentUserService.requireUser();
-		return new AuthUserResponse(user.getId(), user.getEmail(), user.getDisplayName(), user.getRole().name(), features);
+		return AuthUserResponse.of(AppUserPrincipal.of(user), features);
 	}
 
 	public AuthUserResponse login(LoginRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+		// Per account on top of the per-IP filter: guessing one password list from many addresses. Only failures count.
+		String email = Emails.normalize(request.email());
+		String failureKey = "login-failed|" + email;
+		long blockedFor = rateLimiter.retryAfterIfFull(failureKey, loginFailuresPerMinute);
+		if (blockedFor > 0) {
+			throw new TooManyRequestsException("Too many failed logins — try again later", Duration.ofSeconds(blockedFor));
+		}
 		try {
 			Authentication authentication = authenticationManager.authenticate(
 					new UsernamePasswordAuthenticationToken(
-							Emails.normalize(request.email()),
+							email,
 							request.password()
 					)
 			);
 			establishSession(authentication, httpRequest, httpResponse);
 			AppUserPrincipal principal = (AppUserPrincipal) authentication.getPrincipal();
 			log.info("User logged in userId={}", principal.getId());
-			return toResponse(principal);
+			return AuthUserResponse.of(principal, features);
 		}
 		catch (BadCredentialsException | DisabledException ex) {
+			rateLimiter.tryAcquire(failureKey, loginFailuresPerMinute, Duration.ofMinutes(1).toMillis());
 			throw new UnauthorizedException("Invalid email or password");
 		}
 	}
@@ -100,7 +116,7 @@ public class AuthService {
 
 		AppUserPrincipal principal = Objects.requireNonNull(transaction.execute(status -> createUser(request, passwordHash)));
 		// Before the session: if that fails the account still exists, and the log should say so.
-		log.info("Registered userId={} email={}", principal.getId(), principal.getUsername());
+		log.info("Registered userId={}", principal.getId());
 
 		Authentication authentication = new UsernamePasswordAuthenticationToken(
 				principal,
@@ -108,7 +124,7 @@ public class AuthService {
 				principal.getAuthorities()
 		);
 		establishSession(authentication, httpRequest, httpResponse);
-		return toResponse(principal);
+		return AuthUserResponse.of(principal, features);
 	}
 
 	/** One transaction: the invite is locked, the user created, the invite marked used. Any failure rolls all three back. */
@@ -132,13 +148,7 @@ public class AuthService {
 
 		inviteCodeService.markUsed(invite, saved.getId());
 
-		return new AppUserPrincipal(
-				saved.getId(),
-				saved.getEmail(),
-				saved.getDisplayName(),
-				saved.getPasswordHash(),
-				UserRole.USER
-		);
+		return AppUserPrincipal.of(saved);
 	}
 
 	public void logout(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
@@ -147,7 +157,6 @@ public class AuthService {
 		if (session != null) {
 			session.invalidate();
 		}
-		securityContextRepository.saveContext(SecurityContextHolder.createEmptyContext(), httpRequest, httpResponse);
 		log.info("User logged out");
 	}
 
@@ -166,15 +175,5 @@ public class AuthService {
 		context.setAuthentication(authentication);
 		SecurityContextHolder.setContext(context);
 		securityContextRepository.saveContext(context, httpRequest, httpResponse);
-	}
-
-	private AuthUserResponse toResponse(AppUserPrincipal principal) {
-		return new AuthUserResponse(
-				principal.getId(),
-				principal.getUsername(),
-				principal.getDisplayName(),
-				principal.getRole().name(),
-				features
-		);
 	}
 }

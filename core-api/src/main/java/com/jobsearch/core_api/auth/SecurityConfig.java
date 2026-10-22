@@ -19,7 +19,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -42,7 +41,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
 public class SecurityConfig {
 
 	@Bean
@@ -98,12 +96,13 @@ public class SecurityConfig {
 				.securityContext(context -> context.securityContextRepository(securityContextRepository()))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register").permitAll()
-						// permitAll so expired sessions can still clear cookies; CSRF header is still required.
+						// permitAll so logging out with an already expired session answers 204, not 401; CSRF header is still required.
 						.requestMatchers(HttpMethod.POST, "/api/auth/logout").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
 						.requestMatchers("/api/invite-codes", "/api/invite-codes/**").hasRole("ADMIN")
 						.requestMatchers("/api/**").authenticated()
-						.anyRequest().permitAll()
+						.requestMatchers("/actuator/health/**", "/error").permitAll()
+						.anyRequest().denyAll()
 				)
 				.exceptionHandling(ex -> ex
 						.authenticationEntryPoint((request, response, authException) ->

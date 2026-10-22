@@ -1,7 +1,10 @@
 package com.jobsearch.core_api.auth;
 
+import com.jobsearch.core_api.profile.AppUser;
 import java.util.Collection;
 import java.util.List;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -21,6 +24,19 @@ public class AppUserPrincipal implements UserDetails {
 		this.displayName = displayName;
 		this.passwordHash = passwordHash;
 		this.role = role;
+	}
+
+	/** The signed-in user of the current request, or {@code null} when nobody is signed in. */
+	public static AppUserPrincipal current() {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		return authentication != null && authentication.getPrincipal() instanceof AppUserPrincipal principal
+				? principal
+				: null;
+	}
+
+	public static AppUserPrincipal of(AppUser user) {
+		return new AppUserPrincipal(
+				user.getId(), user.getEmail(), user.getDisplayName(), user.getPasswordHash(), user.getRole());
 	}
 
 	public Long getId() {
