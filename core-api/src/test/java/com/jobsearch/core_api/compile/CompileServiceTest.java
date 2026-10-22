@@ -10,7 +10,7 @@ import com.jobsearch.core_api.TestcontainersConfiguration;
 import com.jobsearch.core_api.common.ConflictException;
 import com.jobsearch.core_api.jobs.JobDtos.JobResponse;
 import com.jobsearch.core_api.jobs.JobRepository;
-import com.jobsearch.core_api.profile.AppUserRepository;
+import com.jobsearch.core_api.auth.AppUserRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

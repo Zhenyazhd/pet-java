@@ -1,6 +1,5 @@
 package com.jobsearch.core_api.auth;
 
-import com.jobsearch.core_api.profile.AppUser;
 import java.util.Collection;
 import java.util.List;
 import org.springframework.security.core.Authentication;

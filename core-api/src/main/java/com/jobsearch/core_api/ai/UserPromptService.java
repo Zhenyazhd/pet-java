@@ -1,10 +1,9 @@
-package com.jobsearch.core_api.profile;
+package com.jobsearch.core_api.ai;
 
-import com.jobsearch.core_api.ai.PromptPart;
 import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.common.BadRequestException;
 import com.jobsearch.core_api.common.NotFoundException;
-import com.jobsearch.core_api.profile.PromptDtos.PromptPartResponse;
+import com.jobsearch.core_api.ai.PromptDtos.PromptPartResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.EnumMap;

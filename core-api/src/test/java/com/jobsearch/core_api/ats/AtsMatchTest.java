@@ -25,7 +25,7 @@ import com.jobsearch.core_api.jobs.Job;
 import com.jobsearch.core_api.jobs.JobOutcome;
 import com.jobsearch.core_api.jobs.JobRepository;
 import com.jobsearch.core_api.jobs.JobType;
-import com.jobsearch.core_api.profile.AppUserRepository;
+import com.jobsearch.core_api.auth.AppUserRepository;
 import com.jobsearch.core_api.vacancy.Vacancy;
 import com.jobsearch.core_api.vacancy.VacancyRepository;
 import org.junit.jupiter.api.AfterEach;

@@ -12,7 +12,7 @@ import com.jobsearch.core_api.ats.AtsDtos.MatchRequest;
 import com.jobsearch.core_api.auth.AuthService;
 import com.jobsearch.core_api.common.ServiceUnavailableException;
 import com.jobsearch.core_api.jobs.JobRepository;
-import com.jobsearch.core_api.profile.AppUserRepository;
+import com.jobsearch.core_api.auth.AppUserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

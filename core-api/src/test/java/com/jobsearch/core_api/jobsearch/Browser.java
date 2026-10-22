@@ -2,8 +2,8 @@ package com.jobsearch.core_api.jobsearch;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.jobsearch.core_api.profile.AppUser;
-import com.jobsearch.core_api.profile.AppUserRepository;
+import com.jobsearch.core_api.auth.AppUser;
+import com.jobsearch.core_api.auth.AppUserRepository;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;

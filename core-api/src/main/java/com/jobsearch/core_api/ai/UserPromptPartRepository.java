@@ -1,4 +1,4 @@
-package com.jobsearch.core_api.profile;
+package com.jobsearch.core_api.ai;
 
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;

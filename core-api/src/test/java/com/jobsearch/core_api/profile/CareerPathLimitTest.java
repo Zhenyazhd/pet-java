@@ -1,5 +1,7 @@
 package com.jobsearch.core_api.profile;
 
+import com.jobsearch.core_api.auth.AppUser;
+import com.jobsearch.core_api.auth.AppUserRepository;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.jobsearch.core_api.TestcontainersConfiguration;

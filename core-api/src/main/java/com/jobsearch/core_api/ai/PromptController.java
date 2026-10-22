@@ -1,7 +1,7 @@
-package com.jobsearch.core_api.profile;
+package com.jobsearch.core_api.ai;
 
-import com.jobsearch.core_api.profile.PromptDtos.PromptPartRequest;
-import com.jobsearch.core_api.profile.PromptDtos.PromptPartResponse;
+import com.jobsearch.core_api.ai.PromptDtos.PromptPartRequest;
+import com.jobsearch.core_api.ai.PromptDtos.PromptPartResponse;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;

@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.jobsearch.core_api.TestcontainersConfiguration;
-import com.jobsearch.core_api.profile.AppUser;
-import com.jobsearch.core_api.profile.AppUserRepository;
+import com.jobsearch.core_api.auth.AppUser;
+import com.jobsearch.core_api.auth.AppUserRepository;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;

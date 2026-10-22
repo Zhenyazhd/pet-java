@@ -1,4 +1,4 @@
-package com.jobsearch.core_api.profile;
+package com.jobsearch.core_api.ai;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;

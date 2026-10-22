@@ -1,6 +1,5 @@
-package com.jobsearch.core_api.profile;
+package com.jobsearch.core_api.auth;
 
-import com.jobsearch.core_api.auth.UserRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

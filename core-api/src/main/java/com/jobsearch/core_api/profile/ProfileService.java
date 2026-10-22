@@ -1,6 +1,10 @@
 package com.jobsearch.core_api.profile;
 
+import com.jobsearch.core_api.auth.AppUser;
+import com.jobsearch.core_api.auth.AppUserRepository;
 import com.jobsearch.core_api.auth.CurrentUserService;
+import com.jobsearch.core_api.auth.UserRole;
+import com.jobsearch.core_api.common.BadRequestException;
 import com.jobsearch.core_api.common.Emails;
 import com.jobsearch.core_api.common.UniqueConstraint;
 import com.jobsearch.core_api.profile.ProfileDtos.ProfileRequest;
@@ -33,7 +37,12 @@ public class ProfileService {
 	public ProfileResponse saveProfile(ProfileRequest request) {
 		AppUser user = currentUserService.requireUser();
 		user.setDisplayName(request.displayName().strip());
-		user.setEmail(Emails.normalize(request.email()));
+		String email = Emails.normalize(request.email());
+		// AuthBootstrap makes whoever holds the configured admin email an ADMIN, so that address must stay with the admin.
+		if (user.getRole() == UserRole.ADMIN && !email.equals(user.getEmail())) {
+			throw new BadRequestException("The admin email is set in the configuration and cannot be changed here.");
+		}
+		user.setEmail(email);
 		user.setCareerPath(request.careerPath());
 		ProfileResponse saved = UniqueConstraint.onConflict(
 				"Email already registered",

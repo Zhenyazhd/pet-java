@@ -1,4 +1,4 @@
-package com.jobsearch.core_api.profile;
+package com.jobsearch.core_api.ai;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -8,7 +8,6 @@ public final class PromptDtos {
 	private PromptDtos() {
 	}
 
-	/** {@code customText} is null and {@code customized} false while the part has the default wording. */
 	public record PromptPartResponse(
 			String key,
 			String title,
@@ -16,7 +15,6 @@ public final class PromptDtos {
 			String defaultText,
 			String customText,
 			boolean customized,
-			/** Customised, and the default has been edited since the user saved: worth a look at the new default. */
 			boolean defaultChanged
 	) {
 	}

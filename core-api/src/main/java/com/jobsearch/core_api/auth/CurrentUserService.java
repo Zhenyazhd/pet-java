@@ -1,8 +1,6 @@
 package com.jobsearch.core_api.auth;
 
 import com.jobsearch.core_api.common.UnauthorizedException;
-import com.jobsearch.core_api.profile.AppUser;
-import com.jobsearch.core_api.profile.AppUserRepository;
 import org.springframework.stereotype.Component;
 
 /** Resolves the authenticated app_user for service-layer ownership checks. */

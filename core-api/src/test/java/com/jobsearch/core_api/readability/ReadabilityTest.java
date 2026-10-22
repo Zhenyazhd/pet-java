@@ -20,7 +20,7 @@ import com.jobsearch.core_api.jobs.JobOutcome;
 import com.jobsearch.core_api.jobs.JobRepository;
 import com.jobsearch.core_api.jobs.JobService;
 import com.jobsearch.core_api.jobs.JobType;
-import com.jobsearch.core_api.profile.AppUserRepository;
+import com.jobsearch.core_api.auth.AppUserRepository;
 import com.jobsearch.core_api.resume.ResumeService;
 import java.time.Instant;
 import java.util.UUID;
