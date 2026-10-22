@@ -10,8 +10,6 @@ import com.jobsearch.core_api.common.TooManyRequestsException;
 import com.jobsearch.core_api.config.AppProperties;
 import com.jobsearch.core_api.common.UnauthorizedException;
 import com.jobsearch.core_api.common.UniqueConstraint;
-import com.jobsearch.core_api.profile.AppUser;
-import com.jobsearch.core_api.profile.AppUserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;

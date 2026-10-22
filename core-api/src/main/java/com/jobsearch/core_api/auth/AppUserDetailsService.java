@@ -1,6 +1,5 @@
 package com.jobsearch.core_api.auth;
 
-import com.jobsearch.core_api.profile.AppUserRepository;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;

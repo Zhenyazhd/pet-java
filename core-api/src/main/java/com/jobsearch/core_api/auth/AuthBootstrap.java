@@ -3,8 +3,6 @@ package com.jobsearch.core_api.auth;
 import com.jobsearch.core_api.common.Emails;
 import com.jobsearch.core_api.config.AppProperties;
 import com.jobsearch.core_api.config.SecretStrength;
-import com.jobsearch.core_api.profile.AppUser;
-import com.jobsearch.core_api.profile.AppUserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
