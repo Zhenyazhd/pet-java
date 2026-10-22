@@ -1,5 +1,6 @@
 package com.jobsearch.core_api.readability;
 
+import com.jobsearch.core_api.common.RetryAfter;
 import java.util.Base64;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -44,7 +45,7 @@ public class AtsWorkerClient {
 								log.error("ats-worker refused the token: ATS_WORKER_TOKEN of core-api and the worker differ");
 								yield new AtsWorkerResult.Unavailable("ats-worker refused the token");
 							}
-							case 503 -> new AtsWorkerResult.Busy(retryAfterSeconds(response.getHeaders().getFirst("Retry-After")));
+							case 503 -> new AtsWorkerResult.Busy(RetryAfter.seconds(response.getHeaders().getFirst("Retry-After"), 1));
 							default -> new AtsWorkerResult.Unavailable("HTTP " + status);
 						};
 					});
@@ -62,15 +63,6 @@ public class AtsWorkerClient {
 		}
 		catch (JacksonException ex) {
 			return new AtsWorkerResult.Rejected("rejected", "");
-		}
-	}
-
-	private static long retryAfterSeconds(String header) {
-		try {
-			return header == null ? 1 : Math.max(1, Long.parseLong(header.strip()));
-		}
-		catch (NumberFormatException ex) {
-			return 1;
 		}
 	}
 }

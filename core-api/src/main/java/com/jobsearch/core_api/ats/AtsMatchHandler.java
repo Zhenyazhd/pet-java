@@ -104,6 +104,10 @@ public class AtsMatchHandler implements JobHandler {
 		return switch (scoreClient.fullScore(pdf, payload.vacancyText())) {
 			case ScoreResult.Report(JsonNode root) -> {
 				MatchResponse report = mapResponse(root);
+				if (report.platforms().isEmpty()) {
+					log.error("ATS match answer has no usable platform scores jobId={}", job.getId());
+					yield new JobOutcome.Failed("ats_failed", "The ATS score could not be computed. Please try again later.");
+				}
 				if (payload.vacancyId() != null) {
 					saveMatchPercent(job.getUserId(), payload.vacancyId(), report.averageScore());
 				}
@@ -139,9 +143,9 @@ public class AtsMatchHandler implements JobHandler {
 			for (JsonNode item : results) {
 				String system = item.path("system").asString("").strip();
 				String vendor = item.path("vendor").asString("").strip();
-				int score = clampScore(item.path("overallScore").asInt(0));
 				boolean passes = item.path("passesFilter").asBoolean(false);
-				if (!system.isBlank()) {
+				if (!system.isBlank() && item.path("overallScore").isNumber()) {
+					int score = clampScore(item.path("overallScore").asInt());
 					platforms.add(new PlatformScore(system, vendor, score, passes));
 				}
 

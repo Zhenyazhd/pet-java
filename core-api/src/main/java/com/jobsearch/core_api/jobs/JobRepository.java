@@ -19,6 +19,8 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
 
 	Optional<Job> findByIdAndUserIdAndType(UUID id, Long userId, JobType type);
 
+	long countByUserIdAndTypeAndCreatedAtAfter(Long userId, JobType type, Instant since);
+
 	Optional<Job> findFirstByUserIdAndTypeAndDedupeKeyAndStatusIn(
 			Long userId,
 			JobType type,

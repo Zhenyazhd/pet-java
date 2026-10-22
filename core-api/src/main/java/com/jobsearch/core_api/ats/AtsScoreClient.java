@@ -1,5 +1,6 @@
 package com.jobsearch.core_api.ats;
 
+import com.jobsearch.core_api.common.RetryAfter;
 import com.jobsearch.core_api.common.Strings;
 import com.jobsearch.core_api.config.AppProperties;
 import java.net.http.HttpConnectTimeoutException;
@@ -149,16 +150,7 @@ public class AtsScoreClient {
 			log.error("ats-worker has no LLM API key (OPENROUTER_API_KEY), scoring is not possible");
 			return new ScoreResult.Failed("The ATS score is not available yet.");
 		}
-		return new ScoreResult.Busy(retryAfterSeconds(retryAfter));
-	}
-
-	private static long retryAfterSeconds(String header) {
-		try {
-			return header == null ? 2 : Math.max(1, Long.parseLong(header.strip()));
-		}
-		catch (NumberFormatException ex) {
-			return 2;
-		}
+		return new ScoreResult.Busy(RetryAfter.seconds(retryAfter, 2));
 	}
 
 	private String errorMessage(String body) {

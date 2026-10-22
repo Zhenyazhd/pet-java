@@ -1,5 +1,6 @@
 package com.jobsearch.core_api.compile;
 
+import com.jobsearch.core_api.common.RetryAfter;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
@@ -33,7 +34,7 @@ public class PdfWorkerClient {
 						return switch (status) {
 							case 200 -> new WorkerResult.Pdf(body, layout(response.getHeaders()));
 							case 400, 413, 422 -> rejected(body);
-							case 503 -> new WorkerResult.Busy(retryAfterSeconds(response.getHeaders().getFirst("Retry-After")));
+							case 503 -> new WorkerResult.Busy(RetryAfter.seconds(response.getHeaders().getFirst("Retry-After"), 1));
 							default -> new WorkerResult.Unavailable("HTTP " + status);
 						};
 					});
@@ -74,14 +75,5 @@ public class PdfWorkerClient {
 	private WorkerResult.Rejected rejected(byte[] body) {
 		JsonNode error = objectMapper.readTree(body);
 		return new WorkerResult.Rejected(error.path("error").asString("rejected"), error.path("message").asString(""));
-	}
-
-	private static long retryAfterSeconds(String header) {
-		try {
-			return header == null ? 1 : Math.max(1, Long.parseLong(header.strip()));
-		}
-		catch (NumberFormatException ex) {
-			return 1;
-		}
 	}
 }

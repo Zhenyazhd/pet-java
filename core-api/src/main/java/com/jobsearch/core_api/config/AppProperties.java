@@ -253,6 +253,8 @@ public class AppProperties {
 		 * It covers the wait for the response only: if it expires the worker still finishes the call (and its cost).
 		 */
 		private int scoreTimeoutSeconds = 100;
+		/** Vacancy matches one user may queue in a rolling 24 hours; each one is a paid model call. 0 = no limit. */
+		private int maxMatchesPerUserPerDay = 20;
 
 		public boolean isEnabled() {
 			return enabled;
@@ -300,6 +302,14 @@ public class AppProperties {
 
 		public void setScoreTimeoutSeconds(int scoreTimeoutSeconds) {
 			this.scoreTimeoutSeconds = scoreTimeoutSeconds;
+		}
+
+		public int getMaxMatchesPerUserPerDay() {
+			return maxMatchesPerUserPerDay;
+		}
+
+		public void setMaxMatchesPerUserPerDay(int maxMatchesPerUserPerDay) {
+			this.maxMatchesPerUserPerDay = maxMatchesPerUserPerDay;
 		}
 	}
 

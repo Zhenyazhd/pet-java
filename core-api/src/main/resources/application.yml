@@ -93,6 +93,7 @@ app:
     token: ${ATS_WORKER_TOKEN:}
     read-timeout-seconds: ${ATS_WORKER_READ_TIMEOUT_SECONDS:30}
     score-timeout-seconds: ${ATS_WORKER_SCORE_TIMEOUT_SECONDS:100}
+    max-matches-per-user-per-day: ${ATS_WORKER_MAX_MATCHES_PER_USER_PER_DAY:20}
   job-list:
     # Blank token = the job matches feature is off (no startup failure).
     base-url: ${JOB_LIST_BASE_URL:http://127.0.0.1:8100}
