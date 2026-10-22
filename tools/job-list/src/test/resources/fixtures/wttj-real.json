@@ -1,0 +1,113 @@
+[
+ {
+  "id": "b28baa6c-4653-4ae6-a25c-059ab872c9d5",
+  "reference": "INSKI_bXaPVkq",
+  "name": "Stage développeur full-stack, plateforme SaaS d’innovation (H/F)",
+  "url": "https://www.welcometothejungle.com/en/companies/inskip/jobs/stage-developpement-fullstack",
+  "contractType": "internship",
+  "remote": "partial",
+  "salaryMin": null,
+  "salaryMax": null,
+  "salaryCurrency": "EUR",
+  "salaryPeriod": "yearly",
+  "publishedAt": "2026-10-19T12:05:35Z",
+  "offices": [
+   {
+    "city": "Paris",
+    "country_code": "FR",
+    "district": "Paris",
+    "address": "44 Rue La Fayette, 75009 Paris, France",
+    "zip_code": "75009"
+   }
+  ],
+  "organizationName": "INSKIP",
+  "description": "<h3>Contexte</h3><p>INSKIP édite une plateforme SaaS.</p>",
+  "skills": [
+   {
+    "name": {
+     "cs": "Definice cílů",
+     "en": "Goal setting",
+     "es": "Definición de objetivos",
+     "fr": "Définition d'objectifs",
+     "sk": "Definícia cieľov"
+    },
+    "reference": "ed5a4e01-caa7-4f08-a27c-164175ed77de"
+   }
+  ],
+  "tools": [
+   {
+    "name": "React",
+    "reference": "1a9e1db6-e201-4672-8000-80f3580a65bb"
+   },
+   {
+    "name": "GitHub",
+    "reference": "1f615f3e-51f5-404b-bca3-b849768e3020"
+   }
+  ]
+ },
+ {
+  "id": "feaddcad-8e67-4af4-b675-95a10281d248",
+  "reference": "EXALT_qMQ59m1",
+  "name": "Développeur Java (H/F) - @eXalt Azur",
+  "url": "https://www.welcometothejungle.com/en/companies/exalt/jobs/developpeur-java-h-f",
+  "contractType": "full_time",
+  "remote": "partial",
+  "salaryMin": 36000,
+  "salaryMax": 47000,
+  "salaryCurrency": "EUR",
+  "salaryPeriod": "yearly",
+  "publishedAt": "2026-10-19T08:05:42Z",
+  "offices": [
+   {
+    "city": "Valbonne",
+    "country_code": "FR"
+   }
+  ],
+  "organizationName": "eXalt",
+  "description": "<p>Nous cherchons un/e <strong>développeur Java</strong>.</p>",
+  "skills": [
+   {
+    "name": {
+     "en": "Teamwork",
+     "fr": "Travail d'équipe"
+    },
+    "reference": "333c308a"
+   },
+   {
+    "name": {
+     "fr": "Méthode Agile"
+    },
+    "reference": "62687f1c"
+   }
+  ],
+  "tools": [
+   {
+    "name": "Hibernate",
+    "reference": "0b1d5ef4"
+   }
+  ]
+ },
+ {
+  "id": "7b5c2cfc-6a48-4df1-9f63-3e3b93de9316",
+  "reference": "KIIRO_j83JzXg",
+  "name": "JINTO - AI Engineer / Ingénieur IA",
+  "url": "https://www.welcometothejungle.com/en/companies/kiiro/jobs/jinto-ai-engineer",
+  "contractType": "full_time",
+  "remote": "partial",
+  "salaryMin": 55000,
+  "salaryMax": 65000,
+  "salaryCurrency": "EUR",
+  "salaryPeriod": "yearly",
+  "publishedAt": "2026-10-19T07:23:19Z",
+  "offices": [
+   {
+    "city": "Paris",
+    "country_code": "FR"
+   }
+  ],
+  "organizationName": "Kiiro",
+  "description": "<p>Rejoignez Jinto.</p>",
+  "skills": [],
+  "tools": []
+ }
+]

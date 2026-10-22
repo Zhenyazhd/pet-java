@@ -2,9 +2,12 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
 import { GuestOnly, RequireAuth } from './auth/RouteGuards'
 import { AppLayout, AuthLayout } from './components/Layout'
+import { JobMatchesPage } from './pages/JobMatchesPage'
+import { JobsLayout } from './pages/JobsLayout'
 import { LoginPage } from './pages/LoginPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { RegisterPage } from './pages/RegisterPage'
+import { SearchProfilePage } from './pages/SearchProfilePage'
 import { ResumePage } from './pages/ResumePage'
 import { VacanciesPage } from './pages/VacanciesPage'
 
@@ -26,8 +29,12 @@ export default function App() {
 
           <Route element={<RequireAuth />}>
             <Route element={<AppLayout />}>
-              <Route index element={<Navigate to="/vacancies" replace />} />
+              <Route index element={<Navigate to="/jobs" replace />} />
               <Route path="vacancies/:id?" element={<VacanciesPage />} />
+              <Route path="jobs" element={<JobsLayout />}>
+                <Route index element={<JobMatchesPage />} />
+                <Route path="profile" element={<SearchProfilePage />} />
+              </Route>
               <Route path="resume" element={<ResumePage />} />
               <Route path="profile" element={<ProfilePage />} />
             </Route>

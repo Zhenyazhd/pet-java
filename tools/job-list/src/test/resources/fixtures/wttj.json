@@ -1,0 +1,48 @@
+[
+  {
+    "id": "ed60e86c-707f-434e-bb10-17eeba802759",
+    "name": "Responsable du service logistique H/F",
+    "url": "https://www.welcometothejungle.com/en/companies/elis-france/jobs/responsable-du-service-logistique-h-f_saint-lg",
+    "contractType": "full_time",
+    "remote": "partial",
+    "language": "fr",
+    "salaryMin": 45000.0,
+    "salaryMax": 50000.0,
+    "salaryCurrency": "EUR",
+    "salaryPeriod": "yearly",
+    "experienceLevel": 5.0,
+    "publishedAt": "2026-02-27T22:39:00Z",
+    "category": "Transport & Logistics",
+    "summary": "Rejoignez Elis...",
+    "offices": [
+      {"city": "Saint-Louis", "country_code": "FR", "district": "Haut-Rhin", "address": "Saint-Louis, Grand Est, France", "zip_code": "68300"},
+      {"city": "Mulhouse", "country_code": "FR", "district": "Haut-Rhin", "address": "Mulhouse, Grand Est, France", "zip_code": "68100"}
+    ],
+    "organizationName": "Elis",
+    "description": "<p>Ne venez pas chez Elis...<br/>- Vous construisez les plannings...</p>",
+    "applyUrl": "https://app.mytalentplug.com/redirection.aspx?ojid=zyOylGhv20fxlIwJsNzhNA==",
+    "skills": ["Logistique"],
+    "tools": ["SAP"]
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000002",
+    "name": "Offre sans entreprise",
+    "url": "https://www.welcometothejungle.com/en/companies/x/jobs/offre-sans-entreprise",
+    "contractType": "full_time",
+    "description": "<p>Pas de nom d'entreprise.</p>"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000003",
+    "name": "Backend Engineer",
+    "url": "https://www.welcometothejungle.com/en/companies/acme/jobs/backend-engineer",
+    "contractType": "freelance",
+    "remote": "fulltime",
+    "language": "en",
+    "publishedAt": "2026-03-02T09:00:00Z",
+    "summary": "Build APIs at Acme.",
+    "offices": [],
+    "organizationName": "Acme",
+    "skills": [],
+    "tools": []
+  }
+]

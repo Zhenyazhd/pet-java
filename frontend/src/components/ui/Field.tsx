@@ -3,11 +3,30 @@ import { useId, type InputHTMLAttributes, type TextareaHTMLAttributes } from 're
 type CommonProps = {
   label: string
   hint?: string
+  /** Shown under the field and linked to it; `alert` announces it at once (after a submit attempt). */
+  error?: string | null
+  errorAlert?: boolean
+}
+
+function describedBy(id: string, hint?: string, error?: string | null): string | undefined {
+  const ids = [hint ? `${id}-hint` : '', error ? `${id}-error` : ''].filter(Boolean)
+  return ids.length > 0 ? ids.join(' ') : undefined
+}
+
+function FieldError({ id, error, alert }: { id: string; error?: string | null; alert?: boolean }) {
+  if (!error) return null
+  return (
+    <p id={`${id}-error`} className="field__error" role={alert ? 'alert' : undefined}>
+      {error}
+    </p>
+  )
 }
 
 export function Field({
   label,
   hint,
+  error,
+  errorAlert,
   ...input
 }: CommonProps & InputHTMLAttributes<HTMLInputElement>) {
   const id = useId()
@@ -20,7 +39,8 @@ export function Field({
       <input
         id={id}
         className="input"
-        aria-describedby={hint ? hintId : undefined}
+        aria-describedby={describedBy(id, hint, error)}
+        aria-invalid={error ? true : undefined}
         {...input}
       />
       {hint && (
@@ -28,6 +48,7 @@ export function Field({
           {hint}
         </p>
       )}
+      <FieldError id={id} error={error} alert={errorAlert} />
     </div>
   )
 }
@@ -35,6 +56,8 @@ export function Field({
 export function TextAreaField({
   label,
   hint,
+  error,
+  errorAlert,
   counter,
   ...textarea
 }: CommonProps & { counter?: string } & TextareaHTMLAttributes<HTMLTextAreaElement>) {
@@ -56,9 +79,11 @@ export function TextAreaField({
       <textarea
         id={id}
         className="input input--area"
-        aria-describedby={hint ? hintId : undefined}
+        aria-describedby={describedBy(id, hint, error)}
+        aria-invalid={error ? true : undefined}
         {...textarea}
       />
+      <FieldError id={id} error={error} alert={errorAlert} />
     </div>
   )
 }

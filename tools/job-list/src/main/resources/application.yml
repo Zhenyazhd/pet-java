@@ -1,0 +1,104 @@
+spring:
+  application:
+    name: job-list
+  threads:
+    virtual:
+      # Also gives every @Scheduled task its own virtual thread: the long run of the worker must not hold up the
+      # scheduler and the janitor. Do not turn this off without giving the scheduler a larger pool.
+      enabled: true
+  datasource:
+    url: ${JOB_LIST_DB_URL:jdbc:postgresql://localhost:5432/job_list}
+    username: ${JOB_LIST_DB_USER:job_list}
+    password: ${JOB_LIST_DB_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:8}
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+server:
+  port: ${PORT:8100}
+  shutdown: graceful
+  # Behind Traefik (and, for core-api, directly): the real scheme comes from X-Forwarded-Proto.
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:none}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db
+      show-details: never
+
+job-list:
+  clients:
+    - name: ${JOB_LIST_CLIENT_0_NAME:core-api}
+      token: ${JOB_LIST_CLIENT_0_TOKEN}
+    - name: ${JOB_LIST_CLIENT_1_NAME:telegram-bot}
+      token: ${JOB_LIST_CLIENT_1_TOKEN}
+  apify:
+    token: ${APIFY_TOKEN}
+    base-url: ${APIFY_BASE_URL:https://api.apify.com}
+    run-timeout: ${APIFY_RUN_TIMEOUT_SECONDS:600}s
+    poll-interval: ${APIFY_POLL_INTERVAL_SECONDS:5}s
+    max-cost-per-source-usd: ${APIFY_MAX_COST_PER_SOURCE_USD:0.30}
+    monthly-budget-usd: ${APIFY_MONTHLY_BUDGET_USD:5}
+  llm:
+    api-key: ${OPENROUTER_API_KEY}
+    base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
+    model: ${JOB_LIST_LLM_MODEL:deepseek/deepseek-chat}
+    batch-size: ${JOB_LIST_LLM_BATCH_SIZE:10}
+    timeout: ${JOB_LIST_LLM_TIMEOUT_SECONDS:120}s
+    # What one call is reserved at in the ledger before it is made (the real cost is booked after), and the most the
+    # model may cost in a UTC month. A call that would pass the budget is not made and the run ends PARTIAL.
+    max-cost-per-call-usd: ${JOB_LIST_LLM_MAX_COST_PER_CALL_USD:0.01}
+    monthly-budget-usd: ${JOB_LIST_LLM_MONTHLY_BUDGET_USD:2}
+  sources:
+    linkedin:
+      enabled: ${JOB_LIST_SOURCE_LINKEDIN_ENABLED:false}
+      min-interval-hours: ${JOB_LIST_SOURCE_LINKEDIN_MIN_INTERVAL_HOURS:24}
+    hellowork:
+      enabled: ${JOB_LIST_SOURCE_HELLOWORK_ENABLED:true}
+      min-interval-hours: ${JOB_LIST_SOURCE_HELLOWORK_MIN_INTERVAL_HOURS:24}
+    greenhouse:
+      enabled: ${JOB_LIST_SOURCE_GREENHOUSE_ENABLED:true}
+      min-interval-hours: ${JOB_LIST_SOURCE_GREENHOUSE_MIN_INTERVAL_HOURS:72}
+    wttj:
+      enabled: ${JOB_LIST_SOURCE_WTTJ_ENABLED:true}
+      min-interval-hours: ${JOB_LIST_SOURCE_WTTJ_MIN_INTERVAL_HOURS:24}
+  max-items-per-source: ${JOB_LIST_MAX_ITEMS_PER_SOURCE:50}
+  first-run-lookback-days: ${JOB_LIST_FIRST_RUN_LOOKBACK_DAYS:3}
+  max-ranked-per-run: ${JOB_LIST_MAX_RANKED_PER_RUN:40}
+  max-description-chars: ${JOB_LIST_MAX_DESCRIPTION_CHARS:6000}
+  mapper-drop-threshold: ${JOB_LIST_MAPPER_DROP_THRESHOLD:0.3}
+  retention-days: ${JOB_LIST_RETENTION_DAYS:60}
+  run-retention-days: ${JOB_LIST_RUN_RETENTION_DAYS:90}
+  # Hard limit on the age of a vacancy (1..30): only postings dated within the last N days are asked for, stored, ranked
+  # and returned. A posting dated D with no time counts from the start of D (UTC), so with the default 3 the effective window for
+  # date-only sources is the last 2 full days plus today. Undated postings age from when they were fetched.
+  max-posting-age-days: ${JOB_LIST_MAX_POSTING_AGE_DAYS:3}
+  rank-window-days: ${JOB_LIST_RANK_WINDOW_DAYS:7}
+  max-profiles-per-owner: ${JOB_LIST_MAX_PROFILES_PER_OWNER:2}
+  # Every profile and every run can spend money, and a client chooses the owner names itself, so the totals per client
+  # are bounded too. Runs: per owner and per client, in 24 hours (a run that is already waiting does not count again).
+  max-profiles-per-client: ${JOB_LIST_MAX_PROFILES_PER_CLIENT:100}
+  max-runs-per-owner-per-day: ${JOB_LIST_MAX_RUNS_PER_OWNER_PER_DAY:3}
+  max-runs-per-client-per-day: ${JOB_LIST_MAX_RUNS_PER_CLIENT_PER_DAY:200}
+  # Rank-only runs ("continue ranking": no Apify, only the model) are not counted above; they have their own cap per owner, in 24 hours (1..200).
+  max-rank-runs-per-owner-per-day: ${JOB_LIST_MAX_RANK_RUNS_PER_OWNER_PER_DAY:20}
+  max-rank-runs-per-client-per-day: ${JOB_LIST_MAX_RANK_RUNS_PER_CLIENT_PER_DAY:200}
+  worker-poll-interval: ${JOB_LIST_WORKER_POLL_SECONDS:10}s
+  scheduling-enabled: ${JOB_LIST_SCHEDULING_ENABLED:true}
+
+logging:
+  pattern:
+    level: "%5p [run=%X{runId:-}]"

@@ -1,0 +1,44 @@
+[
+  {
+    "id": 123456789,
+    "title": "Senior Backend Engineer",
+    "organization": "Acme",
+    "url": "https://boards.greenhouse.io/acme/jobs/123456789",
+    "date_posted": "2026-10-01T08:00:00",
+    "locations_derived": [{"city": "Paris", "admin": "Ile-de-France", "country": "France"}],
+    "cities_derived": ["Paris"],
+    "countries_derived": ["France"],
+    "ai_work_arrangement": "Hybrid",
+    "ai_employment_type": ["FULL_TIME"],
+    "ai_salary_min_value": 60000,
+    "ai_salary_max_value": 80000,
+    "ai_salary_currency": "EUR",
+    "ai_salary_unit_text": "YEAR",
+    "ai_key_skills": ["Java", "Kafka"],
+    "ai_job_language": "English",
+    "description_text": "We are looking for a senior backend engineer.\n\nYou will own our event pipeline."
+  },
+  {
+    "id": 123456790,
+    "title": "Data Analyst",
+    "url": "https://boards.greenhouse.io/acme/jobs/123456790",
+    "description_text": "A posting without a company."
+  },
+  {
+    "id": 123456791,
+    "title": "Support Engineer",
+    "organization": "Globex",
+    "url": "https://boards.greenhouse.io/globex/jobs/123456791",
+    "date_posted": "2026-10-03T12:30:00",
+    "cities_derived": [],
+    "countries_derived": ["Atlantis"],
+    "ai_work_arrangement": "Remote Solely",
+    "ai_employment_type": ["INTERN"],
+    "ai_salary_min_value": 20,
+    "ai_salary_max_value": 25,
+    "ai_salary_currency": "USD",
+    "ai_salary_unit_text": "WEEK",
+    "ai_job_language": "Klingon",
+    "description_text": "Help customers anywhere."
+  }
+]

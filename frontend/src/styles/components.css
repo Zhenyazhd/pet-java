@@ -92,6 +92,12 @@
   color: var(--muted-foreground);
 }
 
+.field__error {
+  color: var(--danger);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
 .input {
   width: 100%;
   min-height: 48px;

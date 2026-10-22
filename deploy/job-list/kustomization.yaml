@@ -1,0 +1,12 @@
+# job-list is deployed on its own: `kubectl apply -f db-init-job.yaml` once, `./deploy/make-secrets.sh` with the
+# job-list variables, then `kubectl apply -k deploy/job-list`. See deploy/README.md, section "job-list".
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: cvhelper
+resources:
+  - job-list.yaml
+  - ingress.yaml
+images:
+  - name: job-list
+    newName: ghcr.io/zhenyazhd/cvhelper-job-list
+    newTag: latest

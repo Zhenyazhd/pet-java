@@ -12,7 +12,10 @@ spec:
   podSelector: { matchLabels: { app: postgres } }
   policyTypes: [Ingress]
   ingress:
-    - from: [{ podSelector: { matchLabels: { app: core-api } } }]
+    - from:
+        - podSelector:
+            matchExpressions:
+              - { key: app, operator: In, values: [core-api, job-list, job-list-db-init] }
       ports: [{ port: 5432 }]
 ---
 apiVersion: networking.k8s.io/v1
@@ -62,3 +65,17 @@ spec:
   podSelector: { matchLabels: { app: postgres } }
   policyTypes: [Egress]
   egress: []
+---
+# job-list answers core-api inside the cluster and, over its public hostname, Traefik (for the bot).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: job-list-from-core-api-and-traefik }
+spec:
+  podSelector: { matchLabels: { app: job-list } }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: core-api } }
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } }
+          podSelector: { matchLabels: { app.kubernetes.io/name: traefik } }
+      ports: [{ port: 8100 }]

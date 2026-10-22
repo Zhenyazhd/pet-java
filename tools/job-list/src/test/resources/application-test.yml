@@ -1,0 +1,20 @@
+# Profile for @SpringBootTest classes; the database comes from TestcontainersConfiguration.
+spring:
+  datasource:
+    password: unused-replaced-by-testcontainers
+
+job-list:
+  clients:
+    - name: core-api
+      token: test-token-core-api
+    - name: telegram-bot
+      token: test-token-telegram-bot
+  scheduling-enabled: false
+  apify:
+    token: test-apify
+    poll-interval: 10ms
+  max-profiles-per-client: 50
+  max-runs-per-owner-per-day: 4
+  max-runs-per-client-per-day: 6
+  llm:
+    api-key: test-llm

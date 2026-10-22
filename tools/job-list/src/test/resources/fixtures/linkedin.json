@@ -1,0 +1,36 @@
+[
+  {
+    "id": "3692563200",
+    "link": "https://www.linkedin.com/jobs/view/python-developer-at-acme-3692563200",
+    "title": "Python Developer",
+    "companyName": "Acme",
+    "location": "Paris, Île-de-France, France",
+    "salaryInfo": ["€55,000.00", "€70,000.00"],
+    "postedAt": "2026-10-10",
+    "descriptionText": "Build APIs in Python.\nWork with the data team.",
+    "applicantsCount": "200",
+    "seniorityLevel": "Mid-Senior level",
+    "employmentType": "Full-time",
+    "workplaceTypes": ["Hybrid"],
+    "workRemoteAllowed": false,
+    "jobPosterName": "Not Stored",
+    "jobPosterProfileUrl": "https://example.com/not-stored"
+  },
+  {
+    "id": "3692563201",
+    "link": "https://www.linkedin.com/jobs/view/backend-engineer-at-beta-3692563201",
+    "title": "Backend Engineer",
+    "companyName": "Beta",
+    "location": "Greater Lyon Area",
+    "postedAt": "2026-10-09",
+    "descriptionText": "Remote friendly team.",
+    "employmentType": "Contract",
+    "workRemoteAllowed": true
+  },
+  {
+    "id": "3692563202",
+    "link": "https://www.linkedin.com/jobs/view/no-description-3692563202",
+    "title": "No description",
+    "companyName": "Gamma"
+  }
+]

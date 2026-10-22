@@ -19,6 +19,7 @@ import './styles/base.css'
 import './styles/components.css'
 import './styles/vacancies.css'
 import './styles/resume.css'
+import './styles/jobs.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
