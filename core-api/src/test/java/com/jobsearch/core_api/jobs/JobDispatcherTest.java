@@ -12,7 +12,7 @@ import com.jobsearch.core_api.compile.CompileService;
 import com.jobsearch.core_api.compile.PdfWorkerClient;
 import com.jobsearch.core_api.compile.ResumePdfCacheRepository;
 import com.jobsearch.core_api.compile.WorkerResult;
-import com.jobsearch.core_api.profile.AppUserRepository;
+import com.jobsearch.core_api.auth.AppUserRepository;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;

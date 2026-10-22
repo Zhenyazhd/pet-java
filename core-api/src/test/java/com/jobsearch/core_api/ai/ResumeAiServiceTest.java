@@ -15,7 +15,6 @@ import com.jobsearch.core_api.common.BadRequestException;
 import com.jobsearch.core_api.common.ServiceUnavailableException;
 import com.jobsearch.core_api.profile.ProfileDtos.ProfileResponse;
 import com.jobsearch.core_api.profile.ProfileService;
-import com.jobsearch.core_api.profile.UserPromptService;
 import com.jobsearch.core_api.resume.ResumeDtos.ResumeDocument;
 import com.jobsearch.core_api.resume.ResumeService;
 import jakarta.validation.Validation;

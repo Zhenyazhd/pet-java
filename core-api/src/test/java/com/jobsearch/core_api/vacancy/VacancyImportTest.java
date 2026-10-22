@@ -18,7 +18,7 @@ import com.jobsearch.core_api.jobs.JobDtos.JobResponse;
 import com.jobsearch.core_api.jobs.JobOutcome;
 import com.jobsearch.core_api.jobs.JobRepository;
 import com.jobsearch.core_api.jobs.JobType;
-import com.jobsearch.core_api.profile.AppUserRepository;
+import com.jobsearch.core_api.auth.AppUserRepository;
 import com.jobsearch.core_api.vacancy.VacancyDtos.VacancyImportRequest;
 import java.time.Duration;
 import org.junit.jupiter.api.AfterEach;

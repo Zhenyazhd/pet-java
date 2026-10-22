@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.jobsearch.core_api.TestSupport;
 import com.jobsearch.core_api.TestcontainersConfiguration;
 import com.jobsearch.core_api.common.ConflictException;
-import com.jobsearch.core_api.profile.AppUserRepository;
+import com.jobsearch.core_api.auth.AppUserRepository;
 import com.jobsearch.core_api.vacancy.VacancyDtos.RequirementRequest;
 import com.jobsearch.core_api.vacancy.VacancyDtos.RequirementResponse;
 import com.jobsearch.core_api.vacancy.VacancyDtos.VacancyRequest;
