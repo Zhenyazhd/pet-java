@@ -1,6 +1,8 @@
 package com.jobsearch.core_api.ai;
 
 import com.jobsearch.core_api.common.BadRequestException;
+import com.jobsearch.core_api.compile.PageLayout;
+import com.jobsearch.core_api.compile.ResumeLayoutService;
 import com.jobsearch.core_api.ai.AiDtos.ChatTurn;
 import com.jobsearch.core_api.ai.AiDtos.SuggestRequest;
 import com.jobsearch.core_api.ai.AiDtos.SuggestResponse;
@@ -55,6 +57,11 @@ public class ResumeAiService {
 			"deepseek/deepseek-chat"
 	);
 
+	/** Extra model calls to bring a whole-CV proposal to one page; each costs a call and a compile. */
+	private static final int MAX_FIT_ROUNDS = 2;
+	/** No correction round starts after this long, so the whole answer stays well under a proxy's timeout. */
+	private static final Duration FIT_START_LIMIT = Duration.ofSeconds(60);
+
 	private static final int MAX_HISTORY_TURNS = 20;
 	/**
 	 * Roomy enough to keep the stage-1 analysis of a vacancy (a few thousand characters) together with the answers
@@ -70,6 +77,7 @@ public class ResumeAiService {
 	private final UserPromptService userPromptService;
 	private final ObjectMapper objectMapper;
 	private final ProposedValidator proposedValidator;
+	private final ResumeLayoutService layoutService;
 
 	public ResumeAiService(
 			OpenRouterClient openRouterClient,
@@ -77,7 +85,8 @@ public class ResumeAiService {
 			ProfileService profileService,
 			UserPromptService userPromptService,
 			ObjectMapper objectMapper,
-			ProposedValidator proposedValidator
+			ProposedValidator proposedValidator,
+			ResumeLayoutService layoutService
 	) {
 		this.openRouterClient = openRouterClient;
 		this.resumeService = resumeService;
@@ -85,6 +94,7 @@ public class ResumeAiService {
 		this.userPromptService = userPromptService;
 		this.objectMapper = objectMapper;
 		this.proposedValidator = proposedValidator;
+		this.layoutService = layoutService;
 	}
 
 	public SuggestResponse suggest(SuggestRequest request) {
@@ -192,7 +202,7 @@ public class ResumeAiService {
 				When a Target vacancy is provided, align wording with that role without inventing facts.
 				""".formatted(
 				focusBlock,
-				fence("current_json", objectMapper.writeValueAsString(current)),
+				fence("current_json", objectMapper.writeValueAsString(current)) + layoutBlock(wholeResume ? resume : null),
 				profileBlock,
 				careerBlock,
 				vacancyBlock,
@@ -200,8 +210,32 @@ public class ResumeAiService {
 				fence("user_message", request.instruction().strip())
 		);
 
-		// The client has already logged failure details for the operator; users get a plain message.
-		String content = switch (openRouterClient.complete(systemPrompt, userPrompt, model)) {
+		long startedAt = System.nanoTime();
+		Answer answer = interpret(ask(systemPrompt, userPrompt, model), wholeResume, section, itemIndex, current);
+		if (wholeResume && answer.proposed() != null && answer.fitPage()) {
+			answer = fitToPage(answer, systemPrompt, userPrompt, model, current, startedAt);
+		}
+
+		String message = answer.message();
+		if (answer.rejected()) {
+			String note = "(I could not prepare a valid edit this time. Try rephrasing, or ask for one section at a time.)";
+			message = message.isBlank() ? note : message + "\n\n" + note;
+		}
+		else if (message.isBlank()) {
+			message = "…";
+		}
+
+		log.info("AI suggest done section={} hasProposed={} rejected={}", scope, answer.proposed() != null, answer.rejected());
+		return new SuggestResponse(wholeResume ? SCOPE_ALL : section, itemIndex, message, answer.proposed(), answer.rejected());
+	}
+
+	/** One reading of a model answer: the reply, the checked proposal (null when none, unchanged or invalid) and the fit flag. */
+	private record Answer(String message, JsonNode proposed, boolean rejected, boolean fitPage) {
+	}
+
+	// The client has already logged failure details for the operator; users get a plain message.
+	private String ask(String systemPrompt, String userPrompt, String model) {
+		return switch (openRouterClient.complete(systemPrompt, userPrompt, model)) {
 			case ChatResult.Answer(String answer) -> answer;
 			case ChatResult.Busy(Duration retryAfter) -> throw new ServiceUnavailableException(
 					"The AI is busy right now. Try again in " + retryAfter.toSeconds() + " seconds.", retryAfter);
@@ -212,6 +246,9 @@ public class ResumeAiService {
 			case ChatResult.Unavailable _ -> throw new ServiceUnavailableException(
 					"The AI did not answer. Please try again.", null);
 		};
+	}
+
+	private Answer interpret(String content, boolean wholeResume, String section, Integer itemIndex, JsonNode current) {
 		JsonNode parsed;
 		try {
 			parsed = objectMapper.readTree(content);
@@ -221,6 +258,8 @@ public class ResumeAiService {
 			throw new ServiceUnavailableException("The AI did not answer. Please try again.", null);
 		}
 		String message = parsed.path("message").asString("").strip();
+		// Only an explicit false exempts a proposal from the page fit.
+		boolean fitPage = !parsed.path("fit_page").isBoolean() || parsed.path("fit_page").asBoolean();
 
 		JsonNode proposed = parsed.get("proposed");
 		boolean rejected = false;
@@ -242,16 +281,85 @@ public class ResumeAiService {
 		else {
 			proposed = null;
 		}
-		if (rejected) {
-			String note = "(I could not prepare a valid edit this time. Try rephrasing, or ask for one section at a time.)";
-			message = message.isBlank() ? note : message + "\n\n" + note;
-		}
-		else if (message.isBlank()) {
-			message = "…";
-		}
+		return new Answer(message, proposed, rejected, fitPage);
+	}
 
-		log.info("AI suggest done section={} hasProposed={} rejected={}", scope, proposed != null, rejected);
-		return new SuggestResponse(wholeResume ? SCOPE_ALL : section, itemIndex, message, proposed, rejected);
+	/**
+	 * Measures the proposal on the page and, while it is the wrong length, asks the model to correct it (at most
+	 * {@link #MAX_FIT_ROUNDS} times). Returns the best candidate seen; any failure along the way keeps the best so far.
+	 */
+	private Answer fitToPage(Answer first, String systemPrompt, String userPrompt, String model, JsonNode current,
+			long startedAt) {
+		PageLayout firstLayout = measure(first.proposed());
+		if (firstLayout == null) {
+			return first;
+		}
+		Answer best = first;
+		PageLayout bestLayout = firstLayout;
+		for (int round = 1; round <= MAX_FIT_ROUNDS && !PageFit.fits(bestLayout); round++) {
+			if (Duration.ofNanos(System.nanoTime() - startedAt).compareTo(FIT_START_LIMIT) > 0) {
+				log.info("AI page fit round {} skipped: the answer is already slow", round);
+				break;
+			}
+			Answer next;
+			try {
+				// Always corrects the best candidate so far, not a worse one the previous round produced.
+				String correction = userPrompt + correctionBlock(best.proposed(), bestLayout);
+				next = interpret(ask(systemPrompt, correction, model), true, SCOPE_ALL, null, current);
+			}
+			catch (RuntimeException ex) {
+				log.warn("AI page fit round {} stopped: {}", round, ex.getClass().getSimpleName());
+				break;
+			}
+			if (!next.fitPage() || next.proposed() == null || next.proposed().equals(best.proposed())) {
+				break;
+			}
+			PageLayout layout = measure(next.proposed());
+			if (layout == null) {
+				break;
+			}
+			if (PageFit.distance(layout) < PageFit.distance(bestLayout)) {
+				// The corrected reply only explains the page fit; the first one explained the edit itself.
+				best = new Answer(first.message() + "\n\n" + next.message(), next.proposed(), false, true);
+				bestLayout = layout;
+			}
+		}
+		log.info("AI page fit pages={} lines={} fits={}", bestLayout.pages(), PageFit.lines(bestLayout), PageFit.fits(bestLayout));
+		return best;
+	}
+
+	private PageLayout measure(JsonNode proposed) {
+		try {
+			return layoutService.of(objectMapper.treeToValue(proposed, ResumeDocument.class)).orElse(null);
+		}
+		catch (RuntimeException ex) {
+			log.debug("Page fit skipped: {}", ex.getClass().getSimpleName());
+			return null;
+		}
+	}
+
+	private String layoutBlock(ResumeDocument resume) {
+		if (resume == null) {
+			return "";
+		}
+		return layoutService.of(resume)
+				.map(layout -> "\n\nPage layout of the saved resume in <current_json> (measured on its compiled PDF):\n"
+						+ PageFit.describe(layout))
+				.orElse("");
+	}
+
+	private static String correctionBlock(JsonNode previous, PageLayout layout) {
+		return """
+
+
+				Correction: your previous "proposed" was measured on the page.
+				%s
+				Measured result:
+				%s
+				Return the full resume again, with the length corrected. "message" must say, in the language of the user's
+				message, what you changed for the page fit. Never invent content to fill space; if the sources have nothing
+				more to add, say so and return the same resume.
+				""".formatted(fence("previous_proposal", previous.toString()), PageFit.describe(layout));
 	}
 
 	/**
@@ -330,7 +438,7 @@ public class ResumeAiService {
 
 	/** Every tag that marks a block in the prompt, in any spelling a model may still read as one (spaces, zero-width characters, case). */
 	private static final Pattern FENCE_TAGS = Pattern.compile(
-			"<[\\s\\p{Cf}]*/?[\\s\\p{Cf}]*(?:current_json|career_path|vacancy|conversation|user_message)[\\s\\p{Cf}]*>",
+			"<[\\s\\p{Cf}]*/?[\\s\\p{Cf}]*(?:current_json|career_path|vacancy|conversation|user_message|previous_proposal)[\\s\\p{Cf}]*>",
 			Pattern.CASE_INSENSITIVE);
 
 	/**
