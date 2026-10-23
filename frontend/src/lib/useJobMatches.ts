@@ -2,13 +2,18 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import type { JobMatch } from '../api/types'
 import { errorMessage, isAbortError } from './abort'
+import { recall, remember } from './pageCache'
 
 type Filters = { minScore: number; seen: boolean }
+type FirstPage = { items: JobMatch[]; nextCursor: string | null }
+
+const cacheKey = ({ minScore, seen }: Filters) => `matches:${minScore}:${seen}`
 
 /** Matches for the filters, newest page first; `refreshKey` reloads the first page (e.g. after a run). */
 export function useJobMatches({ minScore, seen }: Filters, refreshKey: number) {
-  const [items, setItems] = useState<JobMatch[]>([])
-  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [cached] = useState(() => recall<FirstPage>(cacheKey({ minScore, seen })))
+  const [items, setItems] = useState<JobMatch[]>(cached?.items ?? [])
+  const [nextCursor, setNextCursor] = useState<string | null>(cached?.nextCursor ?? null)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -30,6 +35,7 @@ export function useJobMatches({ minScore, seen }: Filters, refreshKey: number) {
       .then((page) => {
         setItems(page.items)
         setNextCursor(page.nextCursor)
+        remember(cacheKey({ minScore, seen }), { items: page.items, nextCursor: page.nextCursor })
       })
       .catch((err) => {
         if (!isAbortError(err)) setError(errorMessage(err, 'Failed to load matches'))

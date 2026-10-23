@@ -3,6 +3,7 @@ import { api, ApiError } from '../api/client'
 import type { JobSearchProfileInput, JobSearchState } from '../api/types'
 import { errorMessage, isAbortError } from './abort'
 import { isActive } from './jobSearch'
+import { recall, remember } from './pageCache'
 
 const POLL_MS = 4_000
 const SLOW_POLL_MS = 10_000
@@ -26,8 +27,10 @@ function mergePoll(prev: JobSearchState, next: JobSearchState): JobSearchState {
 }
 
 /** The search profile and the latest run; polls the run only while it is queued or running. */
+const CACHE_KEY = 'jobSearch'
+
 export function useJobSearch() {
-  const [data, setData] = useState<JobSearchState | null>(null)
+  const [data, setData] = useState<JobSearchState | null>(() => recall<JobSearchState>(CACHE_KEY) ?? null)
   const [error, setError] = useState<string | null>(null)
   const [starting, setStarting] = useState(false)
   const [runError, setRunError] = useState<string | null>(null)
@@ -52,6 +55,10 @@ export function useJobSearch() {
   }, [])
 
   useEffect(() => load(), [load])
+
+  useEffect(() => {
+    if (data) remember(CACHE_KEY, data)
+  }, [data])
 
   // Only the counter: a stale answer must not replace the run a start just returned.
   const refreshCounter = useCallback(() => {

@@ -1,4 +1,5 @@
 import { errorMessage } from '../lib/abort'
+import { forgetAll } from '../lib/pageCache'
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, isUnauthorized, setUnauthorizedListener } from '../api/client'
@@ -27,6 +28,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false)
   const [sessionError, setSessionError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
+
+  const userId = user?.id
+  useEffect(() => forgetAll(), [userId])
 
   useEffect(() => {
     let cancelled = false

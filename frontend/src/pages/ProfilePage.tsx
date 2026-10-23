@@ -1,6 +1,6 @@
 import { errorMessage } from '../lib/abort'
 import { formatCounter } from '../lib/format'
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import type { Profile } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
@@ -9,27 +9,33 @@ import { Button } from '../components/ui/Button'
 import { PromptsCard } from '../components/profile/PromptsCard'
 import { Field, TextAreaField } from '../components/ui/Field'
 import { PageHeader } from '../components/ui/PageHeader'
+import { recall, remember } from '../lib/pageCache'
 import { useBeforeUnload } from '../lib/useBeforeUnload'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 const CAREER_PATH_MAX = 40_000
 const EMPTY: Profile = { displayName: '', email: '', careerPath: '' }
 
+const CACHE_KEY = 'profile'
+
+const sameProfile = (a: Profile, b: Profile) =>
+  a.displayName === b.displayName && a.email === b.email && a.careerPath === b.careerPath
+
 export function ProfilePage() {
   useDocumentTitle('Profile')
   const { updateUser } = useAuth()
-  const [profile, setProfile] = useState<Profile>(EMPTY)
-  const [saved, setSaved] = useState<Profile>(EMPTY)
-  const [loading, setLoading] = useState(true)
+  const [cached] = useState(() => recall<Profile>(CACHE_KEY))
+  const [profile, setProfile] = useState<Profile>(cached ?? EMPTY)
+  const [saved, setSaved] = useState<Profile>(cached ?? EMPTY)
+  const [loading, setLoading] = useState(!cached)
   const [saving, setSaving] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [justSaved, setJustSaved] = useState(false)
 
-  const dirty =
-    profile.displayName !== saved.displayName ||
-    profile.email !== saved.email ||
-    profile.careerPath !== saved.careerPath
+  const dirty = !sameProfile(profile, saved)
+  const savedRef = useRef(saved)
+  savedRef.current = saved
 
   const load = useCallback(() => {
     let cancelled = false
@@ -39,8 +45,9 @@ export function ProfilePage() {
       .getProfile()
       .then((data) => {
         if (cancelled) return
-        setProfile(data)
+        setProfile((current) => (sameProfile(current, savedRef.current) ? data : current))
         setSaved(data)
+        remember(CACHE_KEY, data)
       })
       .catch((err) => {
         if (!cancelled)
@@ -79,6 +86,7 @@ export function ProfilePage() {
       })
       setProfile(data)
       setSaved(data)
+      remember(CACHE_KEY, data)
       updateUser({ displayName: data.displayName, email: data.email })
       setJustSaved(true)
     } catch (err) {

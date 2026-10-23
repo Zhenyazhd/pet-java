@@ -1,5 +1,5 @@
 import { errorMessage } from '../lib/abort'
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { ErrorBoundary } from './ErrorBoundary'
@@ -70,7 +70,9 @@ export function AppLayout() {
         {/* Per page, so a render error keeps the header; the key resets it on navigation. The jobs pages share
             one layout (polling, draft), so moving between them must not remount it. */}
         <ErrorBoundary key={onJobsPages ? '/jobs' : location.pathname} inline>
-          <Outlet />
+          <Suspense fallback={null}>
+            <Outlet />
+          </Suspense>
         </ErrorBoundary>
       </main>
     </div>
