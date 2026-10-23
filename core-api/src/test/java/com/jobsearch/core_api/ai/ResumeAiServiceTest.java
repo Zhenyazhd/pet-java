@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import com.jobsearch.core_api.ai.AiDtos.SuggestRequest;
 import com.jobsearch.core_api.common.BadRequestException;
+import com.jobsearch.core_api.compile.ResumeLayoutService;
 import com.jobsearch.core_api.common.ServiceUnavailableException;
 import com.jobsearch.core_api.profile.ProfileDtos.ProfileResponse;
 import com.jobsearch.core_api.profile.ProfileService;
@@ -34,6 +35,7 @@ class ResumeAiServiceTest {
 	private final OpenRouterClient openRouterClient = mock(OpenRouterClient.class);
 	private ResumeService resumeService;
 	private UserPromptService userPromptService;
+	private final ResumeLayoutService layoutService = mock(ResumeLayoutService.class);
 	private ResumeAiService service;
 
 	@BeforeEach
@@ -46,7 +48,7 @@ class ResumeAiServiceTest {
 		userPromptService = mock(UserPromptService.class);
 		JsonMapper mapper = JsonMapper.builder().build();
 		service = new ResumeAiService(openRouterClient, resumeService, profileService, userPromptService, mapper,
-				new ProposedValidator(mapper, Validation.buildDefaultValidatorFactory().getValidator()));
+				new ProposedValidator(mapper, Validation.buildDefaultValidatorFactory().getValidator()), layoutService);
 	}
 
 	@Test

@@ -37,6 +37,12 @@ export function ChatMessage({ item, onApply, onDismiss, undo }: ChatMessageProps
           </div>
         </div>
       )}
+      {item.change && item.state === 'applied' && (
+        <details className="proposal-applied">
+          <summary>What changed</summary>
+          <pre className="proposal__text" tabIndex={0} role="region" aria-label="Applied text">{describeChange(item.change)}</pre>
+        </details>
+      )}
       {item.change && item.state !== 'open' && (
         <p className="status-text muted-line chat-msg__outcome">
           {item.state === 'applied' ? 'Applied to the sheet.' : 'Dismissed.'}
