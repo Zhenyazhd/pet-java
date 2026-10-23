@@ -41,7 +41,8 @@ final class PageFit {
 				? "The length is right for the nominal layout."
 				: lines > 0
 						? "The text is about " + lines + " lines over one page at the nominal layout: cut that many lines."
-						: "There is room for about " + (-lines) + " more lines at the nominal layout.";
+						: "There is room for about " + (-lines) + " more lines (about " + (-lines + 1) / 2
+								+ " bullet points of two lines) at the nominal layout.";
 		return "- Pages: " + layout.pages() + ", last page " + Math.round(layout.fill() * 100) + "% full.\n"
 				+ "- Layout scale: " + scale + ".\n"
 				+ "- " + verdict;
