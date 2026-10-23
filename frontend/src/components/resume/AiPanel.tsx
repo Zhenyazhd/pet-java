@@ -3,6 +3,7 @@ import { AI_MODELS } from '../../lib/resume/aiModels'
 import { LIMITS } from '../../lib/resume/limits'
 import type { ChatItem, SendResult } from '../../lib/resume/useResumeAi'
 import { Button } from '../ui/Button'
+import { Select } from '../ui/Select'
 import { ChatMessage } from './ChatMessage'
 
 type AiPanelProps = {
@@ -121,18 +122,13 @@ export function AiPanel({
           <label className="sr-only" htmlFor={modelId}>
             AI model
           </label>
-          <select
+          <Select
             id={modelId}
             className="input ai-panel__model"
             value={model}
-            onChange={(e) => onModelChange(e.target.value)}
-          >
-            {AI_MODELS.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            onChange={onModelChange}
+            options={AI_MODELS.map((option) => ({ value: option.id, label: option.label }))}
+          />
         </div>
       </div>
 

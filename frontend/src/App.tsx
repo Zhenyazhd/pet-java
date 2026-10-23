@@ -2,14 +2,9 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
 import { GuestOnly, RequireAuth } from './auth/RouteGuards'
 import { AppLayout, AuthLayout } from './components/Layout'
-import { JobMatchesPage } from './pages/JobMatchesPage'
-import { JobsLayout } from './pages/JobsLayout'
 import { LoginPage } from './pages/LoginPage'
-import { ProfilePage } from './pages/ProfilePage'
+import { JobMatchesPage, JobsLayout, ProfilePage, ResumePage, SearchProfilePage, VacanciesPage } from './pages/lazy'
 import { RegisterPage } from './pages/RegisterPage'
-import { SearchProfilePage } from './pages/SearchProfilePage'
-import { ResumePage } from './pages/ResumePage'
-import { VacanciesPage } from './pages/VacanciesPage'
 
 export default function App() {
   return (

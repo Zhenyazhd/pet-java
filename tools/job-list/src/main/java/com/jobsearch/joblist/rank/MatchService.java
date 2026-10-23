@@ -27,7 +27,7 @@ public class MatchService {
 
 	private static final int DEFAULT_LIMIT = 20;
 	private static final int MAX_LIMIT = 100;
-	private static final int SNIPPET_CHARS = 300;
+	private static final int SNIPPET_CHARS = 1500;
 	/** Above every real score, so the first page starts at the top. */
 	private static final int TOP_OF_RANGE = 101;
 

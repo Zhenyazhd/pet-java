@@ -1,5 +1,6 @@
 /* Design tokens — dark developer-tool system: near-black page, one indigo accent. */
 :root {
+  color-scheme: dark;
   --background: #050506;
   --foreground: #ededef;
   --muted: rgb(255 255 255 / 0.04);
@@ -11,7 +12,8 @@
   --control-border: rgb(255 255 255 / 0.1);
   --control-border-hover: rgb(255 255 255 / 0.2);
   --accent: #5e6ad2;
-  --accent-hover: #6872d9;
+  /* Darker than the accent on purpose: white text on the lighter spec colour (#6872d9) is only 4.2:1. */
+  --accent-hover: #5360c9;
   /* Accent as text (links, eyebrows, scores): the accent itself is only 4.3:1 on this background, this is 7.5:1. */
   --accent-strong: #8c94f0;
   --accent-foreground: #ffffff;
@@ -44,6 +46,13 @@
   --shadow-md: 0 2px 20px rgb(0 0 0 / 0.4);
   --shadow-lg: 0 8px 40px rgb(0 0 0 / 0.5);
   --shadow-accent: 0 4px 12px rgb(94 106 210 / 0.3);
+  --shadow-primary:
+    0 0 0 1px rgb(94 106 210 / 0.5),
+    0 4px 12px rgb(94 106 210 / 0.3),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.2);
+  --input-bg: #0f0f12;
+  --control-bg: rgb(255 255 255 / 0.05);
+  --control-bg-hover: rgb(255 255 255 / 0.08);
 
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --duration: 200ms;

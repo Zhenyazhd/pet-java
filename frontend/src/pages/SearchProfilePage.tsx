@@ -8,7 +8,7 @@ import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { useFocusHeading } from '../lib/useFocusHeading'
 import { useJobsContext } from '../lib/useJobsContext'
 
-export function SearchProfilePage() {
+export default function SearchProfilePage() {
   useDocumentTitle('Search profile')
   useFocusHeading('profile-page-title')
   const { search, state, form } = useJobsContext()
@@ -51,6 +51,7 @@ export function SearchProfilePage() {
           onSave={search.saveProfile}
           onSaveAndSearch={saveAndSearch}
           searchBlocker={searchBlocker}
+          ready={search.settled}
         />
         {search.runError && <Banner tone="error">{search.runError}</Banner>}
       </div>

@@ -8,7 +8,7 @@ import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { useFocusHeading } from '../lib/useFocusHeading'
 import { useJobsContext } from '../lib/useJobsContext'
 
-export function JobMatchesPage() {
+export default function JobMatchesPage() {
   useDocumentTitle('Job matches')
   useFocusHeading('matches-page-title')
   const { search, state } = useJobsContext()

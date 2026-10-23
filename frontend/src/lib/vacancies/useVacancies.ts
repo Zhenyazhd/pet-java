@@ -1,6 +1,7 @@
 import { errorMessage } from '../abort'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../../api/client'
+import { recall, remember } from '../pageCache'
 import type { ApplicationStatus, Vacancy } from '../../api/types'
 
 type State = {
@@ -9,8 +10,13 @@ type State = {
   error: string | null
 }
 
+const CACHE_KEY = 'vacancies'
+
 export function useVacancies() {
-  const [state, setState] = useState<State>({ vacancies: [], loading: true, error: null })
+  const [state, setState] = useState<State>(() => {
+    const cached = recall<Vacancy[]>(CACHE_KEY)
+    return { vacancies: cached ?? [], loading: true, error: null }
+  })
   const saving = useRef(new Set<number>())
   const latestReload = useRef(0)
 
@@ -31,6 +37,10 @@ export function useVacancies() {
   useEffect(() => {
     void reload()
   }, [reload])
+
+  useEffect(() => {
+    if (!state.loading && !state.error) remember(CACHE_KEY, state.vacancies)
+  }, [state])
 
   const patch = useCallback((id: number, change: (vacancy: Vacancy) => Vacancy) => {
     setState((prev) => ({
