@@ -1,7 +1,8 @@
 import { errorMessage } from '../lib/abort'
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { preloadPages } from '../pages/lazy'
 import { ErrorBoundary } from './ErrorBoundary'
 import { Banner } from './ui/Banner'
 import { Button } from './ui/Button'
@@ -19,6 +20,11 @@ export function AppLayout() {
   const location = useLocation()
   const [signingOut, setSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const timer = window.setTimeout(preloadPages, 1000)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   async function onSignOut() {
     if (signingOut) return

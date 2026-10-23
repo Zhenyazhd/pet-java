@@ -21,7 +21,7 @@ const CACHE_KEY = 'profile'
 const sameProfile = (a: Profile, b: Profile) =>
   a.displayName === b.displayName && a.email === b.email && a.careerPath === b.careerPath
 
-export function ProfilePage() {
+export default function ProfilePage() {
   useDocumentTitle('Profile')
   const { updateUser } = useAuth()
   const [initial] = useState(() => recall<Profile>(CACHE_KEY) ?? EMPTY)

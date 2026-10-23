@@ -21,11 +21,20 @@ export function useJobMatches({ minScore, seen }: Filters, refreshKey: number) {
   const [savedIds, setSavedIds] = useState<ReadonlySet<JobMatch['id']>>(new Set())
   const [attempt, setAttempt] = useState(0)
   const abort = useRef<AbortController | null>(null)
+  const shownKey = useRef(cacheKey({ minScore, seen }))
 
   useEffect(() => {
     const controller = new AbortController()
     abort.current?.abort()
     abort.current = controller
+    // New filters: show their last known first page (or nothing), never the previous filters' list.
+    const key = cacheKey({ minScore, seen })
+    if (shownKey.current !== key) {
+      shownKey.current = key
+      const hit = recall<FirstPage>(key)
+      setItems(hit?.items ?? [])
+      setNextCursor(hit?.nextCursor ?? null)
+    }
     setLoading(true)
     setLoadingMore(false)
     setError(null)

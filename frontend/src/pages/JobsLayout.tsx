@@ -10,7 +10,7 @@ import type { JobsContext } from '../lib/useJobsContext'
 import { useProfileForm } from '../lib/useProfileForm'
 
 // Owns the search state for both pages, so a running search keeps polling while the profile page is open.
-export function JobsLayout() {
+export default function JobsLayout() {
   const search = useJobSearch()
   const { data } = search
 

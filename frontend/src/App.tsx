@@ -1,26 +1,10 @@
-import { lazy } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
 import { GuestOnly, RequireAuth } from './auth/RouteGuards'
 import { AppLayout, AuthLayout } from './components/Layout'
 import { LoginPage } from './pages/LoginPage'
+import { JobMatchesPage, JobsLayout, ProfilePage, ResumePage, SearchProfilePage, VacanciesPage } from './pages/lazy'
 import { RegisterPage } from './pages/RegisterPage'
-
-const loadJobMatchesPage = () => import('./pages/JobMatchesPage').then((m) => ({ default: m.JobMatchesPage }))
-const JobMatchesPage = lazy(loadJobMatchesPage)
-const loadJobsLayout = () => import('./pages/JobsLayout').then((m) => ({ default: m.JobsLayout }))
-const JobsLayout = lazy(loadJobsLayout)
-const loadProfilePage = () => import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage }))
-const ProfilePage = lazy(loadProfilePage)
-const loadResumePage = () => import('./pages/ResumePage').then((m) => ({ default: m.ResumePage }))
-const ResumePage = lazy(loadResumePage)
-const loadSearchProfilePage = () => import('./pages/SearchProfilePage').then((m) => ({ default: m.SearchProfilePage }))
-const SearchProfilePage = lazy(loadSearchProfilePage)
-const loadVacanciesPage = () => import('./pages/VacanciesPage').then((m) => ({ default: m.VacanciesPage }))
-const VacanciesPage = lazy(loadVacanciesPage)
-
-const preload = () => [loadJobMatchesPage, loadJobsLayout, loadProfilePage, loadResumePage, loadSearchProfilePage, loadVacanciesPage].forEach((load) => load().catch(() => {}))
-window.addEventListener('load', () => setTimeout(preload, 1000), { once: true })
 
 export default function App() {
   return (

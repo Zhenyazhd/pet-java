@@ -37,7 +37,7 @@ function PageIntro() {
   )
 }
 
-export function ResumePage() {
+export default function ResumePage() {
   useDocumentTitle('Resume')
   const doc = useResumeDocument()
   const { user } = useAuth()

@@ -10,7 +10,7 @@
   font-family: var(--font-body);
   font-size: 0.9375rem;
   font-weight: 500;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
   line-height: 1.2;
   cursor: pointer;
   touch-action: manipulation;
@@ -28,26 +28,26 @@
 }
 
 .btn--primary {
-  background: var(--accent-strong);
+  background: var(--accent);
   color: var(--accent-foreground);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-primary);
 }
 
 .btn--primary:hover:not(:disabled):not([aria-disabled='true']) {
-  background: var(--accent);
-  box-shadow: var(--shadow-accent);
+  background: var(--accent-hover);
+}
+
+.btn--primary:active:not(:disabled):not([aria-disabled='true']) {
+  transform: scale(0.98);
 }
 
 .btn--outline {
-  background: transparent;
-  border-color: var(--foreground);
+  background: var(--control-bg);
   color: var(--foreground);
 }
 
 .btn--outline:hover:not(:disabled):not([aria-disabled='true']) {
-  background: var(--muted);
-  border-color: var(--accent-strong);
-  color: var(--accent-strong);
+  background: var(--control-bg-hover);
 }
 
 .btn--ghost {
@@ -60,6 +60,7 @@
 }
 
 .btn--ghost:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--control-bg);
   color: var(--foreground);
   text-decoration-color: var(--accent);
 }
@@ -78,7 +79,7 @@
 }
 
 .field__label {
-  color: var(--foreground);
+  color: var(--muted-foreground);
 }
 
 .field__counter {
@@ -103,7 +104,7 @@
   padding: 0.5rem 0.875rem;
   border: 1px solid var(--control-border);
   border-radius: var(--radius-md);
-  background-color: transparent;
+  background-color: var(--input-bg);
   color: var(--foreground);
   font: inherit;
   letter-spacing: inherit;
@@ -162,7 +163,7 @@
 }
 
 .input::placeholder {
-  color: var(--muted-foreground);
+  color: var(--foreground-subtle);
   opacity: 1;
 }
 
@@ -264,67 +265,6 @@
   max-width: none;
   margin-top: 0;
   font-size: 0.9375rem;
-}
-
-.auth .field__label,
-.shell .field__label {
-  color: var(--muted-foreground);
-}
-
-.auth .input,
-.shell .input {
-  background-color: #0f0f12;
-}
-
-.auth .input::placeholder,
-.shell .input::placeholder {
-  color: var(--foreground-subtle);
-}
-
-.auth .btn,
-.shell .btn {
-  letter-spacing: 0;
-}
-
-.auth .btn--primary,
-.shell .btn--primary {
-  background: var(--accent);
-  color: var(--accent-foreground);
-  box-shadow:
-    0 0 0 1px rgb(94 106 210 / 0.5),
-    0 4px 12px rgb(94 106 210 / 0.3),
-    inset 0 1px 0 0 rgb(255 255 255 / 0.2);
-}
-
-.auth .btn--primary:hover:not(:disabled):not([aria-disabled='true']),
-.shell .btn--primary:hover:not(:disabled):not([aria-disabled='true']) {
-  background: var(--accent-hover);
-  box-shadow:
-    0 0 0 1px rgb(94 106 210 / 0.5),
-    0 4px 12px rgb(94 106 210 / 0.3),
-    inset 0 1px 0 0 rgb(255 255 255 / 0.2);
-}
-
-.auth .btn--primary:active:not(:disabled):not([aria-disabled='true']),
-.shell .btn--primary:active:not(:disabled):not([aria-disabled='true']) {
-  transform: scale(0.98);
-}
-
-/* Secondary and ghost buttons on the dark theme. */
-.shell .btn--outline {
-  border-color: transparent;
-  background: rgb(255 255 255 / 0.05);
-  color: var(--foreground);
-}
-
-.shell .btn--outline:hover:not(:disabled):not([aria-disabled='true']) {
-  background: rgb(255 255 255 / 0.08);
-  border-color: transparent;
-  color: var(--foreground);
-}
-
-.shell .btn--ghost:hover:not(:disabled):not([aria-disabled='true']) {
-  background: rgb(255 255 255 / 0.05);
 }
 
 .form {

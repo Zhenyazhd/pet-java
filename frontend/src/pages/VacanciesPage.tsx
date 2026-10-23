@@ -10,7 +10,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { useVacancies } from '../lib/vacancies/useVacancies'
 
-export function VacanciesPage() {
+export default function VacanciesPage() {
   useDocumentTitle('Vacancies')
   const { id } = useParams()
   const navigate = useNavigate()
