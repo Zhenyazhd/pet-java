@@ -51,6 +51,7 @@ export function SearchProfilePage() {
           onSave={search.saveProfile}
           onSaveAndSearch={saveAndSearch}
           searchBlocker={searchBlocker}
+          ready={search.settled}
         />
         {search.runError && <Banner tone="error">{search.runError}</Banner>}
       </div>

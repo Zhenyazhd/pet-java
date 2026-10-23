@@ -19,7 +19,7 @@ const SearchProfilePage = lazy(loadSearchProfilePage)
 const loadVacanciesPage = () => import('./pages/VacanciesPage').then((m) => ({ default: m.VacanciesPage }))
 const VacanciesPage = lazy(loadVacanciesPage)
 
-const preload = () => [loadJobMatchesPage, loadJobsLayout, loadProfilePage, loadResumePage, loadSearchProfilePage, loadVacanciesPage].forEach((load) => void load())
+const preload = () => [loadJobMatchesPage, loadJobsLayout, loadProfilePage, loadResumePage, loadSearchProfilePage, loadVacanciesPage].forEach((load) => load().catch(() => {}))
 window.addEventListener('load', () => setTimeout(preload, 1000), { once: true })
 
 export default function App() {

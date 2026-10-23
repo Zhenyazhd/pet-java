@@ -1,6 +1,6 @@
 import { errorMessage } from '../lib/abort'
 import { formatCounter } from '../lib/format'
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import type { Profile } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
@@ -24,18 +24,16 @@ const sameProfile = (a: Profile, b: Profile) =>
 export function ProfilePage() {
   useDocumentTitle('Profile')
   const { updateUser } = useAuth()
-  const [cached] = useState(() => recall<Profile>(CACHE_KEY))
-  const [profile, setProfile] = useState<Profile>(cached ?? EMPTY)
-  const [saved, setSaved] = useState<Profile>(cached ?? EMPTY)
-  const [loading, setLoading] = useState(!cached)
+  const [initial] = useState(() => recall<Profile>(CACHE_KEY) ?? EMPTY)
+  const [profile, setProfile] = useState<Profile>(initial)
+  const [saved, setSaved] = useState<Profile>(initial)
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [justSaved, setJustSaved] = useState(false)
 
   const dirty = !sameProfile(profile, saved)
-  const savedRef = useRef(saved)
-  savedRef.current = saved
 
   const load = useCallback(() => {
     let cancelled = false
@@ -45,7 +43,7 @@ export function ProfilePage() {
       .getProfile()
       .then((data) => {
         if (cancelled) return
-        setProfile((current) => (sameProfile(current, savedRef.current) ? data : current))
+        setProfile(data)
         setSaved(data)
         remember(CACHE_KEY, data)
       })
@@ -150,7 +148,7 @@ export function ProfilePage() {
             value={profile.careerPath}
             onChange={(e) => update('careerPath', e.target.value)}
             disabled={loading}
-              readOnly={saving}
+            readOnly={saving}
             maxLength={CAREER_PATH_MAX}
             placeholder="2019–2022 backend engineer at X, then moved to Y after studying Z. Now looking for…"
           />

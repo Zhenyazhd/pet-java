@@ -1,6 +1,7 @@
 import { useId } from 'react'
 import type { Vacancy } from '../../api/types'
 import { companyLabel, statusOf } from '../../lib/vacancies/vacancy'
+import { Select } from '../ui/Select'
 
 type VacancyPickerProps = {
   vacancies: Vacancy[]
@@ -28,20 +29,17 @@ export function VacancyPicker({ vacancies, loading, error, value, onChange }: Va
       <label className="field__label small-caps" htmlFor={id}>
         Tailor for a vacancy
       </label>
-      <select
+      <Select
         id={id}
         className="input"
         aria-describedby={`${id}-hint`}
-        value={value ?? ''}
-        onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
-      >
-        <option value="">No vacancy</option>
-        {options.map((vacancy) => (
-          <option key={vacancy.id} value={vacancy.id}>
-            {vacancy.title} · {companyLabel(vacancy)}
-          </option>
-        ))}
-      </select>
+        value={value === null ? '' : String(value)}
+        onChange={(next) => onChange(next ? Number(next) : null)}
+        options={[
+          { value: '', label: 'No vacancy' },
+          ...options.map((vacancy) => ({ value: String(vacancy.id), label: `${vacancy.title} · ${companyLabel(vacancy)}` })),
+        ]}
+      />
       <p id={`${id}-hint`} className="field__hint">
         {hint}
       </p>

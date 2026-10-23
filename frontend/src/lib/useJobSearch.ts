@@ -26,9 +26,9 @@ function mergePoll(prev: JobSearchState, next: JobSearchState): JobSearchState {
   return { ...next, profile: prev.profile, unranked: next.unranked ?? prev.unranked }
 }
 
-/** The search profile and the latest run; polls the run only while it is queued or running. */
 const CACHE_KEY = 'jobSearch'
 
+/** The search profile and the latest run; polls the run only while it is queued or running. */
 export function useJobSearch() {
   const [data, setData] = useState<JobSearchState | null>(() => recall<JobSearchState>(CACHE_KEY) ?? null)
   const [error, setError] = useState<string | null>(null)
@@ -41,15 +41,31 @@ export function useJobSearch() {
   // Bumped when a run leaves QUEUED/RUNNING, so the matches list knows to reload.
   const [finishedCount, setFinishedCount] = useState(0)
   const wasActive = useRef(false)
+  // `data` may be a cached copy; settled once the server has answered, and the epoch moves when that
+  // answer brings a different profile, so the form can start over from it.
+  const [settled, setSettled] = useState(false)
+  const [epoch, setEpoch] = useState(0)
+  const dataRef = useRef(data)
+  dataRef.current = data
+  const startedMeanwhile = useRef(false)
 
   const load = useCallback(() => {
     const abort = new AbortController()
     setError(null)
+    startedMeanwhile.current = false
     api
       .getJobSearch(abort.signal)
-      .then(setData)
+      .then((next) => {
+        const prev = dataRef.current
+        if (prev && JSON.stringify(prev.profile) !== JSON.stringify(next.profile)) setEpoch((n) => n + 1)
+        // A run started while this was in flight is newer than this answer.
+        setData((cur) => (cur && startedMeanwhile.current ? { ...next, latestRun: cur.latestRun } : next))
+        setSettled(true)
+      })
       .catch((err) => {
-        if (!isAbortError(err)) setError(errorMessage(err, 'Failed to load job search'))
+        if (isAbortError(err)) return
+        setError(errorMessage(err, 'Failed to load job search'))
+        setSettled(true)
       })
     return () => abort.abort()
   }, [])
@@ -148,6 +164,7 @@ export function useJobSearch() {
     setRankError(null)
     try {
       const latestRun = await api.startJobSearchRun()
+      startedMeanwhile.current = true
       setData((prev) => (prev ? { ...prev, latestRun } : prev))
       return true
     } catch (err) {
@@ -164,6 +181,7 @@ export function useJobSearch() {
     setRunError(null)
     try {
       const latestRun = await api.startJobRankRun()
+      startedMeanwhile.current = true
       setData((prev) => (prev ? { ...prev, latestRun } : prev))
       if (latestRun.mode !== 'RANK_ONLY') {
         setRankError('A search is already running. Scoring was not started; try again when it finishes.')
@@ -178,6 +196,8 @@ export function useJobSearch() {
 
   return {
     data,
+    settled,
+    epoch,
     error,
     reload: load,
     active,

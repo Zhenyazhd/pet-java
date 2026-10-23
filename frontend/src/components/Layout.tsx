@@ -70,7 +70,7 @@ export function AppLayout() {
         {/* Per page, so a render error keeps the header; the key resets it on navigation. The jobs pages share
             one layout (polling, draft), so moving between them must not remount it. */}
         <ErrorBoundary key={onJobsPages ? '/jobs' : location.pathname} inline>
-          <Suspense fallback={null}>
+          <Suspense fallback={<p className="status-text" role="status">Loading…</p>}>
             <Outlet />
           </Suspense>
         </ErrorBoundary>

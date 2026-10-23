@@ -19,6 +19,8 @@ type SearchProfileCardProps = {
   onSaveAndSearch: () => Promise<void>
   /** Why a search cannot start now, or null. */
   searchBlocker: string | null
+  /** False while the form still shows a cached copy: saving it could overwrite a newer profile. */
+  ready: boolean
 }
 
 export function SearchProfileCard({
@@ -27,6 +29,7 @@ export function SearchProfileCard({
   onSave,
   onSaveAndSearch,
   searchBlocker,
+  ready,
 }: SearchProfileCardProps) {
   const { values, change } = form
   const [saving, setSaving] = useState(false)
@@ -34,8 +37,8 @@ export function SearchProfileCard({
 
   // A first profile can be saved as it is; afterwards only a change is worth a request.
   const needsSave = form.dirty || !hasProfile
-  const canSave = form.valid && !saving && needsSave
-  const canSaveAndSearch = form.valid && !saving && searchBlocker === null
+  const canSave = ready && form.valid && !saving && needsSave
+  const canSaveAndSearch = ready && form.valid && !saving && searchBlocker === null
 
   async function submit(thenSearch: boolean) {
     if (!form.valid) form.attempt()

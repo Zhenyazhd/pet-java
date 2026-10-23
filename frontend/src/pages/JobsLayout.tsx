@@ -14,7 +14,7 @@ export function JobsLayout() {
   const search = useJobSearch()
   const { data } = search
 
-  if (data?.configured) return <JobsReady search={search} state={data} />
+  if (data?.configured) return <JobsReady key={search.epoch} search={search} state={data} />
   return <JobsUnavailable search={search} />
 }
 

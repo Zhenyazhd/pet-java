@@ -1,6 +1,7 @@
 import { APPLICATION_STATUSES, type ApplicationStatus } from '../../api/types'
 import { applicationStatusTone, formatApplicationStatus } from '../../lib/vacancies/applicationStatus'
 import { classNames } from '../../lib/classNames'
+import { Select } from '../ui/Select'
 
 type StatusSelectProps = {
   value: ApplicationStatus
@@ -12,18 +13,13 @@ type StatusSelectProps = {
 export function StatusSelect({ value, onChange, label, disabled }: StatusSelectProps) {
   const tone = applicationStatusTone(value)
   return (
-    <select
+    <Select
       className={classNames('status-select', tone && `status-select--${tone}`)}
       value={value}
-      onChange={(event) => onChange(event.target.value as ApplicationStatus)}
+      onChange={(next) => onChange(next as ApplicationStatus)}
+      options={APPLICATION_STATUSES.map((status) => ({ value: status, label: formatApplicationStatus(status) }))}
       aria-label={label}
       disabled={disabled}
-    >
-      {APPLICATION_STATUSES.map((status) => (
-        <option key={status} value={status}>
-          {formatApplicationStatus(status)}
-        </option>
-      ))}
-    </select>
+    />
   )
 }
