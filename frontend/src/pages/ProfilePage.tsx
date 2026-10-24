@@ -12,6 +12,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { recall, remember } from '../lib/pageCache'
 import { useBeforeUnload } from '../lib/useBeforeUnload'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
+import { useFocusHeading } from '../lib/useFocusHeading'
 
 const CAREER_PATH_MAX = 40_000
 const EMPTY: Profile = { displayName: '', email: '', careerPath: '' }
@@ -25,6 +26,7 @@ const sameProfile = (a: Profile, b: Profile) =>
 
 export default function ProfilePage() {
   useDocumentTitle('Profile')
+  useFocusHeading('profile-title')
   const { updateUser } = useAuth()
   const [initial] = useState(() => recall<Profile>(CACHE_KEY) ?? EMPTY)
   const [draft] = useState(() => recall<Profile>(DRAFT_KEY))

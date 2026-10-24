@@ -250,7 +250,7 @@ export const api = {
 
   getMatchJob: (jobId: string) => request<Job<MatchResponse>>(`/api/ai/resume/match/${jobId}`),
 
-  listVacancies: () => request<Vacancy[]>('/api/vacancies'),
+  listVacancies: (signal?: AbortSignal) => request<Vacancy[]>('/api/vacancies', undefined, { signal }),
 
   deleteVacancy: (id: number) => request<void>(`/api/vacancies/${id}`, { method: 'DELETE' }),
 

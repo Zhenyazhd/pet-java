@@ -18,17 +18,19 @@ export function useVacancies() {
     return { vacancies: cached ?? [], loading: true, error: null }
   })
   const saving = useRef(new Set<number>())
-  const latestReload = useRef(0)
+  const reloadAbort = useRef<AbortController | null>(null)
 
   const reload = useCallback(async () => {
-    const seq = ++latestReload.current
+    reloadAbort.current?.abort()
+    const abort = new AbortController()
+    reloadAbort.current = abort
     setState((prev) => ({ ...prev, loading: true, error: null }))
     try {
-      const vacancies = await api.listVacancies()
-      if (seq !== latestReload.current) return
+      const vacancies = await api.listVacancies(abort.signal)
+      if (abort.signal.aborted) return
       setState({ vacancies, loading: false, error: null })
     } catch (err) {
-      if (seq !== latestReload.current) return
+      if (abort.signal.aborted) return
       const error = errorMessage(err, 'Failed to load vacancies')
       setState((prev) => ({ ...prev, loading: false, error }))
     }
@@ -36,6 +38,7 @@ export function useVacancies() {
 
   useEffect(() => {
     void reload()
+    return () => reloadAbort.current?.abort()
   }, [reload])
 
   useEffect(() => {

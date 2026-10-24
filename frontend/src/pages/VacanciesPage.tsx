@@ -8,10 +8,12 @@ import { VacancyList } from '../components/vacancies/VacancyList'
 import { Button } from '../components/ui/Button'
 import { PageHeader } from '../components/ui/PageHeader'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
+import { useFocusHeading } from '../lib/useFocusHeading'
 import { useVacancies } from '../lib/vacancies/useVacancies'
 
 export default function VacanciesPage() {
   useDocumentTitle('Vacancies')
+  useFocusHeading('vacancies-title')
   const { id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
