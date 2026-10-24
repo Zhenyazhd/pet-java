@@ -156,7 +156,7 @@ export function Select({ options, value, onChange, id, className, disabled, ...a
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-controls={listId}
+        aria-controls={open ? listId : undefined}
         aria-activedescendant={open ? optionId(active) : undefined}
         aria-label={aria['aria-label']}
         aria-describedby={aria['aria-describedby']}
@@ -174,6 +174,8 @@ export function Select({ options, value, onChange, id, className, disabled, ...a
           className="select-list"
           style={place}
           aria-label={aria['aria-label']}
+          // Named by a `<label htmlFor>`: the button already carries that name.
+          aria-labelledby={aria['aria-label'] ? undefined : id}
           // Keeps focus on the button, so the click below does not first blur (and close) the list.
           onMouseDown={(event) => event.preventDefault()}
         >
