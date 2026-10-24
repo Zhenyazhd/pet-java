@@ -19,7 +19,7 @@ type SelectProps = {
 type Place = { top?: number; bottom?: number; left?: number; right?: number; minWidth: number }
 
 const LIST_MAX = 256
-const ROW = 40
+const ROW = 44
 
 /**
  * A drop-in for `<select>`: the browser draws the open list of a native one and ignores the page theme.

@@ -61,14 +61,9 @@
   padding: 2.5rem;
   border: 0;
   border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.02)),
-    var(--card);
-  box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.06),
-    0 2px 20px rgb(0 0 0 / 0.4),
-    0 0 40px rgb(0 0 0 / 0.2);
-  animation: auth-enter 600ms var(--ease) both;
+  background: var(--card-bg);
+  box-shadow: var(--shadow-card);
+  animation: auth-enter var(--duration-slow) var(--ease) both;
 }
 
 .auth-card .page-header {

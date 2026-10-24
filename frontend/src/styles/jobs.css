@@ -12,13 +12,8 @@
   gap: 1rem;
   padding: 1.25rem 1.5rem;
   border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.02)),
-    var(--card);
-  box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.06),
-    0 2px 20px rgb(0 0 0 / 0.4),
-    0 0 40px rgb(0 0 0 / 0.2);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-card);
 }
 
 .job-card .section-title,
@@ -215,22 +210,14 @@
   gap: 0.75rem;
   padding: 1.25rem 1.5rem;
   border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.02)),
-    var(--card);
-  box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.06),
-    0 2px 20px rgb(0 0 0 / 0.4),
-    0 0 40px rgb(0 0 0 / 0.2);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-card);
   overflow-wrap: anywhere;
   transition: box-shadow var(--duration) var(--ease);
 }
 
 .match:hover {
-  box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.1),
-    0 8px 40px rgb(0 0 0 / 0.5),
-    0 0 80px rgb(94 106 210 / 0.1);
+  box-shadow: var(--shadow-raised);
 }
 
 /* A seen posting keeps the card and takes a quiet edge on the left. */

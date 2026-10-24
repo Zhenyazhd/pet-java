@@ -144,9 +144,9 @@
 }
 
 .select-option {
-  min-height: 40px;
+  min-height: 44px;
   padding: 0.5rem 0.75rem;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--foreground);
   font-size: 0.9375rem;
   line-height: 1.3;
