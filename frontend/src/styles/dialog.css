@@ -132,7 +132,8 @@
   line-height: 1.5;
 }
 
-.tag--required {
+/* Scoped: jobs.css defines .tag too and loads later, so a bare class would lose to its border and background. */
+.tags .tag--required {
   border-color: var(--accent);
   background: var(--accent-muted);
 }

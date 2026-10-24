@@ -133,6 +133,7 @@ export function useJobSearch() {
       if (document.hidden) return
       // The time away does not count towards giving up: only time spent looking at the page does.
       startedAt = Date.now()
+      setPollStopped(false)
       window.clearTimeout(timer)
       abort?.abort()
       tick()

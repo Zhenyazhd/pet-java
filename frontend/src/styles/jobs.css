@@ -301,29 +301,6 @@
   cursor: pointer;
 }
 
-@media (max-width: 767px) {
-  .actions {
-    grid-template-columns: 1fr;
-  }
-
-  .profile-summary__head .btn {
-    width: 100%;
-  }
-
-  .job-card,
-  .match {
-    padding-inline: 1rem;
-  }
-
-  .add-row--region {
-    flex-wrap: wrap;
-  }
-
-  .add-row--region .input:not(.input--country) {
-    flex: 1 1 8rem;
-  }
-}
-
 /* Action bar, run summary and profile strip */
 .actions {
   display: grid;
@@ -383,4 +360,28 @@
 
 .source-row--inactive {
   opacity: 0.5;
+}
+
+/* Last, so it wins over the base rules above at equal specificity. */
+@media (max-width: 767px) {
+  .actions {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-summary__head .btn {
+    width: 100%;
+  }
+
+  .job-card,
+  .match {
+    padding-inline: 1rem;
+  }
+
+  .add-row--region {
+    flex-wrap: wrap;
+  }
+
+  .add-row--region .input:not(.input--country) {
+    flex: 1 1 8rem;
+  }
 }

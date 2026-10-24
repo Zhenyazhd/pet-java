@@ -28,7 +28,8 @@ function parseItem(raw: unknown, fields: Fields): ListItem | null {
   if (!isRecord(raw)) return null
   const item: Record<string, string | string[]> = {}
   for (const [name, kind] of Object.entries(fields)) {
-    const value = raw[name]
+    // A model told to "leave unknown fields empty" often answers null: that is absent, not malformed.
+    const value = raw[name] ?? undefined
     if (kind === 'string') {
       if (value !== undefined && typeof value !== 'string') return null
       item[name] = value ?? ''
