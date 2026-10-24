@@ -198,7 +198,7 @@ export const api = {
     }
   },
 
-  getProfile: () => request<Profile>('/api/profile'),
+  getProfile: (signal?: AbortSignal) => request<Profile>('/api/profile', undefined, { signal }),
 
   saveProfile: (profile: Profile) => request<Profile>('/api/profile', json('PUT', profile)),
 

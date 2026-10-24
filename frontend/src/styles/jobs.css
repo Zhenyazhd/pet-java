@@ -104,17 +104,8 @@
 }
 
 /* Run status */
-.run-summary--queued,
-.run-summary--running {
-  color: var(--foreground);
-}
-
 .run-summary--partial {
   color: var(--accent-strong);
-}
-
-.run-summary--succeeded {
-  color: var(--foreground);
 }
 
 .run-summary--failed {
@@ -224,8 +215,7 @@
 .match--seen {
   box-shadow:
     inset 2px 0 0 var(--control-border),
-    0 0 0 1px rgb(255 255 255 / 0.06),
-    0 2px 20px rgb(0 0 0 / 0.4);
+    var(--shadow-card);
 }
 
 /* Muted by the title only: the card keeps the score badge above 4.5:1. */
@@ -281,6 +271,7 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 4;
+  line-clamp: 4;
   overflow: hidden;
 }
 
@@ -331,13 +322,6 @@
   margin: 0;
 }
 
-.run-details summary {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-
 .profile-summary__head {
   display: flex;
   flex-wrap: wrap;
@@ -358,8 +342,8 @@
   overflow-wrap: anywhere;
 }
 
-.source-row--inactive {
-  opacity: 0.5;
+.source-row--inactive .source-row__name {
+  color: var(--muted-foreground);
 }
 
 /* Last, so it wins over the base rules above at equal specificity. */

@@ -93,7 +93,8 @@
   letter-spacing: 0.05em;
   cursor: pointer;
   touch-action: manipulation;
-  transition: all var(--duration) var(--ease);
+  transition: background-color var(--duration) var(--ease), border-color var(--duration) var(--ease),
+    color var(--duration) var(--ease);
 }
 
 .chip:hover {
@@ -176,7 +177,8 @@
   color: var(--foreground);
   font: inherit;
   font-size: 0.9375rem;
-  transition: all var(--duration-fast) var(--ease);
+  transition: background-color var(--duration-fast) var(--ease), border-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease);
 }
 
 .status-select:hover:not(:disabled) {

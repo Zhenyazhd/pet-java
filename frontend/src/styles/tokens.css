@@ -9,8 +9,10 @@
   --card: #0a0a0c;
   --border: rgb(255 255 255 / 0.06);
   --border-hover: rgb(255 255 255 / 0.1);
-  --control-border: rgb(255 255 255 / 0.1);
-  --control-border-hover: rgb(255 255 255 / 0.2);
+  /* Field and control outlines: 40% white is 3.7:1 against the page, inputs and cards (WCAG 1.4.11 asks for 3:1).
+     The hairline for cards and rules stays --border. */
+  --control-border: rgb(255 255 255 / 0.4);
+  --control-border-hover: rgb(255 255 255 / 0.6);
   --accent: #5e6ad2;
   /* Darker than the accent on purpose: white text on the lighter spec colour (#6872d9) is only 4.2:1. */
   --accent-hover: #5360c9;

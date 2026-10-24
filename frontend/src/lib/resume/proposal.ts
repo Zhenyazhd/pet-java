@@ -61,7 +61,6 @@ function parseWhole(raw: unknown): ProposalChange | null {
   return { section: 'all', fields, lists: lists as WholeLists }
 }
 
-
 function unwrapText(raw: unknown): string | null {
   if (typeof raw === 'string') return raw
   if (Array.isArray(raw)) return raw.length === 1 ? unwrapText(raw[0]) : null
@@ -100,7 +99,7 @@ export function parseProposal(section: string, rowKey: string | null, raw: unkno
     case 'education':
     case 'achievements':
     case 'skills': {
-      const entries = rowKey === null ? raw : isRecord(raw) ? [raw] : null
+      const entries = rowKey !== null && isRecord(raw) ? [raw] : raw
       if (!Array.isArray(entries)) {
         return fail(
           rowKey === null

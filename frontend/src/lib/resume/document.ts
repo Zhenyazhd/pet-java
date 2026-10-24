@@ -58,7 +58,6 @@ const TEXT_FIELDS = [
   'profile',
 ] as const
 
-
 export function parseDocument(raw: unknown): ResumeDocument | null {
   if (!isRecord(raw) || typeof raw.version !== 'number') return null
   const text: Record<string, string> = {}

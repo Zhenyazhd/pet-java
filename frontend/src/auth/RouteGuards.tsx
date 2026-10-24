@@ -47,7 +47,9 @@ export function RequireAuth() {
 export function GuestOnly({ fallback = '/' }: { fallback?: string }) {
   const { user, ready } = useAuth()
   const location = useLocation()
-  const from = (location.state as { from?: string } | null)?.from || fallback
+  const requested = (location.state as { from?: string } | null)?.from
+  // Only a path inside this site: never `//host` or `/\host`, which a browser reads as another origin.
+  const from = requested && /^\/(?![/\\])/.test(requested) ? requested : fallback
 
   if (!ready) return <CheckingSession />
   if (user) return <Navigate to={from} replace />

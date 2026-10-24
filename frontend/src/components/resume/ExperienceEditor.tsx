@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import type { ExperienceItem } from '../../api/resumeTypes'
 import { LIMITS } from '../../lib/resume/limits'
 import { removeAt } from '../../lib/resume/list'
@@ -11,6 +12,17 @@ type ExperienceEditorProps = {
 
 export function ExperienceEditor({ job, position, update }: ExperienceEditorProps) {
   const label = (part: string) => `Job ${position} ${part}`
+  const bulletsRef = useRef<HTMLUListElement>(null)
+  const addRef = useRef<HTMLButtonElement>(null)
+  // The pressed button disappears (remove) or the new field is not where focus is (add): put focus on a bullet.
+  const [refocus, setRefocus] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (refocus === null) return
+    const fields = bulletsRef.current?.querySelectorAll<HTMLElement>('textarea')
+    ;(fields?.[Math.min(refocus, (fields?.length ?? 0) - 1)] ?? addRef.current)?.focus()
+    setRefocus(null)
+  }, [refocus])
 
   function setBullet(index: number, text: string) {
     update({ bullets: job.bullets.map((bullet, i) => (i === index ? text : bullet)) })
@@ -45,7 +57,7 @@ export function ExperienceEditor({ job, position, update }: ExperienceEditorProp
         maxLength={LIMITS.subtitle}
         onChange={(subtitle) => update({ subtitle })}
       />
-      <ul className="cv-bullets">
+      <ul className="cv-bullets" ref={bulletsRef}>
         {job.bullets.map((bullet, index) => (
           <li key={index}>
             <CvField
@@ -59,7 +71,10 @@ export function ExperienceEditor({ job, position, update }: ExperienceEditorProp
               type="button"
               className="cv-tool cv-tool--remove"
               aria-label={`Remove ${label(`bullet ${index + 1}`).toLowerCase()}`}
-              onClick={() => update({ bullets: removeAt(job.bullets, index) })}
+              onClick={() => {
+                update({ bullets: removeAt(job.bullets, index) })
+                setRefocus(index)
+              }}
             >
               ×
             </button>
@@ -67,10 +82,15 @@ export function ExperienceEditor({ job, position, update }: ExperienceEditorProp
         ))}
       </ul>
       <button
+        ref={addRef}
         type="button"
         className="cv-tool cv-tool--add"
         aria-disabled={job.bullets.length >= LIMITS.bullets}
-        onClick={() => job.bullets.length < LIMITS.bullets && update({ bullets: [...job.bullets, ''] })}
+        onClick={() => {
+          if (job.bullets.length >= LIMITS.bullets) return
+          update({ bullets: [...job.bullets, ''] })
+          setRefocus(job.bullets.length)
+        }}
       >
         {job.bullets.length >= LIMITS.bullets ? `At most ${LIMITS.bullets} bullets` : '+ Add bullet'}
       </button>

@@ -12,6 +12,12 @@ type CvFieldProps = {
   required?: boolean
 }
 
+/** The field grows with its text: no scrollbar, no hidden lines. */
+function fitHeight(el: HTMLTextAreaElement) {
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight}px`
+}
+
 export function CvField({
   value,
   onChange,
@@ -25,10 +31,7 @@ export function CvField({
   const ref = useRef<HTMLTextAreaElement>(null)
 
   useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${el.scrollHeight}px`
+    if (ref.current) fitHeight(ref.current)
   }, [value])
 
   useLayoutEffect(() => {
@@ -37,12 +40,11 @@ export function CvField({
     if (!el || !parent) return
     let width = parent.clientWidth
     let frame = 0
+    let disposed = false
     const fit = () => {
+      if (disposed) return
       cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => {
-        el.style.height = 'auto'
-        el.style.height = `${el.scrollHeight}px`
-      })
+      frame = requestAnimationFrame(() => fitHeight(el))
     }
     const observer = new ResizeObserver(() => {
       if (parent.clientWidth === width) return
@@ -52,6 +54,7 @@ export function CvField({
     observer.observe(parent)
     void document.fonts?.ready.then(fit)
     return () => {
+      disposed = true
       cancelAnimationFrame(frame)
       observer.disconnect()
     }

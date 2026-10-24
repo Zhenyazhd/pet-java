@@ -49,8 +49,13 @@ export function useJobSearch() {
   dataRef.current = data
   const startedMeanwhile = useRef(false)
 
+  const loadAbort = useRef<AbortController | null>(null)
+
   const load = useCallback(() => {
+    // Two overlapping loads could finish out of order and let the older answer win.
+    loadAbort.current?.abort()
     const abort = new AbortController()
+    loadAbort.current = abort
     setError(null)
     startedMeanwhile.current = false
     api
@@ -81,6 +86,7 @@ export function useJobSearch() {
     api
       .getJobSearch()
       .then((next) => setData((prev) => prev && { ...prev, unranked: next.unranked ?? prev.unranked }))
+      // The counter is cosmetic: a failed refresh leaves the last known number.
       .catch(() => {})
   }, [])
 

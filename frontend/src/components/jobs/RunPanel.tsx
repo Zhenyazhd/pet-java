@@ -103,7 +103,6 @@ export function RunPanel({ run, profile, pollError, pollStopped }: RunPanelProps
           <dd>{formatUsd(run.costUsd)}</dd>
         </div>
       </dl>
-
     </section>
   )
 }

@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../api/client'
+import { isAbortError } from '../../lib/abort'
 import { Button } from '../ui/Button'
 
 type CreateCvCardProps = {
@@ -25,14 +26,12 @@ export function CreateCvCard({
   const [hasCareerPath, setHasCareerPath] = useState<boolean | null>(null)
 
   useEffect(() => {
-    let cancelled = false
+    const controller = new AbortController()
     api
-      .getProfile()
-      .then((profile) => !cancelled && setHasCareerPath(profile.careerPath.trim().length > 0))
-      .catch(() => !cancelled && setHasCareerPath(null))
-    return () => {
-      cancelled = true
-    }
+      .getProfile(controller.signal)
+      .then((profile) => setHasCareerPath(profile.careerPath.trim().length > 0))
+      .catch((err) => !isAbortError(err) && setHasCareerPath(null))
+    return () => controller.abort()
   }, [])
 
   const missing = hasCareerPath === false

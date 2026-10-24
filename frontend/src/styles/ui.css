@@ -14,7 +14,8 @@
   line-height: 1.2;
   cursor: pointer;
   touch-action: manipulation;
-  transition: all var(--duration) var(--ease);
+  transition: background-color var(--duration) var(--ease), border-color var(--duration) var(--ease),
+    color var(--duration) var(--ease), box-shadow var(--duration) var(--ease), opacity var(--duration) var(--ease);
 }
 
 .btn:disabled,
@@ -108,7 +109,8 @@
   color: var(--foreground);
   font: inherit;
   letter-spacing: inherit;
-  transition: all var(--duration-fast) var(--ease);
+  transition: background-color var(--duration-fast) var(--ease), border-color var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease);
 }
 
 /* Closed look of the custom Select; the field styles (.input, .status-select) come from the caller. */
@@ -155,6 +157,8 @@
 
 .select-option--active {
   background: var(--accent-muted);
+  /* The wash alone is about 1.3:1: the edge keeps the arrow-key position visible. */
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .select-option[aria-selected='true'] {
@@ -172,7 +176,8 @@
 }
 
 .input:focus {
-  outline: none;
+  /* Transparent, not none: forced-colors mode draws an outline where box-shadow disappears. */
+  outline: 2px solid transparent;
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
 }

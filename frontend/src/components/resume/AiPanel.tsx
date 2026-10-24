@@ -61,16 +61,18 @@ export function AiPanel({
     setFocusNext(null)
   }, [focusNext])
 
+  const lastRole = chat[chat.length - 1]?.role
+
   // The log follows the conversation: a reply is read from its first line, anything else from the bottom.
   useLayoutEffect(() => {
     const log = logRef.current
     const last = log?.lastElementChild as HTMLElement | null | undefined
     if (!log || !last) return
-    const replyJustArrived = !busy && !error && chat[chat.length - 1]?.role === 'assistant'
+    const replyJustArrived = !busy && !error && lastRole === 'assistant'
     const top = replyJustArrived ? last.offsetTop - 8 : log.scrollHeight
     const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
     log.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' })
-  }, [chat.length, busy, error])
+  }, [chat.length, lastRole, busy, error])
 
   // The field grows with what is typed, up to a few lines.
   useLayoutEffect(() => {

@@ -12,7 +12,6 @@
   max-height: calc(100dvh - 2rem);
   padding: 0;
   border: 1px solid var(--border);
-  border-top: 2px solid var(--accent);
   border-radius: var(--radius-lg);
   background: var(--card);
   color: var(--foreground);

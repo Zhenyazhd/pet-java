@@ -82,31 +82,34 @@ function problemWith(value: string, rule: Rule, where: string): string | null {
   return null
 }
 
-
+/** A problem the change adds: one the sheet did not already have. A sheet that is invalid already still checks the rest. */
 export function introducedProblem(before: EditableResume, after: EditableResume): string | null {
-  return firstInvalidField(before) ? null : firstInvalidField(after)
+  const existing = invalidFields(before)
+  return invalidFields(after).find((problem) => !existing.includes(problem)) ?? null
 }
 
 export function firstInvalidField(resume: EditableResume): string | null {
+  return invalidFields(resume)[0] ?? null
+}
+
+function invalidFields(resume: EditableResume): string[] {
+  const problems: string[] = []
+  const add = (problem: string | null) => problem && problems.push(problem)
   for (const rule of HEADER_RULES) {
-    const problem = problemWith(resume[rule.name as keyof EditableResume] as string, rule, '')
-    if (problem) return problem
+    add(problemWith(resume[rule.name as keyof EditableResume] as string, rule, ''))
   }
   for (const [section, config] of Object.entries(LIST_RULES)) {
     const rows = resume[section as keyof typeof LIST_RULES] as unknown as Record<string, unknown>[]
-    if (rows.length > config.max) return `${config.noun} list: at most ${config.max} entries.`
+    if (rows.length > config.max) add(`${config.noun} list: at most ${config.max} entries.`)
     for (const [index, row] of rows.entries()) {
       const where = `${config.noun} ${index + 1} · `
-      for (const rule of config.rules) {
-        const problem = problemWith(row[rule.name] as string, rule, where)
-        if (problem) return problem
-      }
+      for (const rule of config.rules) add(problemWith(row[rule.name] as string, rule, where))
       const bullets = row.bullets as string[] | undefined
-      if (bullets && bullets.length > LIMITS.bullets) return `${where}at most ${LIMITS.bullets} bullets.`
+      if (bullets && bullets.length > LIMITS.bullets) add(`${where}at most ${LIMITS.bullets} bullets.`)
       if (bullets?.some((bullet) => bullet.length > LIMITS.bullet)) {
-        return `${where}a bullet is too long (at most ${LIMITS.bullet} characters).`
+        add(`${where}a bullet is too long (at most ${LIMITS.bullet} characters).`)
       }
     }
   }
-  return null
+  return problems
 }

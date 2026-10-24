@@ -1,4 +1,4 @@
-import { errorMessage } from '../../lib/abort'
+import { errorMessage, isAbortError } from '../../lib/abort'
 import { formatCounter } from '../../lib/format'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
@@ -41,7 +41,7 @@ export function AddVacancyForm({ onSaved, findSavedByUrl }: AddVacancyFormProps)
       setPastedText('')
       await onSaved(vacancyId)
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return
+      if (isAbortError(err)) return
       const savedId = err instanceof ApiError && err.status === CONFLICT ? findSavedByUrl(trimmedUrl) : null
       if (savedId !== null) {
         await onSaved(savedId)

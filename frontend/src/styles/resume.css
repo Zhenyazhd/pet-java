@@ -5,6 +5,11 @@
   padding-top: 1.5rem;
 }
 
+/* The sticky toolbar must not cover a field that Tab brings into view. */
+html:has(.resume-page) {
+  scroll-padding-top: 5rem;
+}
+
 .resume-toolbar {
   position: sticky;
   top: 0;
@@ -109,8 +114,8 @@
   margin-top: 1.5rem;
   padding: 1.25rem 1.5rem;
   border-radius: var(--radius-lg);
-  background: var(--card-bg, var(--card));
-  box-shadow: var(--shadow-card, var(--shadow-sm));
+  background: var(--card-bg);
+  box-shadow: var(--shadow-card);
 }
 
 .create-cv__actions {
@@ -124,8 +129,8 @@
 .cv-sheet {
   padding: 2.5rem clamp(1rem, 4vw, 3rem) 3rem;
   border-radius: var(--radius-lg);
-  background: var(--card-bg, var(--card));
-  box-shadow: var(--shadow-card, var(--shadow-md));
+  background: var(--card-bg);
+  box-shadow: var(--shadow-card);
 }
 
 .cv-block {
@@ -349,8 +354,8 @@
   gap: 1rem;
   padding: 1.25rem;
   border-radius: var(--radius-lg);
-  background: var(--card-bg, var(--card));
-  box-shadow: var(--shadow-card, var(--shadow-sm));
+  background: var(--card-bg);
+  box-shadow: var(--shadow-card);
 }
 
 .ai-panel__head {
@@ -735,6 +740,9 @@
 
 /* ---------- ATS readability: the text an ATS reads ---------- */
 .readability__text summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
   cursor: pointer;
 }
 
@@ -751,6 +759,9 @@
 }
 
 .proposal-applied summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
   cursor: pointer;
   color: var(--muted-foreground);
   font-size: 0.875rem;

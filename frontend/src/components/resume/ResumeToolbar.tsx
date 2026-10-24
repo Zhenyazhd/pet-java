@@ -26,7 +26,7 @@ export function ResumeToolbar({
   return (
     <div className="resume-toolbar">
       <LocaleSwitch value={locale} onChange={onLocaleChange} />
-      <span className="status-text resume-toolbar__dirty">{dirty ? 'Unsaved changes' : ''}</span>
+      <span className="status-text resume-toolbar__dirty" role="status">{dirty ? 'Unsaved changes' : ''}</span>
       <Button variant="outline" aria-disabled={previewing || blocked} onClick={onPreview}>
         {previewing ? 'Preparing PDF…' : 'Preview PDF'}
       </Button>
