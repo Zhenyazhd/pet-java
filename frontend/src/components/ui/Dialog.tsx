@@ -35,6 +35,8 @@ export function Dialog({ labelledBy, onClose, children }: DialogProps) {
   }
 
   return (
+    // Clicking the backdrop is a mouse shortcut: the keyboard closes the dialog with Escape (native <dialog>).
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
     <dialog
       ref={ref}
       className="dialog"

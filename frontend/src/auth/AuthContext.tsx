@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useNavigate } from 'react-router-dom'
 import { api, isUnauthorized, setUnauthorizedListener } from '../api/client'
 import type { AuthUser, LoginRequest, RegisterRequest } from '../api/types'
-import { clearResumeDraft } from '../lib/resume/draft'
+import { clearAllResumeDrafts } from '../lib/resume/draft'
 
 type AuthContextValue = {
   user: AuthUser | null
@@ -46,6 +46,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Only a 401 means "not signed in". A dropped network or a restarting server says nothing about the
         // session, and treating it as a sign-out would send a signed-in user to the login page.
         setUser(null)
+        // The session ended while the page was closed: the draft left in this browser goes with it.
+        if (isUnauthorized(err)) clearAllResumeDrafts()
         setSessionError(isUnauthorized(err) ? null : errorMessage(err, 'Could not check your session'))
       })
       .finally(() => !cancelled && setReady(true))
@@ -62,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // A 401 on a protected call means the session expired: drop it and go to sign-in.
   useEffect(() => {
     setUnauthorizedListener(() => {
+      clearAllResumeDrafts()
       setUser(null)
       const path = `${window.location.pathname}${window.location.search}`
       if (!path.startsWith('/login') && !path.startsWith('/register')) {
@@ -83,23 +86,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
-    let signedOutByUser = true
     try {
       await api.logout()
     } catch (err) {
       if (!isUnauthorized(err)) throw err // the server session may still be alive
-      signedOutByUser = false // the session had expired already
       try {
         await api.refreshCsrf() // already signed out: mint a token for the next sign-in
       } catch {
         // the session is already gone; the next sign-in asks for a token again
       }
     }
-    // A sign-out the user asked for removes the CV draft this browser holds for the account: on a shared computer
-    // it would otherwise stay readable. An expired session keeps it, so signing back in restores the edits.
-    if (signedOutByUser && userId !== undefined) clearResumeDraft(userId)
+    // However the session ended, the CV draft this browser holds goes with it: on a shared computer it would
+    // otherwise stay readable.
+    clearAllResumeDrafts()
     setUser(null)
-  }, [userId])
+  }, [])
 
   const updateUser = useCallback<AuthContextValue['updateUser']>((patch) => {
     setUser((current) => (current ? { ...current, ...patch } : current))

@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { classNames } from '../../lib/classNames'
-import { moveAt, removeAt, updateAt } from '../../lib/resume/list'
+import { insertAt, moveAt, removeAt, updateAt } from '../../lib/resume/list'
 import { Button } from '../ui/Button'
 import { FocusButton } from './FocusButton'
+
+/** How long Undo stays offered after a row is removed. */
+const UNDO_MS = 8000
 
 type RowFocus = {
   isActive: (index: number) => boolean
@@ -33,6 +36,13 @@ export function ListEditor<T extends { key: string }>({
   const listRef = useRef<HTMLDivElement>(null)
   const addRef = useRef<HTMLButtonElement>(null)
   const [refocus, setRefocus] = useState<{ row: number; tool?: 'up' | 'down' } | null>(null)
+  const [removed, setRemoved] = useState<{ item: T; index: number } | null>(null)
+
+  useEffect(() => {
+    if (!removed) return
+    const timer = window.setTimeout(() => setRemoved(null), UNDO_MS)
+    return () => window.clearTimeout(timer)
+  }, [removed])
 
   useEffect(() => {
     if (!refocus) return
@@ -67,6 +77,7 @@ export function ListEditor<T extends { key: string }>({
                 aria-disabled={index === 0}
                 onClick={() => {
                   if (index === 0) return
+                  setRemoved(null)
                   onChange(moveAt(items, index, index - 1))
                   setRefocus({ row: index - 1, tool: 'up' })
                 }}
@@ -81,6 +92,7 @@ export function ListEditor<T extends { key: string }>({
                 aria-disabled={index === items.length - 1}
                 onClick={() => {
                   if (index === items.length - 1) return
+                  setRemoved(null)
                   onChange(moveAt(items, index, index + 1))
                   setRefocus({ row: index + 1, tool: 'down' })
                 }}
@@ -92,6 +104,7 @@ export function ListEditor<T extends { key: string }>({
                 className="cv-tool cv-tool--remove"
                 aria-label={`Remove ${noun} ${index + 1}`}
                 onClick={() => {
+                  setRemoved({ item, index })
                   onChange(removeAt(items, index))
                   setRefocus({ row: index })
                 }}
@@ -102,6 +115,24 @@ export function ListEditor<T extends { key: string }>({
           </div>
         )
       })}
+      {/* Always in the page, so a screen reader announces the removal when it appears. */}
+      <div role="status" className="cv-undo">
+        {removed && (
+          <>
+            <span>{noun} {removed.index + 1} removed.</span>
+            <Button
+              variant="outline"
+              onClick={() => {
+                onChange(insertAt(items, removed.index, removed.item))
+                setRefocus({ row: removed.index })
+                setRemoved(null)
+              }}
+            >
+              Undo
+            </Button>
+          </>
+        )}
+      </div>
       <Button
         ref={addRef}
         variant="ghost"
@@ -109,6 +140,7 @@ export function ListEditor<T extends { key: string }>({
         aria-disabled={full}
         onClick={() => {
           if (full) return
+          setRemoved(null)
           onChange([...items, create()])
           setRefocus({ row: items.length })
         }}

@@ -180,6 +180,8 @@ export function Select({ options, value, onChange, id, className, disabled, ...a
           onMouseDown={(event) => event.preventDefault()}
         >
           {options.map((option, i) => (
+            // Pointer handlers only: the keyboard works on the button through aria-activedescendant.
+            // eslint-disable-next-line jsx-a11y/click-events-have-key-events
             <li
               key={option.value}
               id={optionId(i)}

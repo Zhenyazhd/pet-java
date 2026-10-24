@@ -1,8 +1,9 @@
 import { formatCounter } from '../../lib/format'
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import type { PromptPart } from '../../api/types'
 import { errorMessage } from '../../lib/abort'
 import { classNames } from '../../lib/classNames'
+import { recall, remember } from '../../lib/pageCache'
 import { PROMPT_MAX, usePromptParts } from '../../lib/promptParts'
 import { useBeforeUnload } from '../../lib/useBeforeUnload'
 import { Banner } from '../ui/Banner'
@@ -63,7 +64,9 @@ function PromptBlock({ part, onSave, onReset }: BlockProps) {
   const id = useId()
   const warned = part.key === WARNED_KEY
   const baseline = part.customText ?? part.defaultText
-  const [text, setText] = useState(baseline)
+  // Unsaved text outlives a trip to another page (memory only; it goes when the user signs out).
+  const draftKey = `prompt-draft:${part.key}`
+  const [text, setText] = useState(() => recall<string>(draftKey) ?? baseline)
   const [busy, setBusy] = useState<'save' | 'reset' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
@@ -75,6 +78,10 @@ function PromptBlock({ part, onSave, onReset }: BlockProps) {
   const dirty = normalised !== baseline
   const canSave = !busy && dirty && length > 0 && !over
   useBeforeUnload(dirty)
+
+  useEffect(() => {
+    remember(draftKey, dirty ? text : undefined)
+  }, [draftKey, dirty, text])
 
   async function run(kind: 'save' | 'reset', action: () => Promise<void>, ok: string, fail: string) {
     setBusy(kind)

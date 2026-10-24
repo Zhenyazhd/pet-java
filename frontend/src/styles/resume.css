@@ -345,6 +345,20 @@ html:has(.resume-page) {
   align-self: flex-start;
 }
 
+.cv-undo:empty {
+  /* The live region stays in the page; it must not add a gap to the list while it is empty. */
+  margin-top: -0.5rem;
+}
+
+.cv-undo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+}
+
 /* ---------- AI panel ---------- */
 .ai-panel {
   flex: 1 1 0;
