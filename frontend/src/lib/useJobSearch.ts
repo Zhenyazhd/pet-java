@@ -98,7 +98,7 @@ export function useJobSearch() {
 
   useEffect(() => {
     if (!active) return
-    const startedAt = Date.now()
+    let startedAt = Date.now()
     let timer: number | undefined
     let abort: AbortController | null = null
     let failures = 0
@@ -131,6 +131,8 @@ export function useJobSearch() {
     }
     function onVisible() {
       if (document.hidden) return
+      // The time away does not count towards giving up: only time spent looking at the page does.
+      startedAt = Date.now()
       window.clearTimeout(timer)
       abort?.abort()
       tick()
