@@ -1,5 +1,5 @@
 import { formatCounter } from '../../lib/format'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import type { JobSearchProfile, JobSearchProfileInput } from '../../api/types'
 import { EXPECTATIONS_MAX, toValues } from '../../lib/jobSearch'
@@ -34,6 +34,9 @@ export function SearchProfileCard({
   const { values, change } = form
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  // The error belongs to the form as it was submitted: editing it makes the message stale.
+  useEffect(() => setSaveError(null), [values])
 
   // A first profile can be saved as it is; afterwards only a change is worth a request.
   const needsSave = form.dirty || !hasProfile
