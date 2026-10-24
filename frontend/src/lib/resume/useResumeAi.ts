@@ -75,8 +75,6 @@ export function useResumeAi({
     chat: null,
     create: null,
   })
-  // Per channel generation: a reset of one request kind never touches the other.
-  const generation = useRef({ chat: 0, create: 0 })
   const nextId = useRef(0)
 
   useEffect(
@@ -144,7 +142,6 @@ export function useResumeAi({
       if (channel === 'chat') {
         setError(null)
       }
-      const mine = generation.current[channel]
       const abort = new AbortController()
       aborts.current[channel] = abort
       const editsAtStart = editsRef.current
@@ -182,7 +179,6 @@ export function useResumeAi({
           },
           abort.signal,
         )
-        if (mine !== generation.current[channel]) return NOT_SENT
         const parsed =
           result.proposed == null
             ? null
@@ -224,17 +220,15 @@ export function useResumeAi({
         ])
         return { answered: true, applied, waiting, problem }
       } catch (err) {
-        if (mine !== generation.current[channel] || isAbortError(err)) return NOT_SENT
+        if (isAbortError(err)) return NOT_SENT
         return fail(errorMessage(err, 'The AI request failed'))
       } finally {
         // A question nobody answered (stopped, refused, failed) leaves no bubble: the text goes back to the composer or
         // to Try again, and a lone user turn would reach the next request's history.
         if (!answered) setChat((items) => items.filter((item) => item.id !== userItemId))
-        if (mine === generation.current[channel]) {
-          busyRefs.current[channel] = false
-          aborts.current[channel] = null
-          setChannelBusy(false)
-        }
+        busyRefs.current[channel] = false
+        aborts.current[channel] = null
+        setChannelBusy(false)
       }
     },
     [chat, blocked, vacancyContext, model, saveIfCurrent, applyChange, announce],
