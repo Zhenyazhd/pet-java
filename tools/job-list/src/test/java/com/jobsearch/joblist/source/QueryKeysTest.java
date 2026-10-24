@@ -45,7 +45,7 @@ class QueryKeysTest {
 
 	@Test
 	void sourcesThatSendOnlyTheFirstRoleDoNotCareAboutTheOthers() {
-		for (SourceName name : List.of(SourceName.WTTJ, SourceName.LINKEDIN)) {
+		for (SourceName name : List.of(SourceName.WTTJ)) {
 			assertEquals(source(name).queryKey(query(List.of("python", "java"), new Region("FR", null))),
 					source(name).queryKey(query(List.of("python", "go"), new Region("FR", null))), name + ": only the first role is sent");
 			assertNotEquals(source(name).queryKey(query(List.of("python", "java"), new Region("FR", null))),
@@ -55,7 +55,7 @@ class QueryKeysTest {
 
 	@Test
 	void sourcesThatSendEveryRoleSeeADifferentSearchWhenARoleChanges() {
-		for (SourceName name : List.of(SourceName.HELLOWORK, SourceName.GREENHOUSE)) {
+		for (SourceName name : List.of(SourceName.HELLOWORK, SourceName.GREENHOUSE, SourceName.LINKEDIN)) {
 			assertNotEquals(source(name).queryKey(query(List.of("python", "java"), new Region("FR", null))),
 					source(name).queryKey(query(List.of("python", "go"), new Region("FR", null))), name.toString());
 			assertEquals(source(name).queryKey(query(List.of("python", "java"), new Region("FR", null))),
@@ -75,7 +75,7 @@ class QueryKeysTest {
 
 	@Test
 	void aRoleThatContainsTheJoinCharacterIsNotTwoRoles() {
-		for (SourceName name : List.of(SourceName.HELLOWORK, SourceName.GREENHOUSE)) {
+		for (SourceName name : List.of(SourceName.HELLOWORK, SourceName.GREENHOUSE, SourceName.LINKEDIN)) {
 			assertNotEquals(source(name).queryKey(query(List.of("a|b"), new Region("FR", null))),
 					source(name).queryKey(query(List.of("a", "b"), new Region("FR", null))), name.toString());
 		}

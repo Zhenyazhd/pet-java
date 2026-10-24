@@ -32,14 +32,36 @@ class LinkedInSourceTest {
 	}
 
 	@Test
-	void sendsASearchUrlWithTheFirstRoleThePlaceAndTheWindow() {
+	void sendsASearchUrlWithAllRolesAsABooleanSearchThePlaceAndTheWindow() {
 		source.fetch(query());
 
 		ArgumentCaptor<JsonNode> input = ArgumentCaptor.forClass(JsonNode.class);
 		verify(fetcher).fetch(eq(SourceName.LINKEDIN), eq("curious_coder/linkedin-jobs-scraper"), input.capture(), eq(50), any());
 		assertEquals(50, input.getValue().get("count").intValue());
+		assertEquals("https://www.linkedin.com/jobs/search/?keywords=%22python%20developer%22%20OR%20%22backend%20engineer%22&location=Paris&f_TPR=r259200",
+				input.getValue().get("urls").get(0).asString());
+	}
+
+	@Test
+	void aSingleRoleIsSentAsTyped() {
+		SourceQuery one = query();
+		one.setRoles(List.of("python developer"));
+		source.fetch(one);
+
+		ArgumentCaptor<JsonNode> input = ArgumentCaptor.forClass(JsonNode.class);
+		verify(fetcher).fetch(eq(SourceName.LINKEDIN), any(), input.capture(), anyInt(), any());
 		assertEquals("https://www.linkedin.com/jobs/search/?keywords=python%20developer&location=Paris&f_TPR=r259200",
 				input.getValue().get("urls").get(0).asString());
+	}
+
+	@Test
+	void theKeyChangesWithTheRolesButNotTheirOrder() {
+		SourceQuery other = query();
+		other.setRoles(List.of("backend engineer", "python developer"));
+		SourceQuery fewer = query();
+		fewer.setRoles(List.of("python developer"));
+		assertEquals(source.queryKey(query()), source.queryKey(other));
+		assertFalse(source.queryKey(query()).equals(source.queryKey(fewer)));
 	}
 
 	private static SourceQuery query() {

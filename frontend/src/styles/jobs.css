@@ -211,34 +211,6 @@
   box-shadow: var(--shadow-raised);
 }
 
-/* A seen posting keeps the card and takes a quiet edge on the left. */
-.match--seen {
-  box-shadow:
-    inset 2px 0 0 var(--control-border),
-    var(--shadow-card);
-}
-
-/* Muted by the title only: the card keeps the score badge above 4.5:1. */
-.match--seen .match__title {
-  color: var(--muted-foreground);
-}
-
-.radio-row {
-  display: flex;
-  gap: 1.5rem;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.radio-row label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: 48px;
-  cursor: pointer;
-}
-
 .match__head {
   display: flex;
   align-items: flex-start;

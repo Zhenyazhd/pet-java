@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useJobMatches } from '../../lib/useJobMatches'
 import { Banner } from '../ui/Banner'
 import { Button } from '../ui/Button'
@@ -9,7 +10,6 @@ const DEBOUNCE_MS = 400
 export function MatchesSection({ refreshKey }: { refreshKey: number }) {
   const [minScoreInput, setMinScoreInput] = useState('0')
   const [minScore, setMinScore] = useState(0)
-  const [seen, setSeen] = useState(false)
 
   const scoreValid = /^\d{1,3}$/.test(minScoreInput) && Number(minScoreInput) <= 100
 
@@ -19,8 +19,7 @@ export function MatchesSection({ refreshKey }: { refreshKey: number }) {
     return () => window.clearTimeout(timer)
   }, [minScoreInput, scoreValid])
 
-  const matches = useJobMatches({ minScore, seen }, refreshKey)
-  const label = seen ? 'seen' : 'unseen'
+  const matches = useJobMatches({ minScore }, refreshKey)
 
   return (
     <section aria-labelledby="matches-title" className="job-matches">
@@ -50,23 +49,20 @@ export function MatchesSection({ refreshKey }: { refreshKey: number }) {
             </p>
           )}
         </div>
-        <fieldset className="radio-row">
-          <legend className="field__label small-caps">Show</legend>
-          <label>
-            <input type="radio" name="match-seen" checked={!seen} onChange={() => setSeen(false)} />
-            Unseen
-          </label>
-          <label>
-            <input type="radio" name="match-seen" checked={seen} onChange={() => setSeen(true)} />
-            Seen
-          </label>
-        </fieldset>
       </div>
 
       {/* Always rendered: a live region is only announced when its text changes. */}
       <p className="status-text" role="status">
         {matches.loading && matches.items.length > 0 ? 'Updating…' : ''}
       </p>
+      <div role="status">
+        {matches.notice && (
+          <p className="field__hint">
+            {matches.notice} <Link to="/vacancies">View vacancies</Link>
+          </p>
+        )}
+      </div>
+      {matches.actionError && <Banner tone="error">{matches.actionError}</Banner>}
 
       {matches.error ? (
         <div className="stack">
@@ -79,15 +75,13 @@ export function MatchesSection({ refreshKey }: { refreshKey: number }) {
         </div>
       ) : matches.loading && matches.items.length === 0 ? (
         <p className="status-text">Loading matches…</p>
-      ) : matches.items.length === 0 ? (
+      ) : matches.items.length === 0 && !matches.hasMore ? (
         <div className="empty">
-          <h3>No {label} matches</h3>
+          <h3>No matches</h3>
           <p>
-            {seen
-              ? 'Matches you mark as seen will be listed here.'
-              : minScore > 0
-                ? 'Nothing unseen at this score. Lower the minimum score, or run a search.'
-                : 'Run a search to find postings that fit your profile.'}
+            {minScore > 0
+              ? 'Nothing at this score. Lower the minimum score, or run a search.'
+              : 'Run a search to find postings that fit your profile.'}
           </p>
         </div>
       ) : (
@@ -97,9 +91,8 @@ export function MatchesSection({ refreshKey }: { refreshKey: number }) {
               <MatchCard
                 key={match.id}
                 match={match}
-                saved={matches.savedIds.has(match.id)}
-                onSeen={matches.markSeen}
-                onSaved={matches.markSaved}
+                onRemove={matches.dismiss}
+                onSaved={matches.moveToVacancies}
               />
             ))}
           </ul>
