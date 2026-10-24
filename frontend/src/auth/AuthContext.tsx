@@ -1,6 +1,6 @@
 import { errorMessage } from '../lib/abort'
 import { forgetAll } from '../lib/pageCache'
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, isUnauthorized, setUnauthorizedListener } from '../api/client'
 import type { AuthUser, LoginRequest, RegisterRequest } from '../api/types'
@@ -72,17 +72,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [navigate])
 
   // Signing in proves the server is reachable: a failed check at page load must not outlive it.
-  async function login(body: LoginRequest) {
+  const login = useCallback(async (body: LoginRequest) => {
     setUser(await api.login(body))
     setSessionError(null)
-  }
+  }, [])
 
-  async function register(body: RegisterRequest) {
+  const register = useCallback(async (body: RegisterRequest) => {
     setUser(await api.register(body))
     setSessionError(null)
-  }
+  }, [])
 
-  async function logout() {
+  const logout = useCallback(async () => {
     let signedOutByUser = true
     try {
       await api.logout()
@@ -97,18 +97,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     // A sign-out the user asked for removes the CV draft this browser holds for the account: on a shared computer
     // it would otherwise stay readable. An expired session keeps it, so signing back in restores the edits.
-    if (signedOutByUser && user) clearResumeDraft(user.id)
+    if (signedOutByUser && userId !== undefined) clearResumeDraft(userId)
     setUser(null)
-  }
+  }, [userId])
 
-  const updateUser: AuthContextValue['updateUser'] = (patch) => {
+  const updateUser = useCallback<AuthContextValue['updateUser']>((patch) => {
     setUser((current) => (current ? { ...current, ...patch } : current))
-  }
+  }, [])
+
+  const value = useMemo(
+    () => ({ user, ready, sessionError, retrySession, login, register, logout, updateUser }),
+    [user, ready, sessionError, retrySession, login, register, logout, updateUser],
+  )
 
   return (
-    <AuthContext.Provider value={{ user, ready, sessionError, retrySession, login, register, logout, updateUser }}>
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
   )
 }
 
