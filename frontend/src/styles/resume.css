@@ -753,13 +753,6 @@ html:has(.resume-page) {
 }
 
 /* ---------- ATS readability: the text an ATS reads ---------- */
-.readability__text summary {
-  display: flex;
-  align-items: center;
-  min-height: 44px;
-  cursor: pointer;
-}
-
 .readability__text pre {
   max-height: 24rem;
   margin: 0.5rem 0 0;
