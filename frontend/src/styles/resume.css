@@ -780,3 +780,51 @@ html:has(.resume-page) {
   color: var(--muted-foreground);
   font-size: 0.875rem;
 }
+
+/* Page settings dialog */
+.layout-group {
+  margin: 1rem 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.layout-group legend {
+  margin-bottom: 0.5rem;
+  padding: 0;
+  color: var(--muted-foreground);
+}
+
+.layout-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+/* Labels have different lengths: reserve two lines and sit on the bottom one, so every input starts at the same height. */
+.layout-form .field__label {
+  display: flex;
+  align-items: flex-end;
+  min-height: 2.25rem;
+}
+
+.layout-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-height: 44px;
+  margin-top: 1.25rem;
+  cursor: pointer;
+}
+
+.layout-check__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.layout-check input {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.2rem;
+}

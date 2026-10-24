@@ -47,8 +47,22 @@ public class ResumeTypstRenderer {
 		ObjectNode root = objectMapper.valueToTree(document);
 		root.remove("version");
 		root.put("locale", "en".equalsIgnoreCase(root.path("locale").asString("").strip()) ? "en" : "fr");
+		dropNullLayout(root);
 		fillNulls(root);
 		return root;
+	}
+
+	/** An absent layout, or one of its fields, stays absent so the template falls back to its own value (and old PDFs keep their cache key). */
+	private static void dropNullLayout(ObjectNode root) {
+		if (!(root.get("layout") instanceof ObjectNode layout)) {
+			root.remove("layout");
+			return;
+		}
+		for (String name : layout.propertyNames().stream().toList()) {
+			if (layout.get(name).isNull()) {
+				layout.remove(name);
+			}
+		}
 	}
 
 	/** Null values become "" (or [] for a list key); a null item of a list is dropped, as the template would fail on it. */

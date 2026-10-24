@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import com.jobsearch.core_api.resume.ResumeDtos.AchievementItem;
 import com.jobsearch.core_api.resume.ResumeDtos.EducationItem;
 import com.jobsearch.core_api.resume.ResumeDtos.ExperienceItem;
+import com.jobsearch.core_api.resume.ResumeDtos.LayoutSettings;
 import com.jobsearch.core_api.resume.ResumeDtos.ResumeDocument;
 import com.jobsearch.core_api.resume.ResumeDtos.SkillItem;
 import java.io.IOException;
@@ -114,6 +115,45 @@ class ResumeTypstRendererTest {
 		assertEquals("", m.path("education").path(0).path("details").asString());
 		assertEquals("", m.path("skills").path(0).path("items").asString());
 		assertEquals("en", m.path("locale").asString());
+	}
+
+	@Test
+	void noLayoutLeavesTheSourceAsItWas() {
+		ResumeDocument plain = doc("x", "y");
+		ResumeDocument emptyLayout = new ResumeDocument(plain.name(), plain.headline(), plain.phone(), plain.email(),
+				plain.linkedinUrl(), plain.linkedinLabel(), plain.profile(), plain.experience(), plain.education(),
+				plain.achievements(), plain.skills(), plain.locale(), plain.version(), null);
+		assertFalse(renderer.normalized(plain).has("layout"));
+		assertEquals(renderer.render(plain), renderer.render(emptyLayout));
+	}
+
+	@Test
+	void layoutValuesReachTheTemplateAndUnsetOnesAreLeftOut() {
+		ResumeDocument plain = doc("x", "y");
+		ResumeDocument custom = new ResumeDocument(plain.name(), plain.headline(), plain.phone(), plain.email(),
+				plain.linkedinUrl(), plain.linkedinLabel(), plain.profile(), plain.experience(), plain.education(),
+				plain.achievements(), plain.skills(), plain.locale(), plain.version(),
+				new LayoutSettings(11.0, null, null, null, null, null, null, null, null, null, false));
+		JsonNode layout = renderer.normalized(custom).path("layout");
+		assertEquals(11.0, layout.path("fontSize").asDouble());
+		assertFalse(layout.path("autoFit").asBoolean(true));
+		assertFalse(layout.has("lineSpacing"));
+	}
+
+	@Test
+	void layoutSurvivesStorageAndAResumeStoredBeforeItReadsAsNone() throws Exception {
+		ResumeDocument plain = doc("x", "y");
+		LayoutSettings layout = new LayoutSettings(11.5, 0.7, null, null, null, null, null, 1.5, null, null, false);
+		ResumeDocument custom = new ResumeDocument(plain.name(), plain.headline(), plain.phone(), plain.email(),
+				plain.linkedinUrl(), plain.linkedinLabel(), plain.profile(), plain.experience(), plain.education(),
+				plain.achievements(), plain.skills(), plain.locale(), plain.version(), layout);
+
+		String stored = mapper.writeValueAsString(custom);
+		assertEquals(layout, mapper.readValue(stored, ResumeDocument.class).layout());
+
+		String legacy = mapper.writeValueAsString(plain).replace(",\"layout\":null", "");
+		assertFalse(legacy.contains("layout"));
+		assertEquals(null, mapper.readValue(legacy, ResumeDocument.class).layout());
 	}
 
 	@Test

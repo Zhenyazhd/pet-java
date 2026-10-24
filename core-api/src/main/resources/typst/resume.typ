@@ -1,10 +1,14 @@
 // Resume template. ResumeTypstRenderer puts one line before it:
 //   #let r = json(bytes("<the resume as JSON>"))
 // so every text below is data (a string), never markup. `scale` (sys.inputs) is set by the pdf worker's page-fit search.
-#let scale = float(sys.inputs.at("scale", default: "1.0"))
+// `layout` (optional, set by the user) overrides the numbers below; a missing key keeps the original value.
+#let layout = r.at("layout", default: (:))
+#let lv(key, default) = float(layout.at(key, default: default))
+// With autoFit off the worker's scale is ignored, so the sizes below are exactly what the user typed.
+#let scale = if layout.at("autoFit", default: true) { float(sys.inputs.at("scale", default: "1.0")) } else { 1.0 }
 #let accent = rgb("#1F3B57")
 #let soft = rgb("#5A5A5A")
-#let size = 9.7pt * scale
+#let size = lv("fontSize", 9.7) * 1pt * scale
 // French sets a (non-breaking) space before a colon; English does not.
 #let colon = if lower(r.at("locale", default: "")) == "en" { ":" } else { "\u{a0}:" }
 
@@ -15,15 +19,15 @@
 }
 
 #set document(title: r.name, author: r.name)
-#set page(paper: "a4", margin: (x: 1.2cm, top: 0.8cm, bottom: 0.75cm), numbering: none)
+#set page(paper: "a4", margin: (x: lv("marginX", 1.2) * 1cm, top: lv("marginTop", 0.8) * 1cm, bottom: lv("marginBottom", 0.75) * 1cm), numbering: none)
 #set text(font: "Libertinus Serif", size: size, lang: lower(r.at("locale", default: "fr")), fill: black)
-#set par(leading: 0.55em, spacing: 0.55em, justify: false)
+#set par(leading: lv("lineSpacing", 0.55) * 1em, spacing: lv("paragraphSpacing", 0.55) * 1em, justify: false)
 #show link: set text(fill: accent)
 // A very long unbroken word (a URL, a stray paste) would run past the margin and be clipped: let it break.
 #show regex("\\S{60,}"): it => it.text.clusters().chunks(40).map(chunk => chunk.join()).join(sym.zws)
 
 #let section(title) = {
-  block(above: 0.95em, below: 0.45em, width: 100%, sticky: true)[
+  block(above: lv("sectionSpacing", 0.95) * 1em, below: 0.45em, width: 100%, sticky: true)[
     #text(weight: "bold", fill: accent, size: size * 1.18)[#title]
     #v(-0.1em)
     #line(length: 100%, stroke: 0.9pt + accent)
@@ -36,7 +40,7 @@
       text(weight: "bold")[#title],
       text(fill: soft, size: size * 0.9)[#aside])
     #if sub != "" [
-      #v(0em)
+      #v(lv("subtitleSpacing", 0) * 1em)
       #text(style: "italic", size: size * 0.9)[#sub]
     ]
   ]
@@ -44,10 +48,10 @@
 
 #let bullets(items) = {
   if items.len() > 0 {
-    block(above: 0.3em, below: 0em)[
+    block(above: lv("bulletsTopSpacing", 0.6) * 1em, below: 0em)[
       #for item in items [
         #grid(columns: (0.9em, 1fr), text(fill: soft)[•], [#item])
-        #v(0.2em)
+        #v(lv("bulletSpacing", 0.2) * 1em)
       ]
     ]
   }

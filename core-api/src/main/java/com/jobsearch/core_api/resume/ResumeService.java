@@ -137,7 +137,7 @@ public class ResumeService {
 		return new ResumeDocument(
 				doc.name(), doc.headline(), doc.phone(), doc.email(), doc.linkedinUrl(), doc.linkedinLabel(),
 				doc.profile(), doc.experience(), doc.education(), doc.achievements(), doc.skills(), doc.locale(),
-				version
+				version, doc.layout()
 		);
 	}
 
