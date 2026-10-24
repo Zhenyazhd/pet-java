@@ -156,10 +156,9 @@ export function useResumeAi({
               .slice(-HISTORY_TURNS)
               .map((item) => ({ role: item.role as 'user' | 'assistant', content: item.text }))
           : []
-      setChat((items) => [
-        ...items,
-        { id: ++nextId.current, role: 'user', text: options.shownAs ?? text },
-      ])
+      const userItemId = ++nextId.current
+      setChat((items) => [...items, { id: userItemId, role: 'user', text: options.shownAs ?? text }])
+      let answered = false
       try {
         const outcome = await saveIfCurrent()
         if (abort.signal.aborted) return NOT_SENT
@@ -211,6 +210,7 @@ export function useResumeAi({
               : 'AI edit applied. Remember to save.',
           )
         }
+        answered = true
         setChat((items) => [
           ...items,
           {
@@ -227,6 +227,9 @@ export function useResumeAi({
         if (mine !== generation.current[channel] || isAbortError(err)) return NOT_SENT
         return fail(errorMessage(err, 'The AI request failed'))
       } finally {
+        // A question nobody answered (stopped, refused, failed) leaves no bubble: the text goes back to the composer or
+        // to Try again, and a lone user turn would reach the next request's history.
+        if (!answered) setChat((items) => items.filter((item) => item.id !== userItemId))
         if (mine === generation.current[channel]) {
           busyRefs.current[channel] = false
           aborts.current[channel] = null
