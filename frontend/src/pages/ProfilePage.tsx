@@ -17,6 +17,8 @@ const CAREER_PATH_MAX = 40_000
 const EMPTY: Profile = { displayName: '', email: '', careerPath: '' }
 
 const CACHE_KEY = 'profile'
+// Unsaved edits, kept in memory so a trip to another section does not lose them (beforeunload only covers the tab).
+const DRAFT_KEY = 'profile-draft'
 
 const sameProfile = (a: Profile, b: Profile) =>
   a.displayName === b.displayName && a.email === b.email && a.careerPath === b.careerPath
@@ -25,7 +27,8 @@ export default function ProfilePage() {
   useDocumentTitle('Profile')
   const { updateUser } = useAuth()
   const [initial] = useState(() => recall<Profile>(CACHE_KEY) ?? EMPTY)
-  const [profile, setProfile] = useState<Profile>(initial)
+  const [draft] = useState(() => recall<Profile>(DRAFT_KEY))
+  const [profile, setProfile] = useState<Profile>(draft ?? initial)
   const [saved, setSaved] = useState<Profile>(initial)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -43,7 +46,7 @@ export default function ProfilePage() {
       .getProfile()
       .then((data) => {
         if (cancelled) return
-        setProfile(data)
+        setProfile(draft ?? data)
         setSaved(data)
         remember(CACHE_KEY, data)
       })
@@ -57,9 +60,13 @@ export default function ProfilePage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [draft])
 
   useEffect(() => load(), [load])
+
+  useEffect(() => {
+    remember(DRAFT_KEY, dirty ? profile : undefined)
+  }, [dirty, profile])
 
   useBeforeUnload(dirty)
 
