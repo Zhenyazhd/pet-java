@@ -27,7 +27,7 @@ const sameProfile = (a: Profile, b: Profile) =>
 export default function ProfilePage() {
   useDocumentTitle('Profile')
   useFocusHeading('profile-title')
-  const { updateUser } = useAuth()
+  const { user, updateUser } = useAuth()
   const [initial] = useState(() => recall<Profile>(CACHE_KEY) ?? EMPTY)
   const [draft] = useState(() => recall<Profile>(DRAFT_KEY))
   const [profile, setProfile] = useState<Profile>(draft ?? initial)
@@ -176,7 +176,7 @@ export default function ProfilePage() {
         </form>
       )}
 
-      <PromptsCard />
+      {user?.role === 'ADMIN' && <PromptsCard />}
     </section>
   )
 }

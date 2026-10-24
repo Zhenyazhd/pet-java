@@ -2,6 +2,8 @@ export type AuthUser = {
   id: number
   email: string
   displayName: string
+  /** 'ADMIN' sees the AI instructions on the Profile page; anyone else does not. */
+  role?: string
   /** What this deployment offers; a switched-off feature is hidden or disabled instead of failing on click. */
   features?: { atsMatch: boolean; pdfReadability?: boolean }
 }

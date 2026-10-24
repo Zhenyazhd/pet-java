@@ -208,6 +208,9 @@ export const api = {
   savePromptPart: (key: string, text: string) =>
     request<PromptPart>(`/api/profile/prompts/${encodeURIComponent(key)}`, json('PUT', { text })),
 
+  publishPromptDefaults: () =>
+    request<PromptPart[]>('/api/profile/prompts/publish', { method: 'POST' }),
+
   resetPromptPart: (key: string) =>
     request<void>(`/api/profile/prompts/${encodeURIComponent(key)}`, { method: 'DELETE' }),
 

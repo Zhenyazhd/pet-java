@@ -100,6 +100,7 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/auth/logout").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
 						.requestMatchers("/api/invite-codes", "/api/invite-codes/**").hasRole("ADMIN")
+						.requestMatchers("/api/profile/prompts", "/api/profile/prompts/**").hasRole("ADMIN")
 						.requestMatchers("/api/**").authenticated()
 						.requestMatchers("/actuator/health/**", "/error").permitAll()
 						.anyRequest().denyAll()
