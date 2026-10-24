@@ -1,5 +1,5 @@
 import type { JobMatch, JobRegion, JobRun, JobRunStatus, JobSearchProfile } from '../api/types'
-import { safeHttpUrl } from './format'
+import { formatDate, safeHttpUrl } from './format'
 
 export const EXPECTATIONS_MAX = 5_000
 export const ROLES_MAX = 30
@@ -63,14 +63,13 @@ export function formatUsd(amount: number): string {
 }
 
 const dateTime = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
-const dateOnly = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' })
 
 /** Server dates come from job boards too, so an unparsable one must not throw during render. */
 export function formatWhen(iso: string | null, withTime = false): string | null {
   if (!iso) return null
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return null
-  return (withTime ? dateTime : dateOnly).format(date)
+  return withTime ? dateTime.format(date) : formatDate(iso)
 }
 
 /** The link to a posting, or null: only plain http(s) addresses the vacancy API would accept too. */

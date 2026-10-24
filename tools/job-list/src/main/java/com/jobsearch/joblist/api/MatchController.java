@@ -30,9 +30,10 @@ public class MatchController {
 			@RequestParam(required = false) Boolean delivered,
 			@RequestParam(required = false) String since,
 			@RequestParam(required = false) Integer limit,
-			@RequestParam(required = false) String cursor
+			@RequestParam(required = false) String cursor,
+			@RequestParam(required = false) String sort
 	) {
-		return service.page(client, id, new MatchService.Query(minScore, delivered, since, limit, cursor));
+		return service.page(client, id, new MatchService.Query(minScore, delivered, since, limit, cursor, sort));
 	}
 
 	@PostMapping("/matches/{id}/ack")

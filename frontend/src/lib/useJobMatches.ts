@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
-import type { JobMatch } from '../api/types'
+import type { JobMatch, JobMatchSort } from '../api/types'
 import { errorMessage, isAbortError } from './abort'
 import { recall, remember } from './pageCache'
 
-type Filters = { minScore: number }
+type Filters = { minScore: number; sort: JobMatchSort }
 type FirstPage = { items: JobMatch[]; nextCursor: string | null }
 
-const cacheKey = ({ minScore }: Filters) => `matches:${minScore}`
+const cacheKey = ({ minScore, sort }: Filters) => `matches:${minScore}:${sort}`
 
 /** Matches for the filters, newest page first; `refreshKey` reloads the first page (e.g. after a run). */
-export function useJobMatches({ minScore }: Filters, refreshKey: number) {
-  const [cached] = useState(() => recall<FirstPage>(cacheKey({ minScore })))
+export function useJobMatches({ minScore, sort }: Filters, refreshKey: number) {
+  const [cached] = useState(() => recall<FirstPage>(cacheKey({ minScore, sort })))
   const [items, setItems] = useState<JobMatch[]>(cached?.items ?? [])
   const [nextCursor, setNextCursor] = useState<string | null>(cached?.nextCursor ?? null)
   const [loading, setLoading] = useState(true)
@@ -24,14 +24,14 @@ export function useJobMatches({ minScore }: Filters, refreshKey: number) {
   const itemsRef = useRef(items)
   itemsRef.current = items
   const abort = useRef<AbortController | null>(null)
-  const shownKey = useRef(cacheKey({ minScore }))
+  const shownKey = useRef(cacheKey({ minScore, sort }))
 
   useEffect(() => {
     const controller = new AbortController()
     abort.current?.abort()
     abort.current = controller
     // New filters: show their last known first page (or nothing), never the previous filters' list.
-    const key = cacheKey({ minScore })
+    const key = cacheKey({ minScore, sort })
     if (shownKey.current !== key) {
       shownKey.current = key
       const hit = recall<FirstPage>(key)
@@ -43,11 +43,11 @@ export function useJobMatches({ minScore }: Filters, refreshKey: number) {
     setError(null)
     setMoreError(null)
     api
-      .listJobMatches({ minScore, seen: false }, controller.signal)
+      .listJobMatches({ minScore, seen: false, sort }, controller.signal)
       .then((page) => {
         setItems(page.items)
         setNextCursor(page.nextCursor)
-        remember(cacheKey({ minScore }), { items: page.items, nextCursor: page.nextCursor })
+        remember(cacheKey({ minScore, sort }), { items: page.items, nextCursor: page.nextCursor })
       })
       .catch((err) => {
         if (!isAbortError(err)) setError(errorMessage(err, 'Failed to load matches'))
@@ -56,7 +56,7 @@ export function useJobMatches({ minScore }: Filters, refreshKey: number) {
         if (!controller.signal.aborted) setLoading(false)
       })
     return () => controller.abort()
-  }, [minScore, refreshKey, attempt])
+  }, [minScore, sort, refreshKey, attempt])
 
   const loadMore = useCallback(() => {
     if (!nextCursor || loadingMore || loading) return
@@ -65,7 +65,7 @@ export function useJobMatches({ minScore }: Filters, refreshKey: number) {
     setLoadingMore(true)
     setMoreError(null)
     api
-      .listJobMatches({ minScore, seen: false, cursor: nextCursor }, controller.signal)
+      .listJobMatches({ minScore, seen: false, sort, cursor: nextCursor }, controller.signal)
       .then((page) => {
         setItems((prev) => {
           const known = new Set(prev.map((m) => m.id))
@@ -79,7 +79,7 @@ export function useJobMatches({ minScore }: Filters, refreshKey: number) {
       .finally(() => {
         if (!controller.signal.aborted) setLoadingMore(false)
       })
-  }, [nextCursor, loadingMore, loading, minScore])
+  }, [nextCursor, loadingMore, loading, minScore, sort])
 
   /** Takes the match out of the list and of the cached first page; returns what is needed to put it back. */
   const take = useCallback((id: JobMatch['id']) => {

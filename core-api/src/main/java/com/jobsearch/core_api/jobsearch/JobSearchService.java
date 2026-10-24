@@ -114,7 +114,7 @@ public class JobSearchService {
 		}
 	}
 
-	public MatchPage matches(Integer minScore, Boolean delivered, Integer limit, String cursor) {
+	public MatchPage matches(Integer minScore, Boolean delivered, Integer limit, String cursor, String sort) {
 		requireConfigured();
 		Optional<JobListProfile> profile = findProfile();
 		if (profile.isEmpty()) {
@@ -122,7 +122,7 @@ public class JobSearchService {
 		}
 		Integer score = minScore == null ? null : Math.clamp(minScore, 0, 100);
 		int size = limit == null ? DEFAULT_LIMIT : Math.clamp(limit, 1, MAX_LIMIT);
-		return client.matches(profile.get().id(), new MatchQuery(score, delivered, size, cursor));
+		return client.matches(profile.get().id(), new MatchQuery(score, delivered, size, cursor, sort));
 	}
 
 	/**

@@ -56,7 +56,11 @@ public class JobListClient {
 	}
 
 	/** The optional filters of a matches page; null means "leave to job-list's default". */
-	public record MatchQuery(Integer minScore, Boolean delivered, Integer limit, String cursor) {
+	public record MatchQuery(Integer minScore, Boolean delivered, Integer limit, String cursor, String sort) {
+
+		public MatchQuery(Integer minScore, Boolean delivered, Integer limit, String cursor) {
+			this(minScore, delivered, limit, cursor, null);
+		}
 	}
 
 	private final RestClient restClient;
@@ -121,6 +125,9 @@ public class JobListClient {
 			}
 			if (query.limit() != null) {
 				b.queryParam("limit", query.limit());
+			}
+			if (query.sort() != null) {
+				b.queryParam("sort", query.sort());
 			}
 			if (query.cursor() != null) {
 				b.queryParam("cursor", "{cursor}");

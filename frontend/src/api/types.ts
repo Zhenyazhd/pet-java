@@ -177,8 +177,12 @@ export type JobMatch = {
 
 export type JobMatchPage = { items: JobMatch[]; nextCursor: string | null }
 
+export type JobMatchSort = 'score' | 'posted'
+
 export type JobMatchQuery = {
   minScore: number
   seen: boolean
+  /** Best score first (the default) or newest posting first. */
+  sort?: JobMatchSort
   cursor?: string | null
 }

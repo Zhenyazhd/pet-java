@@ -172,6 +172,10 @@
   gap: 1rem 2rem;
 }
 
+.match-filters__sort {
+  min-width: 12rem;
+}
+
 .check {
   display: inline-flex;
   align-items: center;

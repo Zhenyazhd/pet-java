@@ -1,15 +1,22 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import type { JobMatchSort } from '../../api/types'
 import { useJobMatches } from '../../lib/useJobMatches'
 import { Banner } from '../ui/Banner'
 import { Button } from '../ui/Button'
+import { Select } from '../ui/Select'
 import { MatchCard } from './MatchCard'
 
 const DEBOUNCE_MS = 400
+const SORT_OPTIONS = [
+  { value: 'score', label: 'Best match' },
+  { value: 'posted', label: 'Newest posted' },
+]
 
 export function MatchesSection({ refreshKey }: { refreshKey: number }) {
   const [minScoreInput, setMinScoreInput] = useState('0')
   const [minScore, setMinScore] = useState(0)
+  const [sort, setSort] = useState<JobMatchSort>('score')
 
   const scoreValid = /^\d{1,3}$/.test(minScoreInput) && Number(minScoreInput) <= 100
 
@@ -19,7 +26,7 @@ export function MatchesSection({ refreshKey }: { refreshKey: number }) {
     return () => window.clearTimeout(timer)
   }, [minScoreInput, scoreValid])
 
-  const matches = useJobMatches({ minScore }, refreshKey)
+  const matches = useJobMatches({ minScore, sort }, refreshKey)
 
   return (
     <section aria-labelledby="matches-title" className="job-matches">
@@ -48,6 +55,18 @@ export function MatchesSection({ refreshKey }: { refreshKey: number }) {
               Enter a whole number from 0 to 100.
             </p>
           )}
+        </div>
+        <div className="field match-filters__sort">
+          <label className="field__label small-caps" htmlFor="match-sort">
+            Sort by
+          </label>
+          <Select
+            id="match-sort"
+            className="input"
+            options={SORT_OPTIONS}
+            value={sort}
+            onChange={(value) => setSort(value === 'posted' ? 'posted' : 'score')}
+          />
         </div>
       </div>
 

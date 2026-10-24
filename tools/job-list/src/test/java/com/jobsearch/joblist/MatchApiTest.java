@@ -134,6 +134,40 @@ class MatchApiTest {
 	}
 
 	@Test
+	void sortPostedListsNewestPostingFirstAndPagesWalkEveryMatchOnce() throws Exception {
+		Instant now = Instant.now();
+		match("Posted yesterday", 40, now.minus(Duration.ofDays(1)), now.minus(Duration.ofDays(1)));
+		match("Posted an hour ago", 50, now.minus(Duration.ofHours(1)), now.minus(Duration.ofHours(1)));
+		match("Undated, fetched 3 hours ago", 60, null, now.minus(Duration.ofHours(3)));
+		// "Best job", "Good job" and "Weak job" are undated and fetched just now (setUp), so they come first, newest id first.
+
+		List<String> seen = new java.util.ArrayList<>();
+		String cursor = null;
+		do {
+			String body = mvc.perform(get("/v1/profiles/" + profileId + "/matches?minScore=0&limit=2&sort=posted"
+					+ (cursor == null ? "" : "&cursor=" + cursor)).header("Authorization", CORE_API))
+					.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+			var json = new tools.jackson.databind.ObjectMapper().readTree(body);
+			json.get("items").forEach(item -> seen.add(item.get("job").get("title").asString()));
+			cursor = json.hasNonNull("nextCursor") ? json.get("nextCursor").asString() : null;
+		}
+		while (cursor != null);
+
+		org.junit.jupiter.api.Assertions.assertEquals(List.of("Weak job", "Good job", "Best job", "Posted an hour ago",
+				"Undated, fetched 3 hours ago", "Posted yesterday"), seen);
+	}
+
+	@Test
+	void sortAndCursorMustAgree() throws Exception {
+		mvc.perform(get("/v1/profiles/" + profileId + "/matches?sort=popularity").header("Authorization", CORE_API))
+				.andExpect(status().isBadRequest());
+		mvc.perform(get("/v1/profiles/" + profileId + "/matches?sort=posted&cursor=80:1").header("Authorization", CORE_API))
+				.andExpect(status().isBadRequest());
+		mvc.perform(get("/v1/profiles/" + profileId + "/matches?cursor=p:1:1").header("Authorization", CORE_API))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
 	void aMatchDisappearsWhenItsJobTurnsOlderThanTheLimit() throws Exception {
 		Instant now = Instant.now();
 		Match aging = match("Aging", 99, now.minus(Duration.ofDays(2)).minus(Duration.ofHours(23)), now.minus(Duration.ofDays(2)));

@@ -12,6 +12,7 @@ import com.jobsearch.joblist.rank.MatchDtos.MatchPage;
 import com.jobsearch.joblist.rank.MatchDtos.MatchResponse;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,9 @@ public class MatchService {
 	private static final int SNIPPET_CHARS = 1500;
 	/** Above every real score, so the first page starts at the top. */
 	private static final int TOP_OF_RANGE = 101;
+	/** After every real posting date, so the first page of the newest-first order starts at the top. */
+	private static final Instant END_OF_TIME = Instant.parse("9999-12-31T00:00:00Z");
+	private static final String POSTED_PREFIX = "p:";
 
 	private final MatchRepository matches;
 	private final SearchProfileService profiles;
@@ -41,24 +45,37 @@ public class MatchService {
 		this.maxPostingAgeDays = properties.maxPostingAgeDays();
 	}
 
-	/** Query options of one page; null values mean "use the default" (matches not yet delivered, the profile's minimum score). */
-	public record Query(Integer minScore, Boolean delivered, String since, Integer limit, String cursor) {
+	/**
+	 * Query options of one page; null values mean "use the default" (matches not yet delivered, the profile's minimum
+	 * score, best score first). {@code sort} is "score" or "posted" (newest posting first).
+	 */
+	public record Query(Integer minScore, Boolean delivered, String since, Integer limit, String cursor, String sort) {
+
+		public Query(Integer minScore, Boolean delivered, String since, Integer limit, String cursor) {
+			this(minScore, delivered, since, limit, cursor, null);
+		}
 	}
 
 	@Transactional(readOnly = true)
 	public MatchPage page(String client, long profileId, Query query) {
 		SearchProfile profile = profiles.owned(client, profileId);
 		int limit = limit(query.limit());
+		int minScore = query.minScore() == null ? profile.getMinScore() : query.minScore();
+		Instant since = since(query.since());
+		Instant postedAfter = PostingAge.cutoff(Instant.now(), maxPostingAgeDays);
+		boolean delivered = Boolean.TRUE.equals(query.delivered());
+		if (newestFirst(query.sort())) {
+			Object[] cursor = postedCursor(query.cursor());
+			List<Match> found = matches.pageByPosted(profileId, minScore, since, postedAfter, delivered,
+					(Instant) cursor[0], (long) cursor[1], PageRequest.ofSize(limit));
+			String next = found.size() == limit
+					? POSTED_PREFIX + ChronoUnit.MICROS.between(Instant.EPOCH, postedInstant(found.getLast())) + ":" + found.getLast().getId()
+					: null;
+			return new MatchPage(found.stream().map(MatchService::toResponse).toList(), next);
+		}
 		long[] cursor = cursor(query.cursor());
-		List<Match> found = matches.page(
-				profileId,
-				query.minScore() == null ? profile.getMinScore() : query.minScore(),
-				since(query.since()),
-				PostingAge.cutoff(Instant.now(), maxPostingAgeDays),
-				Boolean.TRUE.equals(query.delivered()),
-				(int) cursor[0],
-				cursor[1],
-				PageRequest.ofSize(limit));
+		List<Match> found = matches.page(profileId, minScore, since, postedAfter, delivered,
+				(int) cursor[0], cursor[1], PageRequest.ofSize(limit));
 		List<MatchResponse> items = found.stream().map(MatchService::toResponse).toList();
 		String next = found.size() == limit ? found.getLast().getScore() + ":" + found.getLast().getId() : null;
 		return new MatchPage(items, next);
@@ -88,6 +105,39 @@ public class MatchService {
 		catch (DateTimeParseException ex) {
 			throw new BadRequestException("since must be an ISO-8601 instant, e.g. 2026-10-01T00:00:00Z");
 		}
+	}
+
+	private static boolean newestFirst(String sort) {
+		if (sort == null || sort.equals("score")) {
+			return false;
+		}
+		if (sort.equals("posted")) {
+			return true;
+		}
+		throw new BadRequestException("sort must be score or posted");
+	}
+
+	/** The instant the newest-first order and its cursor use: the posting date, or the fetch date when there is none. */
+	private static Instant postedInstant(Match match) {
+		Job job = match.getJob();
+		return job.getPostedAt() != null ? job.getPostedAt() : job.getFetchedAt();
+	}
+
+	/** {instant, id} of the last item of the previous newest-first page (microseconds, as the database keeps them), or the top. */
+	private static Object[] postedCursor(String cursor) {
+		if (cursor == null) {
+			return new Object[] { END_OF_TIME, Long.MAX_VALUE };
+		}
+		String[] parts = cursor.split(":");
+		try {
+			if (parts.length == 3 && parts[0].equals("p")) {
+				return new Object[] { Instant.EPOCH.plus(Long.parseLong(parts[1]), ChronoUnit.MICROS), Long.parseLong(parts[2]) };
+			}
+		}
+		catch (NumberFormatException | java.time.DateTimeException | ArithmeticException ex) {
+			// falls through to the same message
+		}
+		throw new BadRequestException("cursor must be the nextCursor of a previous page");
 	}
 
 	/** {score, id} of the last item of the previous page, or the top of the range. */
