@@ -164,6 +164,16 @@ export function useResumeDocument() {
     setStatus('Loaded the latest saved CV.')
   }, [userId, load])
 
+  // After a 409: load the newer CV but keep the user's edits as a stale draft they can put back.
+  const reloadKeepingEdits = useCallback(async () => {
+    const mine = resumeRef.current ? toDocument(resumeRef.current) : null
+    if (!(await load(true))) return
+    setConflict(false)
+    setSaveError(null)
+    setStaleDraft(mine)
+    setStatus('Loaded the latest saved CV. Your edits are kept below.')
+  }, [load])
+
   const restoreStaleDraft = useCallback(() => {
     if (!staleDraft) return
     patch((current) => toEditable({ ...staleDraft, version: current.version }))
@@ -193,6 +203,7 @@ export function useResumeDocument() {
     saveIfCurrent,
     reload: load,
     discardAndReload,
+    reloadKeepingEdits,
     restoreStaleDraft,
     dropStaleDraft,
   }

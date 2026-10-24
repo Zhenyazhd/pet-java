@@ -9,6 +9,7 @@ data:
   POSTGRES_USER: job_search
   DB_POOL_SIZE: "10"
   PDF_WORKER_BASE_URL: http://pdf-worker:8090
+  JOB_LIST_BASE_URL: http://job-list:8100
   SERVER_FORWARD_HEADERS_STRATEGY: native
   APP_STRICT_SECRETS: "true"
   APP_CORS_ALLOWED_ORIGINS: https://cvhelper.dev
@@ -59,6 +60,9 @@ spec:
               valueFrom: { secretKeyRef: { name: cvhelper-secrets, key: PDF_WORKER_TOKEN } }
             - name: OPENROUTER_API_KEY
               valueFrom: { secretKeyRef: { name: cvhelper-secrets, key: OPENROUTER_API_KEY } }
+            # optional: without the job-list secret the variable is absent and job matches stay off
+            - name: JOB_LIST_TOKEN
+              valueFrom: { secretKeyRef: { name: job-list-secrets, key: CORE_API_TOKEN, optional: true } }
             - name: APP_ADMIN_EMAIL
               valueFrom: { secretKeyRef: { name: cvhelper-secrets, key: APP_ADMIN_EMAIL } }
             - name: APP_BOOTSTRAP_PASSWORD

@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -18,6 +19,8 @@ public class ClientAuthFilter extends OncePerRequestFilter {
 
 	public static final String CLIENT = "job-list.client";
 	private static final String BEARER = "Bearer ";
+	private static final Set<String> OPEN_PATHS = Set.of(
+			"/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness");
 
 	private final JobListProperties properties;
 
@@ -27,7 +30,8 @@ public class ClientAuthFilter extends OncePerRequestFilter {
 
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
-		return request.getRequestURI().startsWith("/actuator/");
+		// Exact paths only: a prefix test on the raw URI would let "/actuator/../v1/x" skip the token check.
+		return OPEN_PATHS.contains(request.getRequestURI());
 	}
 
 	@Override

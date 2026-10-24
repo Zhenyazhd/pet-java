@@ -172,8 +172,11 @@ export default function ResumePage() {
         {conflictBlocked && (
           <Banner tone="error">
             <p>The CV was changed in another tab or session. Saving is paused.</p>
-            <Button variant="outline" onClick={() => void doc.discardAndReload()}>
-              Reload latest (discards your edits)
+            <Button variant="outline" onClick={() => void doc.reloadKeepingEdits()}>
+              Reload latest and keep my edits
+            </Button>{' '}
+            <Button variant="ghost" onClick={() => void doc.discardAndReload()}>
+              Reload latest and discard my edits
             </Button>
           </Banner>
         )}

@@ -37,4 +37,11 @@ class ApiErrorsTest {
 		mvc.perform(delete("/mcp").header("Authorization", TOKEN)).andExpect(status().isMethodNotAllowed()).andExpect(jsonPath("$.status").value(405));
 		mvc.perform(get("/v1/nothing-here").header("Authorization", TOKEN)).andExpect(status().isNotFound()).andExpect(jsonPath("$.status").value(404));
 	}
+
+	@Test
+	void actuatorPrefixDoesNotSkipTheTokenCheck() throws Exception {
+		mvc.perform(get("/actuator/health")).andExpect(status().isOk());
+		mvc.perform(get("/actuator/../v1/profiles/1")).andExpect(status().isUnauthorized());
+		mvc.perform(get("/actuator/env")).andExpect(status().isUnauthorized());
+	}
 }
