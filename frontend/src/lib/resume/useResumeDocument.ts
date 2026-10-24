@@ -3,6 +3,7 @@ import { api, isConflict } from '../../api/client'
 import type { ResumeDocument } from '../../api/resumeTypes'
 import { useAuth } from '../../auth/AuthContext'
 import { errorMessage } from '../abort'
+import { useBeforeUnload } from '../useBeforeUnload'
 import { toDocument, toEditable, type EditableResume } from './editable'
 import { clearResumeDraft, decideDraft, readResumeDraft, writeResumeDraft } from './draft'
 import { firstInvalidField } from './limits'
@@ -88,12 +89,7 @@ export function useResumeDocument() {
     if (resume && dirty && userId !== null) writeResumeDraft(userId, toDocument(resume))
   }, [resume, dirty, userId])
 
-  useEffect(() => {
-    if (!dirty) return
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault()
-    window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
-  }, [dirty])
+  useBeforeUnload(dirty)
 
   const patch = useCallback(
     (updater: (current: EditableResume) => EditableResume) => {
