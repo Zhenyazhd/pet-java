@@ -78,11 +78,28 @@ export type SuggestResponse = {
   proposed: unknown | null
 }
 
+/** One scored dimension of a platform's view: what works, what is missing. */
+export type MatchDimension = {
+  score: number | null
+  good: string[]
+  missing: string[]
+}
+
+export type MatchBreakdown = {
+  formatting: MatchDimension | null
+  keywords: MatchDimension | null
+  sections: MatchDimension | null
+  experience: MatchDimension | null
+  education: MatchDimension | null
+}
+
 export type MatchPlatformScore = {
   system: string
   vendor: string
   overallScore: number
   passesFilter: boolean
+  /** Absent in a result stored before the details were kept, and null when the model gave none. */
+  breakdown?: MatchBreakdown | null
 }
 
 export type MatchSuggestion = {

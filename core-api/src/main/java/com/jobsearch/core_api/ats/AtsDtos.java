@@ -24,8 +24,21 @@ public final class AtsDtos {
 			String system,
 			String vendor,
 			int overallScore,
-			boolean passesFilter
+			boolean passesFilter,
+			/** Why the score is what it is, per dimension; null when the model gave no usable detail. */
+			Breakdown breakdown
 	) {
+
+		public PlatformScore(String system, String vendor, int overallScore, boolean passesFilter) {
+			this(system, vendor, overallScore, passesFilter, null);
+		}
+	}
+
+	/** One platform's view of the resume: what works and what is missing, per scored dimension. */
+	public record Breakdown(Dimension formatting, Dimension keywords, Dimension sections, Dimension experience, Dimension education) {
+	}
+
+	public record Dimension(Integer score, List<String> good, List<String> missing) {
 	}
 
 	public record Suggestion(

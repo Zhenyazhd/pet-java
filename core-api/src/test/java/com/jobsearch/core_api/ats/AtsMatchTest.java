@@ -2,6 +2,7 @@ package com.jobsearch.core_api.ats;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -168,6 +169,34 @@ class AtsMatchTest {
 		var result = objectMapper.readTree(succeeded.result());
 		assertEquals(10, result.path("suggestions").size());
 		assertEquals(1000, result.path("suggestions").path(0).path("summary").asString().length());
+	}
+
+	@Test
+	void eachPlatformKeepsWhatWorksAndWhatIsMissing() {
+		String json = """
+				{"results": [
+				  {"system": "Workday", "overallScore": 80, "passesFilter": true, "breakdown": {
+				    "keywordMatch": {"score": 70, "matched": ["Node.js"], "missing": ["Kubernetes"], "synonymMatched": ["Postgres"]},
+				    "sections": {"score": 85, "present": ["experience"], "missing": ["summary"]},
+				    "experience": {"score": 75, "quantifiedBullets": 3, "totalBullets": 5, "highlights": ["Led a migration"]}}},
+				  {"system": "Lever", "overallScore": 50, "passesFilter": false}
+				]}
+				""";
+		when(scoreClient.fullScore(any(byte[].class), anyString())).thenReturn(new ScoreResult.Report(objectMapper.readTree(json)));
+		service.enqueue(new MatchRequest("Backend engineer", null, builtPdf()));
+
+		JobOutcome.Succeeded succeeded = assertInstanceOf(JobOutcome.Succeeded.class, handler.run(claim()));
+
+		var platforms = objectMapper.readTree(succeeded.result()).path("platforms");
+		var workday = platforms.path(0).path("breakdown");
+		assertEquals("Kubernetes", workday.path("keywords").path("missing").path(0).asString());
+		assertEquals(70, workday.path("keywords").path("score").asInt());
+		assertEquals("Node.js", workday.path("keywords").path("good").path(0).asString());
+		assertEquals("Postgres", workday.path("keywords").path("good").path(1).asString());
+		assertEquals("summary", workday.path("sections").path("missing").path(0).asString());
+		assertEquals("2 of 5 bullets have no number or result.", workday.path("experience").path("missing").path(0).asString());
+		assertTrue(workday.path("formatting").isNull());
+		assertTrue(platforms.path(1).path("breakdown").isNull());
 	}
 
 	/** A finished PDF build of the current resume, with the PDF in the cache. */
