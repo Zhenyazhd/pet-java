@@ -22,13 +22,8 @@
   margin-bottom: 2rem;
   padding: 1.25rem 1.5rem;
   border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.02)),
-    var(--card);
-  box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.06),
-    0 2px 20px rgb(0 0 0 / 0.4),
-    0 0 40px rgb(0 0 0 / 0.2);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-card);
 }
 
 .section-title {
@@ -98,7 +93,8 @@
   letter-spacing: 0.05em;
   cursor: pointer;
   touch-action: manipulation;
-  transition: all var(--duration) var(--ease);
+  transition: background-color var(--duration) var(--ease), border-color var(--duration) var(--ease),
+    color var(--duration) var(--ease);
 }
 
 .chip:hover {
@@ -181,7 +177,8 @@
   color: var(--foreground);
   font: inherit;
   font-size: 0.9375rem;
-  transition: all var(--duration-fast) var(--ease);
+  transition: background-color var(--duration-fast) var(--ease), border-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease);
 }
 
 .status-select:hover:not(:disabled) {
@@ -216,13 +213,8 @@
   gap: 0.5rem;
   padding: 2rem;
   border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.02)),
-    var(--card);
-  box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.06),
-    0 2px 20px rgb(0 0 0 / 0.4),
-    0 0 40px rgb(0 0 0 / 0.2);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-card);
 }
 
 .empty h3 {

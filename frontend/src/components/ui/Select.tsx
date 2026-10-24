@@ -19,7 +19,7 @@ type SelectProps = {
 type Place = { top?: number; bottom?: number; left?: number; right?: number; minWidth: number }
 
 const LIST_MAX = 256
-const ROW = 40
+const ROW = 44
 
 /**
  * A drop-in for `<select>`: the browser draws the open list of a native one and ignores the page theme.
@@ -156,7 +156,7 @@ export function Select({ options, value, onChange, id, className, disabled, ...a
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-controls={listId}
+        aria-controls={open ? listId : undefined}
         aria-activedescendant={open ? optionId(active) : undefined}
         aria-label={aria['aria-label']}
         aria-describedby={aria['aria-describedby']}
@@ -174,10 +174,14 @@ export function Select({ options, value, onChange, id, className, disabled, ...a
           className="select-list"
           style={place}
           aria-label={aria['aria-label']}
+          // Named by a `<label htmlFor>`: the button already carries that name.
+          aria-labelledby={aria['aria-label'] ? undefined : id}
           // Keeps focus on the button, so the click below does not first blur (and close) the list.
           onMouseDown={(event) => event.preventDefault()}
         >
           {options.map((option, i) => (
+            // Pointer handlers only: the keyboard works on the button through aria-activedescendant.
+            // eslint-disable-next-line jsx-a11y/click-events-have-key-events
             <li
               key={option.value}
               id={optionId(i)}

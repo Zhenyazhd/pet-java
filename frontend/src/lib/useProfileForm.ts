@@ -45,7 +45,7 @@ export function useProfileForm(saved: ProfileValues) {
     if (!COUNTRY.test(country)) return
     if (values.regions.length >= REGIONS_MAX) return setRegionNote(`At most ${REGIONS_MAX} regions.`)
     const region: JobRegion = { country, city: city.trim() || null }
-    if (values.regions.some((r) => r.country === region.country && r.city === region.city)) {
+    if (values.regions.some((r) => r.country === region.country && r.city?.toLowerCase() === region.city?.toLowerCase())) {
       return setRegionNote('That region is already in the list.')
     }
     change({ regions: [...values.regions, region] })

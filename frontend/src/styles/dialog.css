@@ -2,13 +2,8 @@
 /* Dialogs on the dark theme. */
 .shell .dialog {
   border: 0;
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.02)),
-    var(--card);
-  box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.1),
-    0 8px 40px rgb(0 0 0 / 0.5),
-    0 0 80px rgb(94 106 210 / 0.1);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-raised);
 }
 
 .dialog {
@@ -17,7 +12,6 @@
   max-height: calc(100dvh - 2rem);
   padding: 0;
   border: 1px solid var(--border);
-  border-top: 2px solid var(--accent);
   border-radius: var(--radius-lg);
   background: var(--card);
   color: var(--foreground);
@@ -25,11 +19,11 @@
 }
 
 .dialog::backdrop {
-  background: rgb(0 0 0 / 0.6);
+  background: var(--backdrop);
 }
 
 .dialog[open] {
-  animation: dialog-in 0.2s var(--ease);
+  animation: dialog-in var(--duration) var(--ease);
 }
 
 @keyframes dialog-in {
@@ -137,7 +131,8 @@
   line-height: 1.5;
 }
 
-.tag--required {
+/* Scoped: jobs.css defines .tag too and loads later, so a bare class would lose to its border and background. */
+.tags .tag--required {
   border-color: var(--accent);
   background: var(--accent-muted);
 }

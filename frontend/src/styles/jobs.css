@@ -12,13 +12,8 @@
   gap: 1rem;
   padding: 1.25rem 1.5rem;
   border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.02)),
-    var(--card);
-  box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.06),
-    0 2px 20px rgb(0 0 0 / 0.4),
-    0 0 40px rgb(0 0 0 / 0.2);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-card);
 }
 
 .job-card .section-title,
@@ -109,17 +104,8 @@
 }
 
 /* Run status */
-.run-summary--queued,
-.run-summary--running {
-  color: var(--foreground);
-}
-
 .run-summary--partial {
   color: var(--accent-strong);
-}
-
-.run-summary--succeeded {
-  color: var(--foreground);
 }
 
 .run-summary--failed {
@@ -215,30 +201,21 @@
   gap: 0.75rem;
   padding: 1.25rem 1.5rem;
   border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.02)),
-    var(--card);
-  box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.06),
-    0 2px 20px rgb(0 0 0 / 0.4),
-    0 0 40px rgb(0 0 0 / 0.2);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-card);
   overflow-wrap: anywhere;
   transition: box-shadow var(--duration) var(--ease);
 }
 
 .match:hover {
-  box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.1),
-    0 8px 40px rgb(0 0 0 / 0.5),
-    0 0 80px rgb(94 106 210 / 0.1);
+  box-shadow: var(--shadow-raised);
 }
 
 /* A seen posting keeps the card and takes a quiet edge on the left. */
 .match--seen {
   box-shadow:
     inset 2px 0 0 var(--control-border),
-    0 0 0 1px rgb(255 255 255 / 0.06),
-    0 2px 20px rgb(0 0 0 / 0.4);
+    var(--shadow-card);
 }
 
 /* Muted by the title only: the card keeps the score badge above 4.5:1. */
@@ -294,6 +271,7 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 4;
+  line-clamp: 4;
   overflow: hidden;
 }
 
@@ -312,29 +290,6 @@
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
-}
-
-@media (max-width: 767px) {
-  .actions {
-    grid-template-columns: 1fr;
-  }
-
-  .profile-summary__head .btn {
-    width: 100%;
-  }
-
-  .job-card,
-  .match {
-    padding-inline: 1rem;
-  }
-
-  .add-row--region {
-    flex-wrap: wrap;
-  }
-
-  .add-row--region .input:not(.input--country) {
-    flex: 1 1 8rem;
-  }
 }
 
 /* Action bar, run summary and profile strip */
@@ -367,13 +322,6 @@
   margin: 0;
 }
 
-.run-details summary {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-
 .profile-summary__head {
   display: flex;
   flex-wrap: wrap;
@@ -394,6 +342,30 @@
   overflow-wrap: anywhere;
 }
 
-.source-row--inactive {
-  opacity: 0.5;
+.source-row--inactive .source-row__name {
+  color: var(--muted-foreground);
+}
+
+/* Last, so it wins over the base rules above at equal specificity. */
+@media (max-width: 767px) {
+  .actions {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-summary__head .btn {
+    width: 100%;
+  }
+
+  .job-card,
+  .match {
+    padding-inline: 1rem;
+  }
+
+  .add-row--region {
+    flex-wrap: wrap;
+  }
+
+  .add-row--region .input:not(.input--country) {
+    flex: 1 1 8rem;
+  }
 }

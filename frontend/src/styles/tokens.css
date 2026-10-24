@@ -9,8 +9,10 @@
   --card: #0a0a0c;
   --border: rgb(255 255 255 / 0.06);
   --border-hover: rgb(255 255 255 / 0.1);
-  --control-border: rgb(255 255 255 / 0.1);
-  --control-border-hover: rgb(255 255 255 / 0.2);
+  /* Field and control outlines: 40% white is 3.7:1 against the page, inputs and cards (WCAG 1.4.11 asks for 3:1).
+     The hairline for cards and rules stays --border. */
+  --control-border: rgb(255 255 255 / 0.4);
+  --control-border-hover: rgb(255 255 255 / 0.6);
   --accent: #5e6ad2;
   /* Darker than the accent on purpose: white text on the lighter spec colour (#6872d9) is only 4.2:1. */
   --accent-hover: #5360c9;
@@ -19,13 +21,20 @@
   --accent-foreground: #ffffff;
   /* A wash behind a selected row or chip: strong enough to see, light enough to keep text readable. */
   --accent-muted: rgb(94 106 210 / 0.14);
+  /* Cards take a wash of the accent instead of white, so they read as indigo-tinted rather than grey on the near-black
+     page. Muted text stays above 5:1 on the lightest point. */
   --card-bg:
-    linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.02)),
+    linear-gradient(180deg, rgb(94 106 210 / 0.14), rgb(94 106 210 / 0.04)),
     #0a0a0c;
   --shadow-card:
     0 0 0 1px rgb(255 255 255 / 0.06),
     0 2px 20px rgb(0 0 0 / 0.4),
     0 0 40px rgb(0 0 0 / 0.2);
+  /* Dialogs and a hovered card: lifted off the page, with a faint accent glow. */
+  --shadow-raised:
+    0 0 0 1px rgb(255 255 255 / 0.1),
+    0 8px 40px rgb(0 0 0 / 0.5),
+    0 0 80px rgb(94 106 210 / 0.1);
   /* The spec asks for the accent at 50%; this is lighter so the focus ring keeps 3:1 against the page. */
   --ring: #7c86e8;
   --danger: #f2878a;
@@ -34,10 +43,14 @@
   --ok-bg: rgb(52 199 89 / 0.1);
   --font-display: Inter, system-ui, sans-serif;
   --font-body: Inter, system-ui, sans-serif;
+  --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 16px;
   --background-deep: #020203;
-  --background-elevated: #0a0a0c;
+  /* The lit top of the page: the radial gradient behind .shell and .auth runs from here down to --background-deep. */
+  --background-glow: #0a0a0f;
+  --topbar-bg: rgb(5 5 6 / 0.7);
+  --backdrop: rgb(0 0 0 / 0.6);
   --selection: rgb(94 106 210 / 0.45);
 
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
@@ -45,7 +58,6 @@
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
   --shadow-md: 0 2px 20px rgb(0 0 0 / 0.4);
   --shadow-lg: 0 8px 40px rgb(0 0 0 / 0.5);
-  --shadow-accent: 0 4px 12px rgb(94 106 210 / 0.3);
   --shadow-primary:
     0 0 0 1px rgb(94 106 210 / 0.5),
     0 4px 12px rgb(94 106 210 / 0.3),
@@ -57,6 +69,7 @@
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --duration: 200ms;
   --duration-fast: 150ms;
+  --duration-slow: 600ms;
 
   --content-width: 64rem;
   --reading-width: 42rem;

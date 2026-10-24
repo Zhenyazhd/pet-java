@@ -38,12 +38,15 @@ export function RunPanel({ run, profile, pollError, pollStopped }: RunPanelProps
           {active ? 'Started' : 'Finished'} {when}
         </p>
       )}
-      {pollStopped && active && (
-        <p className="field__hint">Stopped checking; reload the page to see the latest status.</p>
-      )}
-      {pollError && active && !pollStopped && (
-        <p className="field__error">Could not refresh the status. Still trying.</p>
-      )}
+      {/* Always in the page, so a screen reader announces the polling messages that appear in it. */}
+      <div role="status">
+        {pollStopped && active && (
+          <p className="field__hint">Stopped checking; reload the page to see the latest status.</p>
+        )}
+        {pollError && active && !pollStopped && (
+          <p className="field__error">Could not refresh the status. Still trying.</p>
+        )}
+      </div>
       {run.error && <Banner tone="error">{run.error}</Banner>}
       {!active && isModelRateLimited(run) && (
         <p className="field__hint">The model provider limited the requests. Press Score unscored to score the rest.</p>
@@ -100,7 +103,6 @@ export function RunPanel({ run, profile, pollError, pollStopped }: RunPanelProps
           <dd>{formatUsd(run.costUsd)}</dd>
         </div>
       </dl>
-
     </section>
   )
 }

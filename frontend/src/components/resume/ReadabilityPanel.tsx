@@ -26,6 +26,8 @@ const CONTACTS = [
 ] as const
 
 export function ReadabilityPanel({ available, checking, blocked, report, error, note, onCheck }: ReadabilityPanelProps) {
+  // The lines an ATS lost belong to every text problem; show them once, under the first.
+  const firstTextIssue = report?.issues.findIndex((issue) => issue.code.startsWith('text_'))
   return (
     <section className="match-report" aria-labelledby="readability-title">
       <div className="match-report__bar">
@@ -71,7 +73,7 @@ export function ReadabilityPanel({ available, checking, blocked, report, error, 
                   <p>
                     <span className="badge">{issue.severity}</span> {issue.message}
                   </p>
-                  {issue.code.startsWith('text_') && report.lostLines.length > 0 && (
+                  {index === firstTextIssue && report.lostLines.length > 0 && (
                     <ul>
                       {report.lostLines.map((line, i) => (
                         <li key={i}>{line}</li>

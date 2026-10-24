@@ -49,7 +49,6 @@ export function LoginPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          minLength={8}
         />
         {error && <Banner tone="error">{error}</Banner>}
         <Button type="submit" block aria-disabled={pending}>

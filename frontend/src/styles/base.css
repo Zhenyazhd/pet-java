@@ -6,6 +6,8 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  /* A modal dialog hides the page scrollbar; keeping its gutter stops the page from jumping sideways. */
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -41,6 +43,16 @@ a {
 }
 
 a:hover {
+  text-decoration-color: var(--accent);
+}
+
+/* A link inside running text must not rely on colour alone (about 2.4:1 against the text). Classed links are
+   buttons, navigation and the like, which mark themselves. */
+a:not([class]) {
+  text-decoration-color: color-mix(in srgb, currentColor 50%, transparent);
+}
+
+a:not([class]):hover {
   text-decoration-color: var(--accent);
 }
 
@@ -94,6 +106,7 @@ a:hover {
   display: grid;
   place-content: center;
   min-height: 100vh;
+  min-height: 100dvh;
   gap: 1rem;
   padding: 2rem 1rem;
   text-align: center;

@@ -1,7 +1,8 @@
 import type { ResumeDocument } from '../../api/resumeTypes'
 import { parseDocument, sameContent } from './document'
 
-const draftKey = (userId: number) => `job-search:resume-draft:${userId}`
+const DRAFT_PREFIX = 'job-search:resume-draft:'
+const draftKey = (userId: number) => `${DRAFT_PREFIX}${userId}`
 
 export function readResumeDraft(userId: number): ResumeDocument | null {
   try {
@@ -29,6 +30,17 @@ export function writeResumeDraft(userId: number, doc: ResumeDocument): void {
     localStorage.setItem(draftKey(userId), JSON.stringify(doc))
   } catch {
     // quota or private mode: editing still works in memory
+  }
+}
+
+/** Every account's draft in this browser: for a session that ended, when the account is no longer known. */
+export function clearAllResumeDrafts(): void {
+  try {
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith(DRAFT_PREFIX))
+      .forEach((key) => localStorage.removeItem(key))
+  } catch {
+    // nothing to clear
   }
 }
 

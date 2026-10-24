@@ -21,6 +21,7 @@ import { focusLabel } from '../lib/resume/focus'
 import { sameTarget } from '../lib/resume/selection'
 import { buildVacancyContext } from '../lib/vacancies/vacancyContext'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
+import { useFocusHeading } from '../lib/useFocusHeading'
 import { useResumeAi } from '../lib/resume/useResumeAi'
 import { useResumeDocument } from '../lib/resume/useResumeDocument'
 import { useResumeJobs } from '../lib/resume/useResumeJobs'
@@ -39,6 +40,7 @@ function PageIntro() {
 
 export default function ResumePage() {
   useDocumentTitle('Resume')
+  useFocusHeading('resume-title')
   const doc = useResumeDocument()
   const { user } = useAuth()
   // An API from before this field existed (the minutes of a deploy) reads as "switched off", not as a crash.

@@ -78,8 +78,13 @@ export function useJobMatches({ minScore, seen }: Filters, refreshKey: number) {
       })
   }, [nextCursor, loadingMore, loading, minScore, seen])
 
-  const patch = (id: JobMatch['id'], deliveredAt: string | null) =>
-    setItems((prev) => prev.map((m) => (m.id === id ? { ...m, deliveredAt } : m)))
+  const patch = (id: JobMatch['id'], deliveredAt: string | null) => {
+    const mark = (list: JobMatch[]) => list.map((m) => (m.id === id ? { ...m, deliveredAt } : m))
+    setItems(mark)
+    // The cached first page is what shows on the way back, so it takes the change too.
+    const hit = recall<FirstPage>(shownKey.current)
+    if (hit) remember(shownKey.current, { ...hit, items: mark(hit.items) })
+  }
 
   /** Optimistic: muted at once, put back when the server refuses. */
   const markSeen = useCallback(async (id: JobMatch['id']) => {

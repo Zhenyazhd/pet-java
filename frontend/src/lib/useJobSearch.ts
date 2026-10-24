@@ -49,8 +49,13 @@ export function useJobSearch() {
   dataRef.current = data
   const startedMeanwhile = useRef(false)
 
+  const loadAbort = useRef<AbortController | null>(null)
+
   const load = useCallback(() => {
+    // Two overlapping loads could finish out of order and let the older answer win.
+    loadAbort.current?.abort()
     const abort = new AbortController()
+    loadAbort.current = abort
     setError(null)
     startedMeanwhile.current = false
     api
@@ -81,6 +86,7 @@ export function useJobSearch() {
     api
       .getJobSearch()
       .then((next) => setData((prev) => prev && { ...prev, unranked: next.unranked ?? prev.unranked }))
+      // The counter is cosmetic: a failed refresh leaves the last known number.
       .catch(() => {})
   }, [])
 
@@ -98,7 +104,7 @@ export function useJobSearch() {
 
   useEffect(() => {
     if (!active) return
-    const startedAt = Date.now()
+    let startedAt = Date.now()
     let timer: number | undefined
     let abort: AbortController | null = null
     let failures = 0
@@ -131,6 +137,9 @@ export function useJobSearch() {
     }
     function onVisible() {
       if (document.hidden) return
+      // The time away does not count towards giving up: only time spent looking at the page does.
+      startedAt = Date.now()
+      setPollStopped(false)
       window.clearTimeout(timer)
       abort?.abort()
       tick()
