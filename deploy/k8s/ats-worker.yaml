@@ -1,0 +1,60 @@
+# PDF readability check and vacancy match. The match calls the model provider, so unlike pdf-worker it may leave the
+# cluster (there is no egress policy for it); only core-api may call it.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ats-worker
+spec:
+  selector: { app: ats-worker }
+  ports:
+    - { name: http, port: 8091 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ats-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: ats-worker }
+  template:
+    metadata:
+      labels: { app: ats-worker }
+    spec:
+      automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: ghcr
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: ats-worker
+          image: ats-worker
+          ports: [{ name: http, containerPort: 8091 }]
+          env:
+            - { name: WORKER_CONCURRENCY, value: "2" }
+            - name: WORKER_TOKEN
+              valueFrom: { secretKeyRef: { name: cvhelper-secrets, key: ATS_WORKER_TOKEN } }
+            - name: OPENROUTER_API_KEY
+              valueFrom: { secretKeyRef: { name: cvhelper-secrets, key: OPENROUTER_API_KEY } }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: "1", memory: 1Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: { medium: Memory, sizeLimit: 128Mi }

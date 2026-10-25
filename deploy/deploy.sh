@@ -15,8 +15,9 @@ REPO="${CVHELPER_REPO:-$(cd "$(dirname "$0")/.." && pwd)}"
 BACKUPS="${CVHELPER_BACKUPS:-/var/backups/cvhelper}"
 SITE="${CVHELPER_SITE:-https://cvhelper.dev}"
 KEEP_DUMPS=14
-DEPLOYMENTS=(pdf-worker core-api web)
+DEPLOYMENTS=(pdf-worker ats-worker core-api web)
 NS=cvhelper
+CERT=cvhelper-dev-tls   # secretName in deploy/k8s/ingress.yaml, which cert-manager also uses as the Certificate name
 
 # One deploy at a time.
 exec 9>"${TMPDIR:-/tmp}/cvhelper-deploy.lock"
@@ -55,6 +56,13 @@ rollback() {
 kubectl apply -k "$WORK" || rollback
 for d in "${DEPLOYMENTS[@]}"; do
   kubectl -n "$NS" rollout status "deploy/$d" --timeout=300s || rollback
+done
+
+# On the first install the certificate is still being issued; until then Traefik serves its own and curl refuses it.
+# The same wait costs nothing later, when the certificate is already Ready.
+for _ in $(seq 1 60); do
+  [ "$(kubectl -n "$NS" get certificate "$CERT" -o 'jsonpath={.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null)" = True ] && break
+  sleep 5
 done
 
 # From the outside, through the ingress: the page and the API both have to answer.
