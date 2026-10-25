@@ -38,7 +38,7 @@ curl -s localhost:8100/v1/usage -H "Authorization: Bearer $TOKEN"               
 
 ## Roles and regions: the order matters
 
-WTTJ and LinkedIn take a single query, so they search only the **first** role and the first region of a profile. HelloWork searches all roles but only the first French city; Greenhouse takes all of them. Put the most important role and region first. Searching every pair would cost one actor run each, which the free Apify credit does not cover.
+WTTJ takes a single query, so it searches only the **first** role and the first region of a profile. LinkedIn searches up to the first 10 roles in one boolean query ("a" OR "b") and the first region. HelloWork searches all roles but only the first French city; Greenhouse takes all of them. Put the most important role and region first. Searching every pair would cost one actor run each, which the free Apify credit does not cover.
 
 ## What it can spend, and what stops it
 

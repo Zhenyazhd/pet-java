@@ -27,15 +27,18 @@ git -C "$REPO" fetch --quiet origin main
 git -C "$REPO" merge-base --is-ancestor "$SHA" origin/main || { echo "$SHA is not on origin/main" >&2; exit 1; }
 git -C "$REPO" checkout --quiet --detach "$SHA"
 
-# The data first. No dump, no deploy.
-mkdir -p "$BACKUPS"
-chmod 700 "$BACKUPS"
-DUMP="$BACKUPS/job_search-$(date +%Y%m%d-%H%M%S)-${SHA:0:8}.dump"
-kubectl -n "$NS" exec postgres-0 -- pg_dump -U job_search -Fc job_search > "$DUMP"
-[ -s "$DUMP" ] || { echo "the dump is empty, not deploying" >&2; rm -f "$DUMP"; exit 1; }
-chmod 600 "$DUMP"
-# shellcheck disable=SC2012
-ls -1t "$BACKUPS"/job_search-*.dump | tail -n +$((KEEP_DUMPS + 1)) | xargs -r rm -f
+# The data first. No dump, no deploy, except on the very first install, when there is no database to dump yet.
+DUMP="none (first install)"
+if kubectl -n "$NS" get statefulset postgres >/dev/null 2>&1; then
+  mkdir -p "$BACKUPS"
+  chmod 700 "$BACKUPS"
+  DUMP="$BACKUPS/job_search-$(date +%Y%m%d-%H%M%S)-${SHA:0:8}.dump"
+  kubectl -n "$NS" exec postgres-0 -- pg_dump -U job_search -Fc job_search > "$DUMP"
+  [ -s "$DUMP" ] || { echo "the dump is empty, not deploying" >&2; rm -f "$DUMP"; exit 1; }
+  chmod 600 "$DUMP"
+  # shellcheck disable=SC2012
+  ls -1t "$BACKUPS"/job_search-*.dump | tail -n +$((KEEP_DUMPS + 1)) | xargs -r rm -f
+fi
 
 # The tags go into a copy, so the checkout stays clean.
 WORK="$(mktemp -d)"

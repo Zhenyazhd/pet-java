@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "2.2",
+  "description": "Deploys one commit of main with deploy/deploy.sh on the cvhelper server.",
+  "parameters": {
+    "sha": {
+      "type": "String",
+      "description": "Full commit sha",
+      "allowedPattern": "^[0-9a-f]{40}$"
+    }
+  },
+  "mainSteps": [
+    {
+      "action": "aws:runShellScript",
+      "name": "deploy",
+      "inputs": {
+        "timeoutSeconds": "1200",
+        "runCommand": [
+          "/opt/cvhelper/deploy/deploy.sh {{ sha }}"
+        ]
+      }
+    }
+  ]
+}
