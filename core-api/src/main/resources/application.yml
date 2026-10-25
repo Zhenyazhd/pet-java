@@ -18,6 +18,15 @@ spring:
       # Explicit, so the number is a decision and not the library's default. Jobs hold no connection while they
       # wait for the AI or the worker, so this covers web requests plus short job writes.
       maximum-pool-size: ${DB_POOL_SIZE:10}
+  # The SMTP server is set with SPRING_MAIL_HOST, SPRING_MAIL_USERNAME, SPRING_MAIL_PASSWORD (and SPRING_MAIL_PORT);
+  # without a host the app only logs what it would send. These bound a slow or silent server.
+  mail:
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
   lifecycle:
     timeout-per-shutdown-phase: 40s
   jpa:
@@ -65,6 +74,13 @@ management:
 app:
   admin-email: ${APP_ADMIN_EMAIL:}
   strict-secrets: ${APP_STRICT_SECRETS:false}
+  public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:5173}
+  mail:
+    from: ${APP_MAIL_FROM:}
+  # Sign-in with Google (an OAuth client of type "Web application"; its redirect URI is <public-base-url>/login/oauth2/code/google).
+  google:
+    client-id: ${APP_GOOGLE_CLIENT_ID:}
+    client-secret: ${APP_GOOGLE_CLIENT_SECRET:}
   bootstrap-password: ${APP_BOOTSTRAP_PASSWORD:}
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}

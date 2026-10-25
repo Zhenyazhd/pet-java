@@ -13,6 +13,12 @@ data:
   SERVER_FORWARD_HEADERS_STRATEGY: native
   APP_STRICT_SECRETS: "true"
   APP_CORS_ALLOWED_ORIGINS: https://cvhelper.dev
+  # Links in emails and the sender; the SMTP server (Resend) is reached with the key kept in cvhelper-secrets.
+  APP_PUBLIC_BASE_URL: https://cvhelper.dev
+  APP_MAIL_FROM: Job Search <noreply@cvhelper.dev>
+  SPRING_MAIL_HOST: smtp.resend.com
+  SPRING_MAIL_PORT: "587"
+  SPRING_MAIL_USERNAME: resend
   OPENROUTER_SITE_URL: https://cvhelper.dev
   TZ: UTC
   JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError"
@@ -63,6 +69,13 @@ spec:
             # optional: without the job-list secret the variable is absent and job matches stay off
             - name: JOB_LIST_TOKEN
               valueFrom: { secretKeyRef: { name: job-list-secrets, key: CORE_API_TOKEN, optional: true } }
+            # Optional: without the Google keys in the secret, sign-in with Google stays off.
+            - name: APP_GOOGLE_CLIENT_ID
+              valueFrom: { secretKeyRef: { name: cvhelper-secrets, key: GOOGLE_CLIENT_ID, optional: true } }
+            - name: APP_GOOGLE_CLIENT_SECRET
+              valueFrom: { secretKeyRef: { name: cvhelper-secrets, key: GOOGLE_CLIENT_SECRET, optional: true } }
+            - name: SPRING_MAIL_PASSWORD
+              valueFrom: { secretKeyRef: { name: cvhelper-secrets, key: SMTP_PASSWORD } }
             - name: APP_ADMIN_EMAIL
               valueFrom: { secretKeyRef: { name: cvhelper-secrets, key: APP_ADMIN_EMAIL } }
             - name: APP_BOOTSTRAP_PASSWORD

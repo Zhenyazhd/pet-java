@@ -40,8 +40,18 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 		if (!HttpMethod.POST.matches(request.getMethod())) {
 			return true;
 		}
-		String path = RequestPaths.routed(request);
-		return !"/api/auth/login".equals(path) && !"/api/auth/register".equals(path);
+		return limitFor(RequestPaths.routed(request)) < 0;
+	}
+
+	/** Per client address and minute; the calls that send mail or spend a one-time link share the registration limit. */
+	private int limitFor(String path) {
+		AppProperties.AuthRateLimit limits = appProperties.getAuthRateLimit();
+		return switch (path) {
+			case "/api/auth/login" -> limits.getLoginPerMinute();
+			case "/api/auth/register", "/api/auth/verify-email", "/api/auth/resend-verification",
+					"/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/google/start" -> limits.getRegisterPerMinute();
+			default -> -1;
+		};
 	}
 
 	@Override
@@ -51,10 +61,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 			FilterChain filterChain
 	) throws ServletException, IOException {
 		String path = RequestPaths.routed(request);
-		AppProperties.AuthRateLimit limits = appProperties.getAuthRateLimit();
-		int limit = "/api/auth/login".equals(path)
-				? limits.getLoginPerMinute()
-				: limits.getRegisterPerMinute();
+		int limit = limitFor(path);
 		String clientIp = clientIp(request);
 		String key = path + "|" + clientIp;
 		long retryAfter = rateLimiter.tryAcquire(key, limit, WINDOW_MS);

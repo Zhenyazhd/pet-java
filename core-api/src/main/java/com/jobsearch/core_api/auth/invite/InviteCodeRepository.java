@@ -1,4 +1,4 @@
-package com.jobsearch.core_api.auth;
+package com.jobsearch.core_api.auth.invite;
 
 import jakarta.persistence.LockModeType;
 import java.util.List;

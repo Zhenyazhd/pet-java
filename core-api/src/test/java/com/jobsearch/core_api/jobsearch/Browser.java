@@ -29,6 +29,7 @@ final class Browser {
 		user.setEmail(UUID.randomUUID() + "@test.local");
 		user.setDisplayName("Job Search Test");
 		user.setPasswordHash(encoder.encode(PASSWORD));
+		user.setEmailVerifiedAt(java.time.Instant.now());
 		userId = users.save(user).getId();
 		send("GET", "/api/auth/csrf", null);
 		if (signIn) {

@@ -16,13 +16,19 @@ public class AppUserPrincipal implements UserDetails {
 	private final String displayName;
 	private final String passwordHash;
 	private final UserRole role;
+	private final boolean emailVerified;
 
-	public AppUserPrincipal(Long id, String email, String displayName, String passwordHash, UserRole role) {
+	public AppUserPrincipal(Long id, String email, String displayName, String passwordHash, UserRole role, boolean emailVerified) {
 		this.id = id;
 		this.email = email;
 		this.displayName = displayName;
 		this.passwordHash = passwordHash;
 		this.role = role;
+		this.emailVerified = emailVerified;
+	}
+
+	public AppUserPrincipal(Long id, String email, String displayName, String passwordHash, UserRole role) {
+		this(id, email, displayName, passwordHash, role, true);
 	}
 
 	/** The signed-in user of the current request, or {@code null} when nobody is signed in. */
@@ -34,8 +40,8 @@ public class AppUserPrincipal implements UserDetails {
 	}
 
 	public static AppUserPrincipal of(AppUser user) {
-		return new AppUserPrincipal(
-				user.getId(), user.getEmail(), user.getDisplayName(), user.getPasswordHash(), user.getRole());
+		return new AppUserPrincipal(user.getId(), user.getEmail(), user.getDisplayName(), user.getPasswordHash(),
+				user.getRole(), user.getEmailVerifiedAt() != null);
 	}
 
 	public Long getId() {
@@ -48,6 +54,10 @@ public class AppUserPrincipal implements UserDetails {
 
 	public UserRole getRole() {
 		return role;
+	}
+
+	public boolean isEmailVerified() {
+		return emailVerified;
 	}
 
 	@Override

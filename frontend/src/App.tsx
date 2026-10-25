@@ -2,9 +2,12 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
 import { GuestOnly, RequireAuth } from './auth/RouteGuards'
 import { AppLayout, AuthLayout } from './components/Layout'
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { LoginPage } from './pages/LoginPage'
 import { JobMatchesPage, JobsLayout, ProfilePage, ResumePage, SearchProfilePage, VacanciesPage } from './pages/lazy'
 import { RegisterPage } from './pages/RegisterPage'
+import { ResetPasswordPage } from './pages/ResetPasswordPage'
+import { VerifyEmailPage } from './pages/VerifyEmailPage'
 
 export default function App() {
   return (
@@ -19,7 +22,13 @@ export default function App() {
           <Route element={<GuestOnly fallback="/profile" />}>
             <Route element={<AuthLayout />}>
               <Route path="register" element={<RegisterPage />} />
+              <Route path="forgot-password" element={<ForgotPasswordPage />} />
             </Route>
+          </Route>
+          {/* Opened from a mail: whoever is signed in, the link still has to work. */}
+          <Route element={<AuthLayout />}>
+            <Route path="verify-email" element={<VerifyEmailPage />} />
+            <Route path="reset-password" element={<ResetPasswordPage />} />
           </Route>
 
           <Route element={<RequireAuth />}>

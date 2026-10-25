@@ -66,6 +66,7 @@ class PromptHttpTest {
 			user.setEmail(UUID.randomUUID() + "@test.local");
 			user.setDisplayName("Prompt Test");
 			user.setPasswordHash(passwordEncoder.encode(PASSWORD));
+			user.setEmailVerifiedAt(java.time.Instant.now());
 			userRepository.save(user);
 			send("GET", "/api/auth/csrf", null);
 			HttpResponse<String> login = send("POST", "/api/auth/login",

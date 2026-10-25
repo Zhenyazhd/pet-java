@@ -38,6 +38,29 @@ public final class AuthDtos {
 	) {
 	}
 
+	/** The account exists but cannot sign in until the address is confirmed; the mail with the link is on its way. */
+	public record Registered(String email) {
+	}
+
+	public record InviteRequest(@NotBlank @Size(max = 200) String inviteCode) {
+	}
+
+	/** What the signed-out pages need to know before anyone signs in. */
+	public record PublicConfig(boolean google) {
+	}
+
+	public record EmailRequest(@NotBlank @Email String email) {
+	}
+
+	public record TokenRequest(@NotBlank @Size(max = 200) String token) {
+	}
+
+	public record ResetPasswordRequest(
+			@NotBlank @Size(max = 200) String token,
+			@NotBlank @Size(min = 8, max = 200) @MaxUtf8Bytes(72) String password
+	) {
+	}
+
 	public record RegisterRequest(
 			@NotBlank @Email String email,
 			@NotBlank @Size(min = 8, max = 200) @MaxUtf8Bytes(72) String password,

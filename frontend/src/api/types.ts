@@ -13,6 +13,12 @@ export type LoginRequest = {
   password: string
 }
 
+/** What the signed-out pages need to know before anyone signs in. */
+export type AuthConfig = { google: boolean }
+
+/** Registering creates the account but signs nobody in: the address must be confirmed through the mailed link first. */
+export type Registered = { email: string }
+
 export type RegisterRequest = {
   email: string
   password: string

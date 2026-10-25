@@ -1,5 +1,6 @@
-package com.jobsearch.core_api.auth;
+package com.jobsearch.core_api.auth.invite;
 
+import com.jobsearch.core_api.auth.CurrentUserService;
 import com.jobsearch.core_api.common.ConflictException;
 import com.jobsearch.core_api.common.NotFoundException;
 import com.jobsearch.core_api.common.UnauthorizedException;

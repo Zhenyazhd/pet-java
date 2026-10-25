@@ -1,4 +1,4 @@
-package com.jobsearch.core_api.auth;
+package com.jobsearch.core_api.auth.invite;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -1,6 +1,6 @@
-package com.jobsearch.core_api.auth;
+package com.jobsearch.core_api.auth.invite;
 
-import com.jobsearch.core_api.auth.InviteCodeDtos.InviteCodeResponse;
+import com.jobsearch.core_api.auth.invite.InviteCodeDtos.InviteCodeResponse;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
