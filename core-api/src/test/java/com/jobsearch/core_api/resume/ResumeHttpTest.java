@@ -55,6 +55,7 @@ class ResumeHttpTest {
 		user.setEmail(UUID.randomUUID() + "@test.local");
 		user.setDisplayName("Http Test");
 		user.setPasswordHash(passwordEncoder.encode(PASSWORD));
+		user.setEmailVerifiedAt(java.time.Instant.now());
 		userId = userRepository.save(user).getId();
 
 		send("GET", "/api/auth/csrf", null, null);

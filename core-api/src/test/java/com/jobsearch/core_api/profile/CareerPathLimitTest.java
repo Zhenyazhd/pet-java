@@ -72,6 +72,7 @@ class CareerPathLimitTest {
 		user.setEmail(UUID.randomUUID() + "@test.local");
 		user.setDisplayName("Career Test");
 		user.setPasswordHash(passwordEncoder.encode(PASSWORD));
+		user.setEmailVerifiedAt(java.time.Instant.now());
 		userRepository.save(user);
 		email = user.getEmail();
 		send("GET", "/api/auth/csrf", null);

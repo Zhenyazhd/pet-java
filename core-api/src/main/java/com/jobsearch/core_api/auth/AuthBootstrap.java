@@ -3,6 +3,7 @@ package com.jobsearch.core_api.auth;
 import com.jobsearch.core_api.common.Emails;
 import com.jobsearch.core_api.config.AppProperties;
 import com.jobsearch.core_api.config.SecretStrength;
+import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -60,6 +61,10 @@ public class AuthBootstrap implements ApplicationRunner {
 		if (user.getRole() != UserRole.ADMIN) {
 			user.setRole(UserRole.ADMIN);
 			log.info("Promoted user id={} to ADMIN", user.getId());
+		}
+
+		if (user.getEmailVerifiedAt() == null) {
+			user.setEmailVerifiedAt(Instant.now());
 		}
 
 		boolean hasPassword = user.getPasswordHash() != null && !user.getPasswordHash().isBlank();

@@ -12,6 +12,10 @@ public class AppProperties {
 	/** If set and bootstrap admin has no password yet, hash this onto that account on startup. */
 	private String bootstrapPassword = "";
 	private boolean strictSecrets = false;
+	/** Where the web app is reached from outside; the links in emails and the return from Google are built on it. */
+	private String publicBaseUrl = "http://localhost:5173";
+	private final Mail mail = new Mail();
+	private final Google google = new Google();
 	private final Cors cors = new Cors();
 	private final AuthRateLimit authRateLimit = new AuthRateLimit();
 	private final ExpensiveOpsRateLimit expensiveOpsRateLimit = new ExpensiveOpsRateLimit();
@@ -42,6 +46,22 @@ public class AppProperties {
 
 	public void setBootstrapPassword(String bootstrapPassword) {
 		this.bootstrapPassword = bootstrapPassword;
+	}
+
+	public String getPublicBaseUrl() {
+		return publicBaseUrl;
+	}
+
+	public void setPublicBaseUrl(String publicBaseUrl) {
+		this.publicBaseUrl = publicBaseUrl;
+	}
+
+	public Mail getMail() {
+		return mail;
+	}
+
+	public Google getGoogle() {
+		return google;
 	}
 
 	public Cors getCors() {
@@ -397,6 +417,47 @@ public class AppProperties {
 
 		public void setMaxTokens(int maxTokens) {
 			this.maxTokens = maxTokens;
+		}
+	}
+
+	public static class Mail {
+
+		/** The From address of every mail we send; the SMTP server itself is set with {@code spring.mail.*}. */
+		private String from = "";
+
+		public String getFrom() {
+			return from;
+		}
+
+		public void setFrom(String from) {
+			this.from = from;
+		}
+	}
+
+	/** Sign-in with Google; off while {@code clientId} is blank. */
+	public static class Google {
+
+		private String clientId = "";
+		private String clientSecret = "";
+
+		public String getClientId() {
+			return clientId;
+		}
+
+		public void setClientId(String clientId) {
+			this.clientId = clientId;
+		}
+
+		public String getClientSecret() {
+			return clientSecret;
+		}
+
+		public void setClientSecret(String clientSecret) {
+			this.clientSecret = clientSecret;
+		}
+
+		public boolean isEnabled() {
+			return clientId != null && !clientId.isBlank();
 		}
 	}
 }

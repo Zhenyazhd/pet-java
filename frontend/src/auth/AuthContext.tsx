@@ -3,7 +3,7 @@ import { forgetAll } from '../lib/pageCache'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, isUnauthorized, setUnauthorizedListener } from '../api/client'
-import type { AuthUser, LoginRequest, RegisterRequest } from '../api/types'
+import type { AuthUser, LoginRequest } from '../api/types'
 import { clearAllResumeDrafts } from '../lib/resume/draft'
 
 type AuthContextValue = {
@@ -14,11 +14,13 @@ type AuthContextValue = {
   sessionError: string | null
   retrySession: () => void
   login: (body: LoginRequest) => Promise<void>
-  register: (body: RegisterRequest) => Promise<void>
   logout: () => Promise<void>
   /** Keep the header in sync after the profile changes the name or email. */
   updateUser: (patch: Partial<Pick<AuthUser, 'displayName' | 'email'>>) => void
 }
+
+/** Pages that work signed out: a 401 there is no reason to send anyone to sign-in. */
+const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/verify-email', '/reset-password']
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
@@ -67,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearAllResumeDrafts()
       setUser(null)
       const path = `${window.location.pathname}${window.location.search}`
-      if (!path.startsWith('/login') && !path.startsWith('/register')) {
+      if (!PUBLIC_PATHS.some((prefix) => path.startsWith(prefix))) {
         navigate('/login', { replace: true, state: { from: path } })
       }
     })
@@ -77,11 +79,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Signing in proves the server is reachable: a failed check at page load must not outlive it.
   const login = useCallback(async (body: LoginRequest) => {
     setUser(await api.login(body))
-    setSessionError(null)
-  }, [])
-
-  const register = useCallback(async (body: RegisterRequest) => {
-    setUser(await api.register(body))
     setSessionError(null)
   }, [])
 
@@ -107,8 +104,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, ready, sessionError, retrySession, login, register, logout, updateUser }),
-    [user, ready, sessionError, retrySession, login, register, logout, updateUser],
+    () => ({ user, ready, sessionError, retrySession, login, logout, updateUser }),
+    [user, ready, sessionError, retrySession, login, logout, updateUser],
   )
 
   return (

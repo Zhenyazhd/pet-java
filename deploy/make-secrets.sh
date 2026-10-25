@@ -8,6 +8,7 @@ set -euo pipefail
 : "${APP_ADMIN_EMAIL:?set APP_ADMIN_EMAIL (the account that becomes admin)}"
 : "${CLOUDFLARE_API_TOKEN:?set CLOUDFLARE_API_TOKEN (Zone:DNS:Edit)}"
 : "${APP_BOOTSTRAP_PASSWORD:?set APP_BOOTSTRAP_PASSWORD (>= 12 chars, the first admin login)}"
+: "${SMTP_PASSWORD:?set SMTP_PASSWORD (the API key of the mail provider; confirmation and reset mails go through it)}"
 
 rand() { head -c 48 /dev/urandom | base64 | tr -d '/+=\n' | head -c 40; }
 
@@ -18,12 +19,20 @@ existing() { kubectl -n cvhelper get secret cvhelper-secrets -o "jsonpath={.data
 PG="$(existing POSTGRES_PASSWORD)"; PG="${PG:-$(rand)}"
 WT="$(existing PDF_WORKER_TOKEN)"; WT="${WT:-$(rand)}"
 
+# Sign-in with Google: only when both are given (an OAuth "Web application" client from the Google Cloud console).
+GOOGLE=()
+if [ -n "${GOOGLE_CLIENT_ID:-}" ] && [ -n "${GOOGLE_CLIENT_SECRET:-}" ]; then
+  GOOGLE=(--from-literal=GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID" --from-literal=GOOGLE_CLIENT_SECRET="$GOOGLE_CLIENT_SECRET")
+fi
+
 kubectl -n cvhelper create secret generic cvhelper-secrets \
   --from-literal=POSTGRES_PASSWORD="$PG" \
   --from-literal=PDF_WORKER_TOKEN="$WT" \
   --from-literal=OPENROUTER_API_KEY="$OPENROUTER_API_KEY" \
   --from-literal=APP_ADMIN_EMAIL="$APP_ADMIN_EMAIL" \
   --from-literal=APP_BOOTSTRAP_PASSWORD="$APP_BOOTSTRAP_PASSWORD" \
+  --from-literal=SMTP_PASSWORD="$SMTP_PASSWORD" \
+  ${GOOGLE[@]+"${GOOGLE[@]}"} \
   --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl -n cert-manager create secret generic cloudflare-api-token \

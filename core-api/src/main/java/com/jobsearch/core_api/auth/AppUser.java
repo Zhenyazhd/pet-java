@@ -45,6 +45,10 @@ public class AppUser {
 	@Column(name = "resume_version", nullable = false, updatable = false)
 	private int resumeVersion = 0;
 
+	/** Null until the owner of the address has shown they can read mail sent to it. */
+	@Column(name = "email_verified_at")
+	private Instant emailVerifiedAt;
+
 	@Column(name = "created_at", nullable = false)
 	private Instant createdAt;
 
@@ -81,6 +85,14 @@ public class AppUser {
 
 	public void setPasswordHash(String passwordHash) {
 		this.passwordHash = passwordHash;
+	}
+
+	public Instant getEmailVerifiedAt() {
+		return emailVerifiedAt;
+	}
+
+	public void setEmailVerifiedAt(Instant emailVerifiedAt) {
+		this.emailVerifiedAt = emailVerifiedAt;
 	}
 
 	public UserRole getRole() {

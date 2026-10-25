@@ -1,11 +1,16 @@
 package com.jobsearch.core_api.auth;
 
+import com.jobsearch.core_api.auth.account.AccountEmailService;
+import com.jobsearch.core_api.auth.invite.InviteCode;
+import com.jobsearch.core_api.auth.invite.InviteCodeService;
 import com.jobsearch.core_api.auth.AuthDtos.AuthUserResponse;
 import com.jobsearch.core_api.auth.AuthDtos.Features;
 import com.jobsearch.core_api.auth.AuthDtos.LoginRequest;
 import com.jobsearch.core_api.auth.AuthDtos.RegisterRequest;
+import com.jobsearch.core_api.auth.AuthDtos.Registered;
 import com.jobsearch.core_api.common.Emails;
 import com.jobsearch.core_api.common.FixedWindowRateLimiter;
+import com.jobsearch.core_api.common.ForbiddenException;
 import com.jobsearch.core_api.common.TooManyRequestsException;
 import com.jobsearch.core_api.config.AppProperties;
 import com.jobsearch.core_api.common.UnauthorizedException;
@@ -14,6 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +47,7 @@ public class AuthService {
 	private final PasswordEncoder passwordEncoder;
 	private final AuthenticationManager authenticationManager;
 	private final InviteCodeService inviteCodeService;
+	private final AccountEmailService accountEmailService;
 	private final SecurityContextRepository securityContextRepository;
 	private final Features features;
 	private final TransactionTemplate transaction;
@@ -53,6 +60,7 @@ public class AuthService {
 			PasswordEncoder passwordEncoder,
 			AuthenticationManager authenticationManager,
 			InviteCodeService inviteCodeService,
+			AccountEmailService accountEmailService,
 			SecurityContextRepository securityContextRepository,
 			AppProperties appProperties,
 			PlatformTransactionManager transactionManager,
@@ -63,6 +71,7 @@ public class AuthService {
 		this.passwordEncoder = passwordEncoder;
 		this.authenticationManager = authenticationManager;
 		this.inviteCodeService = inviteCodeService;
+		this.accountEmailService = accountEmailService;
 		this.securityContextRepository = securityContextRepository;
 		this.features = new Features(appProperties.getAtsWorker().isEnabled(), appProperties.getAtsWorker().isEnabled());
 		this.transaction = new TransactionTemplate(transactionManager);
@@ -91,8 +100,13 @@ public class AuthService {
 							request.password()
 					)
 			);
-			establishSession(authentication, httpRequest, httpResponse);
 			AppUserPrincipal principal = (AppUserPrincipal) authentication.getPrincipal();
+			// After the password: only someone who knows it is told that the address is not confirmed yet.
+			if (!principal.isEmailVerified()) {
+				throw new ForbiddenException(ForbiddenException.EMAIL_NOT_VERIFIED,
+						"Confirm your email address first. We sent you a link when you registered.");
+			}
+			establishSession(authentication, httpRequest, httpResponse);
 			log.info("User logged in userId={}", principal.getId());
 			return AuthUserResponse.of(principal, features);
 		}
@@ -102,42 +116,39 @@ public class AuthService {
 		}
 	}
 
-	public AuthUserResponse register(
-			RegisterRequest request,
-			HttpServletRequest httpRequest,
-			HttpServletResponse httpResponse
-	) {
+	/** Creates the account and mails the confirmation link; nobody is signed in until the address is confirmed. */
+	public Registered register(RegisterRequest request) {
 		// Invite first: a wrong code is refused before the slow hashing, so it cannot be used to burn CPU.
 		inviteCodeService.requireAvailable(request.inviteCode());
 		// Slow on purpose, so it runs before the transaction opens and holds no connection while it does.
 		String passwordHash = passwordEncoder.encode(request.password());
 
-		AppUserPrincipal principal = Objects.requireNonNull(transaction.execute(status -> createUser(request, passwordHash)));
-		// Before the session: if that fails the account still exists, and the log should say so.
+		AppUserPrincipal principal = Objects.requireNonNull(transaction.execute(status ->
+				createUser(request.inviteCode(), request.email(), request.displayName(), passwordHash, false)));
 		log.info("Registered userId={}", principal.getId());
-
-		Authentication authentication = new UsernamePasswordAuthenticationToken(
-				principal,
-				null,
-				principal.getAuthorities()
-		);
-		establishSession(authentication, httpRequest, httpResponse);
-		return AuthUserResponse.of(principal, features);
+		accountEmailService.sendVerification(principal.getId(), principal.getUsername());
+		return new Registered(principal.getUsername());
 	}
 
-	/** One transaction: the invite is locked, the user created, the invite marked used. Any failure rolls all three back. */
-	private AppUserPrincipal createUser(RegisterRequest request, String passwordHash) {
-		InviteCode invite = inviteCodeService.lockAvailable(request.inviteCode());
+	/**
+	 * One transaction (the caller opens it): the invite is locked, the user created, the invite marked used. Any failure
+	 * rolls all three back. {@code passwordHash} is null for someone who signs in with an outside provider.
+	 */
+	public AppUserPrincipal createUser(String inviteCode, String rawEmail, String rawDisplayName, String passwordHash, boolean verified) {
+		InviteCode invite = inviteCodeService.lockAvailable(inviteCode);
 
-		String email = Emails.normalize(request.email());
-		String displayName = request.displayName() == null || request.displayName().isBlank()
+		String email = Emails.normalize(rawEmail);
+		String displayName = rawDisplayName == null || rawDisplayName.isBlank()
 				? Emails.localPart(email)
-				: request.displayName().strip();
+				: rawDisplayName.strip();
 
 		AppUser user = new AppUser();
 		user.setEmail(email);
 		user.setDisplayName(displayName);
 		user.setPasswordHash(passwordHash);
+		if (verified) {
+			user.setEmailVerifiedAt(Instant.now());
+		}
 		AppUser saved = UniqueConstraint.onConflict(
 				"Email already registered",
 				() -> appUserRepository.saveAndFlush(user),
@@ -147,6 +158,13 @@ public class AuthService {
 		inviteCodeService.markUsed(invite, saved.getId());
 
 		return AppUserPrincipal.of(saved);
+	}
+
+	/** Signs in someone already vouched for, e.g. by an outside identity provider. */
+	public AuthUserResponse signIn(AppUserPrincipal principal, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+		establishSession(new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()), httpRequest, httpResponse);
+		log.info("User signed in userId={}", principal.getId());
+		return AuthUserResponse.of(principal, features);
 	}
 
 	public void logout(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {

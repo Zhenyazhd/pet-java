@@ -10,6 +10,9 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      // The round trip to Google: out through the first, back through the second.
+      '/oauth2': { target: 'http://localhost:8080', changeOrigin: true },
+      '/login/oauth2': { target: 'http://localhost:8080', changeOrigin: true },
     },
   },
 })

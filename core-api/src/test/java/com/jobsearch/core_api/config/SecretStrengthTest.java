@@ -48,6 +48,16 @@ class SecretStrengthTest {
 	}
 
 	@Test
+	void strictModeNeedsAMailServerASenderAndAPublicAddress() {
+		for (String key : new String[] { "spring.mail.host", "app.mail.from", "app.public-base-url" }) {
+			MockEnvironment env = env(true, "c0ffee-4f2a9d1b7e3a", "d1ce0b5a-9a3c-4e");
+			env.setProperty(key, " ");
+			IllegalStateException ex = assertThrows(IllegalStateException.class, () -> check(env));
+			assertTrue(ex.getMessage().startsWith(key), ex.getMessage());
+		}
+	}
+
+	@Test
 	void itDoesNothingUnlessStrictModeIsOn() {
 		assertDoesNotThrow(() -> check(env(false, "job_search", "short")));
 		assertDoesNotThrow(() -> check(new MockEnvironment()));
@@ -59,6 +69,9 @@ class SecretStrengthTest {
 			env.setProperty("spring.datasource.password", dbPassword);
 		}
 		env.setProperty("app.pdf-worker.token", workerToken);
+		env.setProperty("spring.mail.host", "smtp.example.com");
+		env.setProperty("app.mail.from", "Job Search <noreply@example.com>");
+		env.setProperty("app.public-base-url", "https://app.example.com");
 		return env;
 	}
 

@@ -126,6 +126,14 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 				.body(apiErrorResponses.body(HttpStatus.UNAUTHORIZED, ex.getMessage()));
 	}
 
+	@ExceptionHandler(ForbiddenException.class)
+	public ResponseEntity<Map<String, Object>> handleForbidden(ForbiddenException ex) {
+		log.info("Forbidden: {}", ex.getMessage());
+		Map<String, Object> body = apiErrorResponses.body(HttpStatus.FORBIDDEN, ex.getMessage());
+		body.put("code", ex.code());
+		return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
+	}
+
 	@ExceptionHandler(NotFoundException.class)
 	public ResponseEntity<Map<String, Object>> handleNotFound(NotFoundException ex) {
 		log.info("Not found: {}", ex.getMessage());

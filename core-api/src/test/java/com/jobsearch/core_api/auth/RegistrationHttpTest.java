@@ -60,19 +60,23 @@ class RegistrationHttpTest {
 	}
 
 	@Test
-	void anInviteTurnsIntoAnAccountThatCanSignIn() throws Exception {
+	void anInviteTurnsIntoAnAccountThatSignsInOnceTheAddressIsConfirmed() throws Exception {
 		String invite = newInvite();
 		String email = newEmail();
 
 		HttpResponse<String> registered = register(email, PASSWORD, invite);
-		HttpResponse<String> me = send("GET", "/api/auth/me", null);
 
 		assertEquals(201, registered.statusCode(), registered.body());
-		assertEquals(200, me.statusCode(), me.body());
-		assertTrue(me.body().contains(email), me.body());
+		assertTrue(registered.body().contains(email), registered.body());
+		assertEquals(401, send("GET", "/api/auth/me", null).statusCode(), "registering does not sign anyone in");
 		assertEquals(1, jdbc.queryForObject("select count(*) from invite_code where code = ? and used_at is not null", Integer.class, invite));
-		cookies.remove("JSESSIONID");
-		assertEquals(200, send("POST", "/api/auth/login", credentials(email, PASSWORD)).statusCode());
+		assertEquals(403, send("POST", "/api/auth/login", credentials(email, PASSWORD)).statusCode(), "not before the address is confirmed");
+
+		confirm(email);
+
+		HttpResponse<String> login = send("POST", "/api/auth/login", credentials(email, PASSWORD));
+		assertEquals(200, login.statusCode(), login.body());
+		assertTrue(send("GET", "/api/auth/me", null).body().contains(email));
 	}
 
 	@Test
@@ -174,6 +178,10 @@ class RegistrationHttpTest {
 		String code = "INVITE-" + UUID.randomUUID().toString().toUpperCase();
 		jdbc.update("insert into invite_code (code, created_at) values (?, now())", code);
 		return code;
+	}
+
+	private void confirm(String email) {
+		jdbc.update("update app_user set email_verified_at = now() where lower(email) = lower(?)", email);
 	}
 
 	private static String newEmail() {

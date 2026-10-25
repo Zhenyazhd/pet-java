@@ -69,10 +69,14 @@ class RateLimitPathBypassTest {
 		// The expensive paths only count signed-in users (anonymous calls are refused with 401), so sign in first.
 		String invite = "INVITE-" + UUID.randomUUID().toString().toUpperCase();
 		jdbc.update("insert into invite_code (code, created_at) values (?, now())", invite);
-		HttpResponse<String> registered = post("/api/auth/register", "{\"email\":\"limit-" + UUID.randomUUID()
-				+ "@example.com\",\"password\":\"correct horse battery\",\"inviteCode\":\"" + invite + "\"}");
+		String email = "limit-" + UUID.randomUUID() + "@example.com";
+		HttpResponse<String> registered = post("/api/auth/register", "{\"email\":\"" + email
+				+ "\",\"password\":\"correct horse battery\",\"inviteCode\":\"" + invite + "\"}");
 		assertEquals(201, registered.statusCode(), registered.body());
-		sessionCookie = registered.headers().allValues("set-cookie").stream()
+		jdbc.update("update app_user set email_verified_at = now() where email = ?", email);
+		HttpResponse<String> signedIn = post("/api/auth/login", "{\"email\":\"" + email + "\",\"password\":\"correct horse battery\"}");
+		assertEquals(200, signedIn.statusCode(), signedIn.body());
+		sessionCookie = signedIn.headers().allValues("set-cookie").stream()
 				.filter(cookie -> cookie.startsWith("JSESSIONID="))
 				.map(cookie -> cookie.substring(0, cookie.indexOf(';')))
 				.findFirst()
@@ -85,6 +89,10 @@ class RateLimitPathBypassTest {
 		return Stream.of(
 				Arguments.of("/api/auth/login", "/api/auth/log%69n", LOGIN_BODY),
 				Arguments.of("/api/auth/register", "/api/auth/regist%65r", "{}"),
+				Arguments.of("/api/auth/forgot-password", "/api/auth/forgot-passwor%64", "{}"),
+				Arguments.of("/api/auth/reset-password", "/api/auth/reset-passwor%64", "{}"),
+				Arguments.of("/api/auth/verify-email", "/api/auth/verify-emai%6C", "{}"),
+				Arguments.of("/api/auth/resend-verification", "/api/auth/resend-verificatio%6E", "{}"),
 				Arguments.of("/api/resume/compile", "/api/resume/compil%65", "{}"),
 				Arguments.of("/api/vacancies/import", "/api/vacancies/impor%74", "{}"),
 				Arguments.of("/api/ai/resume/suggest", "/api/ai/resume/sugges%74", "{}"),

@@ -8,6 +8,7 @@ import type {
 } from './resumeTypes'
 import type {
   ApplicationStatus,
+  AuthConfig,
   AuthUser,
   Job,
   ApplicationSummary,
@@ -21,6 +22,7 @@ import type {
   Profile,
   PromptPart,
   RegisterRequest,
+  Registered,
   Vacancy,
   VacancyCreateRequest,
   VacancyImportRequest,
@@ -29,11 +31,14 @@ import type {
 
 export class ApiError extends Error {
   readonly status: number
+  /** A machine-readable reason some refusals carry (`email_not_verified`), so the screen need not match the message. */
+  readonly code?: string
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code?: string) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.code = code
   }
 }
 
@@ -52,6 +57,11 @@ async function safeFetch(path: string, init?: RequestInit): Promise<Response> {
 
 export function isUnauthorized(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401
+}
+
+/** Signed in with the right password, but the address has not been confirmed through the mailed link yet. */
+export function isEmailNotVerified(error: unknown): boolean {
+  return error instanceof ApiError && error.code === 'email_not_verified'
 }
 
 /** A 409: the change clashes with the current state (a stale resume `version`, a duplicate vacancy). */
@@ -85,7 +95,7 @@ async function refreshCsrfCookie(): Promise<void> {
     csrfRefreshInFlight = safeFetch('/api/auth/csrf', { credentials: 'include' })
       .then(async (response) => {
         if (!response.ok) {
-          throw new ApiError(await readErrorMessage(response), response.status)
+          throw new ApiError((await readError(response)).message, response.status)
         }
       })
       .finally(() => {
@@ -108,7 +118,7 @@ function needsCsrf(method: string): boolean {
   return !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method.toUpperCase())
 }
 
-async function readErrorMessage(response: Response): Promise<string> {
+async function readError(response: Response): Promise<{ message: string; code?: string }> {
   const fallback = `Request failed (${response.status})`
   const text = await response.text()
   let data: unknown
@@ -116,15 +126,17 @@ async function readErrorMessage(response: Response): Promise<string> {
     data = JSON.parse(text)
   } catch {
     // Not JSON (e.g. a proxy error page): show short plain text, never markup.
-    return text && text.length <= 200 && !text.trimStart().startsWith('<') ? text : fallback
+    return { message: text && text.length <= 200 && !text.trimStart().startsWith('<') ? text : fallback }
   }
-  const { message, fields } = (data ?? {}) as { message?: unknown; fields?: unknown }
+  const { message, fields, code } = (data ?? {}) as { message?: unknown; fields?: unknown; code?: unknown }
   const details =
     fields && typeof fields === 'object'
       ? Object.values(fields).filter((v): v is string => typeof v === 'string')
       : []
-  if (details.length > 0) return details.join('. ')
-  return typeof message === 'string' ? message : fallback
+  return {
+    message: details.length > 0 ? details.join('. ') : typeof message === 'string' ? message : fallback,
+    code: typeof code === 'string' ? code : undefined,
+  }
 }
 
 async function buildHeaders(method: string): Promise<Record<string, string>> {
@@ -146,20 +158,22 @@ async function request<T>(path: string, init?: RequestInit, options?: RequestOpt
     })
 
   let response = await send()
+  let failure = response.ok ? null : await readError(response)
 
-  if (response.status === 403 && needsCsrf(method)) {
+  // A bare 403 is a stale CSRF token: get a new one and try once more. A 403 with a code is the server refusing on purpose.
+  if (response.status === 403 && needsCsrf(method) && !failure?.code) {
     await refreshCsrfCookie()
     response = await send()
+    failure = response.ok ? null : await readError(response)
   }
 
   if (response.status === 204) return undefined as T
 
-  if (!response.ok) {
-    const message = await readErrorMessage(response)
+  if (failure) {
     if (response.status === 401 && !options?.skipAuthRedirect) {
       unauthorizedListener?.()
     }
-    throw new ApiError(message, response.status)
+    throw new ApiError(failure.message, response.status, failure.code)
   }
 
   if (options?.responseType === 'blob') return (await response.blob()) as T
@@ -187,7 +201,25 @@ export const api = {
     request<AuthUser>('/api/auth/login', json('POST', body), { skipAuthRedirect: true }),
 
   register: (body: RegisterRequest) =>
-    request<AuthUser>('/api/auth/register', json('POST', body), { skipAuthRedirect: true }),
+    request<Registered>('/api/auth/register', json('POST', body), { skipAuthRedirect: true }),
+
+  getAuthConfig: () => request<AuthConfig>('/api/auth/config', undefined, { skipAuthRedirect: true }),
+
+  /** A new person hands over their invite code before going to Google, which needs it only if they are new. */
+  googleStart: (inviteCode: string) =>
+    request<void>('/api/auth/google/start', json('POST', { inviteCode }), { skipAuthRedirect: true }),
+
+  verifyEmail: (token: string) =>
+    request<void>('/api/auth/verify-email', json('POST', { token }), { skipAuthRedirect: true }),
+
+  resendVerification: (email: string) =>
+    request<void>('/api/auth/resend-verification', json('POST', { email }), { skipAuthRedirect: true }),
+
+  forgotPassword: (email: string) =>
+    request<void>('/api/auth/forgot-password', json('POST', { email }), { skipAuthRedirect: true }),
+
+  resetPassword: (token: string, password: string) =>
+    request<void>('/api/auth/reset-password', json('POST', { token, password }), { skipAuthRedirect: true }),
 
   logout: async () => {
     await request<void>('/api/auth/logout', { method: 'POST' }, { skipAuthRedirect: true })

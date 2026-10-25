@@ -1,5 +1,6 @@
 package com.jobsearch.core_api.auth;
 
+import com.jobsearch.core_api.auth.google.GoogleLoginHandler;
 import com.jobsearch.core_api.common.ApiErrorResponses;
 import com.jobsearch.core_api.common.ExpensiveOpsRateLimitFilter;
 import com.jobsearch.core_api.common.UserMdcFilter;
@@ -12,6 +13,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.function.Supplier;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -81,7 +83,8 @@ public class SecurityConfig {
 			HttpSecurity http,
 			AuthRateLimitFilter authRateLimitFilter,
 			ExpensiveOpsRateLimitFilter expensiveOpsRateLimitFilter,
-			ApiErrorResponses apiErrorResponses
+			ApiErrorResponses apiErrorResponses,
+			ObjectProvider<GoogleLoginHandler> googleLogin
 	) throws Exception {
 		CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
 		// Secure: readable by JS (SPA needs the token) but never sent over plain HTTP.
@@ -95,10 +98,14 @@ public class SecurityConfig {
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 				.securityContext(context -> context.securityContextRepository(securityContextRepository()))
 				.authorizeHttpRequests(auth -> auth
-						.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register").permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register", "/api/auth/verify-email",
+								"/api/auth/resend-verification", "/api/auth/forgot-password", "/api/auth/reset-password",
+								"/api/auth/google/start").permitAll()
 						// permitAll so logging out with an already expired session answers 204, not 401; CSRF header is still required.
 						.requestMatchers(HttpMethod.POST, "/api/auth/logout").permitAll()
-						.requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/auth/csrf", "/api/auth/config").permitAll()
+						// Google's round trip: out to Google, and back with a code. Both are GET and checked by Spring's own state parameter.
+						.requestMatchers(HttpMethod.GET, "/oauth2/authorization/**", "/login/oauth2/code/**").permitAll()
 						.requestMatchers("/api/invite-codes", "/api/invite-codes/**").hasRole("ADMIN")
 						.requestMatchers("/api/profile/prompts", "/api/profile/prompts/**").hasRole("ADMIN")
 						.requestMatchers("/api/**").authenticated()
@@ -118,6 +125,12 @@ public class SecurityConfig {
 				.formLogin(form -> form.disable())
 				.httpBasic(basic -> basic.disable())
 				.logout(logout -> logout.disable());
+
+		GoogleLoginHandler google = googleLogin.getIfAvailable();
+		if (google != null) {
+			// "/login" is the web app's own page; naming it keeps Spring from generating a login page of its own.
+			http.oauth2Login(login -> login.loginPage("/login").successHandler(google).failureHandler(google));
+		}
 
 		return http.build();
 	}
