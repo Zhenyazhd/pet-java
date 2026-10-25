@@ -55,8 +55,6 @@
 
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
-  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-  --shadow-md: 0 2px 20px rgb(0 0 0 / 0.4);
   --shadow-lg: 0 8px 40px rgb(0 0 0 / 0.5);
   --shadow-primary:
     0 0 0 1px rgb(94 106 210 / 0.5),

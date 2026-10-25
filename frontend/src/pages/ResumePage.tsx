@@ -6,6 +6,7 @@ import { CvSheet } from '../components/resume/CvSheet'
 import { AiPanel } from '../components/resume/AiPanel'
 import { MatchPanel } from '../components/resume/MatchPanel'
 import { ReadabilityPanel } from '../components/resume/ReadabilityPanel'
+import { LayoutDialog } from '../components/resume/LayoutDialog'
 import { PdfDialog } from '../components/resume/PdfDialog'
 import { ResumeToolbar } from '../components/resume/ResumeToolbar'
 import { VacancyPicker } from '../components/resume/VacancyPicker'
@@ -48,6 +49,7 @@ export default function ResumePage() {
   const readabilityAvailable = user?.features?.pdfReadability ?? false
   const { vacancies, loading: vacanciesLoading, error: vacanciesError } = useVacancies()
   const [params, setParams] = useSearchParams()
+  const [layoutOpen, setLayoutOpen] = useState(false)
 
   const requestedId = Number(params.get('vacancy')) || null
   const vacancy = vacancies.find((candidate) => candidate.id === requestedId) ?? null
@@ -164,6 +166,7 @@ export default function ResumePage() {
         previewing={jobs.previewing}
         blocked={conflictBlocked}
         onLocaleChange={(locale) => doc.patch((current) => ({ ...current, locale }))}
+        onLayout={() => setLayoutOpen(true)}
         onPreview={() => void jobs.previewPdf()}
         onSave={() => void doc.save()}
       />
@@ -306,6 +309,13 @@ export default function ResumePage() {
         onCheck={() => readabilityAvailable && void jobs.checkReadability()}
       />
 
+      {layoutOpen && (
+        <LayoutDialog
+          layout={resume.layout}
+          onChange={(layout) => doc.patch((current) => ({ ...current, layout }))}
+          onClose={() => setLayoutOpen(false)}
+        />
+      )}
       {jobs.pdfUrl && <PdfDialog url={jobs.pdfUrl} onClose={jobs.closePdf} />}
     </section>
   )

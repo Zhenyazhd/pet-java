@@ -50,5 +50,10 @@ export function usePromptParts() {
     [replace],
   )
 
-  return { parts, loading, loadError, retry, save, reset }
+  /** Makes the saved wording the default for every user; the answer is the parts as they are afterwards. */
+  const publish = useCallback(async () => {
+    setParts(await api.publishPromptDefaults())
+  }, [])
+
+  return { parts, loading, loadError, retry, save, reset, publish }
 }

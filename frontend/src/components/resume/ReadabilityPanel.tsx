@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { ReadabilityReport } from '../../api/resumeTypes'
 import { Banner } from '../ui/Banner'
 import { Button } from '../ui/Button'
@@ -90,13 +91,27 @@ export function ReadabilityPanel({ available, checking, blocked, report, error, 
             {CONTACTS.map(([key, label]) => `${label}: ${report.contacts[key] ? 'readable' : 'not found'}`).join(' · ')}.
           </p>
 
-          <details className="readability__text">
-            <summary>What an ATS reads from your PDF</summary>
-            <pre>{report.text}</pre>
-            {report.textTruncated && <p className="muted-line">Shortened.</p>}
-          </details>
+          <AtsText text={report.text} truncated={report.textTruncated} />
         </div>
       )}
     </section>
+  )
+}
+
+/** The text an ATS extracted, folded behind a link-style toggle (the same look as "Show more" on a job match). */
+function AtsText({ text, truncated }: { text: string; truncated: boolean }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="readability__text">
+      <button type="button" className="link-button" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        {open ? 'Hide what an ATS reads from your PDF' : 'Show what an ATS reads from your PDF'}
+      </button>
+      {open && (
+        <pre tabIndex={0} role="region" aria-label="Text an ATS reads from your PDF">
+          {text}
+        </pre>
+      )}
+      {open && truncated && <p className="muted-line">Shortened.</p>}
+    </div>
   )
 }

@@ -7,7 +7,8 @@ import com.jobsearch.joblist.source.ApifyFetcher;
 import com.jobsearch.joblist.source.JobSource;
 import com.jobsearch.joblist.source.SourceName;
 import com.jobsearch.joblist.source.SourceResult;
-import java.util.Locale;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 import tools.jackson.databind.ObjectMapper;
@@ -19,6 +20,8 @@ class LinkedInSource implements JobSource {
 
 	private static final String ACTOR = "curious_coder/linkedin-jobs-scraper";
 	private static final long SECONDS_PER_DAY = 86_400;
+	/** shortcut: LinkedIn search URLs get long, so only this many roles are sent; raise it if the actor accepts longer ones. */
+	private static final int MAX_ROLES = 10;
 
 	private final ApifyFetcher fetcher;
 	private final LinkedInMapper mapper;
@@ -42,8 +45,9 @@ class LinkedInSource implements JobSource {
 
 	@Override
 	public String queryKey(SourceQuery query) {
-		// the search URL holds the first role and the first region only
-		return QueryKeys.ofFirst(name(), query.roles(), query.regions().stream().map(Region::place).toList());
+		// the search URL holds the roles (up to MAX_ROLES) and the first region only
+		return QueryKeys.ofAll(name(), usedRoles(query),
+				query.regions().stream().limit(1).map(Region::place).toList());
 	}
 
 	@Override
@@ -59,10 +63,23 @@ class LinkedInSource implements JobSource {
 		return input;
 	}
 
-	/** The actor reads the search from a LinkedIn URL; the first role and the first region are used. */
+	private static List<String> usedRoles(SourceQuery query) {
+		return query.roles().stream().limit(MAX_ROLES).toList();
+	}
+
+	/** One role is searched as typed; several become a boolean search: "a" OR "b" (quotes keep each title together). */
+	private static String keywords(SourceQuery query) {
+		List<String> roles = usedRoles(query);
+		if (roles.size() == 1) {
+			return roles.getFirst();
+		}
+		return roles.stream().map(role -> '"' + role.replace("\"", "") + '"').collect(Collectors.joining(" OR "));
+	}
+
+	/** The actor reads the search from a LinkedIn URL; all roles (see {@link #keywords}) and the first region are used. */
 	private static String searchUrl(SourceQuery query) {
 		return UriComponentsBuilder.fromUriString("https://www.linkedin.com/jobs/search/")
-				.queryParam("keywords", query.roles().getFirst())
+				.queryParam("keywords", keywords(query))
 				.queryParam("location", query.regions().getFirst().place())
 				.queryParam("f_TPR", "r" + query.lookbackDays() * SECONDS_PER_DAY)
 				.build()

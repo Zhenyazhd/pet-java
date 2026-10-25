@@ -1,5 +1,6 @@
 package com.jobsearch.core_api.ai;
 
+import com.jobsearch.core_api.common.RetryAfter;
 import com.jobsearch.core_api.config.AppProperties;
 import java.time.Duration;
 import java.util.List;
@@ -168,15 +169,7 @@ public class OpenRouterClient {
 
 	private static Duration retryAfter(HttpHeaders headers) {
 		String header = headers == null ? null : headers.getFirst(HttpHeaders.RETRY_AFTER);
-		if (header == null) {
-			return UPSTREAM_RETRY_AFTER_DEFAULT;
-		}
-		try {
-			return Duration.ofSeconds(Math.max(1, Long.parseLong(header.strip())));
-		}
-		catch (NumberFormatException ex) {
-			return UPSTREAM_RETRY_AFTER_DEFAULT;
-		}
+		return Duration.ofSeconds(RetryAfter.seconds(header, UPSTREAM_RETRY_AFTER_DEFAULT.toSeconds()));
 	}
 
 	/**

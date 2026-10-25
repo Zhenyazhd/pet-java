@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.jobsearch.core_api.resume.ResumeDtos.EducationItem;
 import com.jobsearch.core_api.resume.ResumeDtos.ExperienceItem;
+import com.jobsearch.core_api.resume.ResumeDtos.LayoutSettings;
 import com.jobsearch.core_api.resume.ResumeDtos.ResumeDocument;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -45,6 +46,23 @@ class ResumeValidationTest {
 		ResumeDocument resume = new ResumeDocument("Ada", "", "", "", "", "", "", List.of(), education, List.of(), List.of(), "en", 0);
 
 		assertTrue(!validator.validate(resume).isEmpty());
+	}
+
+	@Test
+	void layoutSettingsInRangeOrAbsentPass() {
+		assertTrue(validator.validate(withLayout(new LayoutSettings(null, null, null, null, null, null, null, null, null, null, null))).isEmpty());
+		assertTrue(validator.validate(withLayout(new LayoutSettings(8.0, 0.2, 0.0, 3.0, 1.5, 1.5, 2.0, 4.0, 0.3, 0.3, false))).isEmpty());
+	}
+
+	@Test
+	void layoutSettingsOutOfRangeAreRejected() {
+		assertTrue(!validator.validate(withLayout(new LayoutSettings(7.9, null, null, null, null, null, null, null, null, null, null))).isEmpty());
+		assertTrue(!validator.validate(withLayout(new LayoutSettings(null, null, null, null, null, null, null, 4.1, null, null, null))).isEmpty());
+		assertTrue(!validator.validate(withLayout(new LayoutSettings(null, null, null, -1.0, null, null, null, null, null, null, null))).isEmpty());
+	}
+
+	private static ResumeDocument withLayout(LayoutSettings layout) {
+		return new ResumeDocument("Ada", "", "", "", "", "", "", List.of(), List.of(), List.of(), List.of(), "en", 0, layout);
 	}
 
 	private static ExperienceItem job(List<String> bullets) {

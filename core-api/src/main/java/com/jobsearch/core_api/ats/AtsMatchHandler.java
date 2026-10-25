@@ -1,5 +1,7 @@
 package com.jobsearch.core_api.ats;
 
+import com.jobsearch.core_api.ats.AtsDtos.Breakdown;
+import com.jobsearch.core_api.ats.AtsDtos.Dimension;
 import com.jobsearch.core_api.ats.AtsDtos.MatchResponse;
 import com.jobsearch.core_api.ats.AtsDtos.PlatformScore;
 import com.jobsearch.core_api.ats.AtsDtos.Suggestion;
@@ -18,6 +20,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -146,7 +150,7 @@ public class AtsMatchHandler implements JobHandler {
 				boolean passes = item.path("passesFilter").asBoolean(false);
 				if (!system.isBlank() && item.path("overallScore").isNumber()) {
 					int score = clampScore(item.path("overallScore").asInt());
-					platforms.add(new PlatformScore(system, vendor, score, passes));
+					platforms.add(new PlatformScore(system, vendor, score, passes, breakdown(item.path("breakdown"))));
 				}
 
 				JsonNode suggNode = item.path("suggestions");
@@ -183,6 +187,45 @@ public class AtsMatchHandler implements JobHandler {
 				cached,
 				summary
 		);
+	}
+
+	/** Null when the model sent nothing usable, so the screen shows no empty detail. */
+	private static Breakdown breakdown(JsonNode node) {
+		if (!node.isObject()) {
+			return null;
+		}
+		JsonNode experience = node.path("experience");
+		List<String> experienceMissing = new ArrayList<>();
+		List<String> experienceGood = new ArrayList<>(stringList(experience.path("highlights")));
+		if (experience.path("totalBullets").isNumber() && experience.path("quantifiedBullets").isNumber()) {
+			int total = Math.max(0, experience.path("totalBullets").asInt());
+			int quantified = Math.max(0, Math.min(total, experience.path("quantifiedBullets").asInt()));
+			if (total > 0 && quantified == total) {
+				experienceGood.add("Every bullet has a number or result.");
+			}
+			else if (total > 0) {
+				experienceMissing.add((total - quantified) + " of " + total + " bullets have no number or result.");
+			}
+		}
+		JsonNode keywords = node.path("keywordMatch");
+		List<String> keywordsGood = new ArrayList<>(stringList(keywords.path("matched")));
+		keywordsGood.addAll(stringList(keywords.path("synonymMatched")));
+		JsonNode formatting = node.path("formatting");
+		JsonNode sections = node.path("sections");
+		JsonNode education = node.path("education");
+		Breakdown result = new Breakdown(
+				dimension(formatting, stringList(formatting.path("details")), stringList(formatting.path("issues"))),
+				dimension(keywords, keywordsGood, stringList(keywords.path("missing"))),
+				dimension(sections, stringList(sections.path("present")), stringList(sections.path("missing"))),
+				dimension(experience, experienceGood, experienceMissing),
+				dimension(education, stringList(education.path("notes")), List.of()));
+		return Stream.of(result.formatting(), result.keywords(), result.sections(), result.experience(), result.education())
+				.allMatch(Objects::isNull) ? null : result;
+	}
+
+	private static Dimension dimension(JsonNode node, List<String> good, List<String> missing) {
+		Integer score = node.path("score").isNumber() ? clampScore(node.path("score").asInt()) : null;
+		return score == null && good.isEmpty() && missing.isEmpty() ? null : new Dimension(score, List.copyOf(good), List.copyOf(missing));
 	}
 
 	private static String buildSummary(int average, List<PlatformScore> platforms) {

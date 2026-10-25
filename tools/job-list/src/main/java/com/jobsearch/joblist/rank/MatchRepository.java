@@ -37,6 +37,29 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
 			@Param("cursorId") long cursorId,
 			Pageable pageable);
 
+	/**
+	 * Newest posting first (posting date, or fetch date when it has none), for the same filters as {@link #page}. The cursor
+	 * is the (posting instant, id) of the last item of the previous page.
+	 */
+	@Query("""
+			select m from Match m join fetch m.job j
+			where m.profileId = :profileId and m.score >= :minScore and m.rankedAt >= :since
+			  and coalesce(j.postedAt, j.fetchedAt) >= :postedAfter
+			  and ((:delivered = true and m.deliveredAt is not null) or (:delivered = false and m.deliveredAt is null))
+			  and (coalesce(j.postedAt, j.fetchedAt) < :cursorAt
+			       or (coalesce(j.postedAt, j.fetchedAt) = :cursorAt and m.id < :cursorId))
+			order by coalesce(j.postedAt, j.fetchedAt) desc, m.id desc
+			""")
+	List<Match> pageByPosted(
+			@Param("profileId") long profileId,
+			@Param("minScore") int minScore,
+			@Param("since") Instant since,
+			@Param("postedAfter") Instant postedAfter,
+			@Param("delivered") boolean delivered,
+			@Param("cursorAt") Instant cursorAt,
+			@Param("cursorId") long cursorId,
+			Pageable pageable);
+
 	/** The match if its profile belongs to the client. */
 	@Query("select m from Match m join fetch m.job where m.id = :id and m.profileId in (select p.id from SearchProfile p where p.client = :client)")
 	Optional<Match> findOwned(@Param("id") long id, @Param("client") String client);

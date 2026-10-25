@@ -16,7 +16,9 @@ const WARNING_TEXT =
   'Loosening this lets the assistant write things that are not true on your CV. You are responsible for what you send to employers.'
 
 export function PromptsCard() {
-  const { parts, loading, loadError, retry, save, reset } = usePromptParts()
+  const { parts, loading, loadError, retry, save, reset, publish } = usePromptParts()
+  // A publish can change every default; the boxes start again from what the server now says.
+  const [published, setPublished] = useState(0)
 
   return (
     <section className="prompts" aria-labelledby="prompts-title" aria-busy={loading}>
@@ -46,8 +48,16 @@ export function PromptsCard() {
             {loading ? 'Loading…' : ''}
           </p>
           {parts.map((part) => (
-            <PromptBlock key={part.key} part={part} onSave={save} onReset={reset} />
+            <PromptBlock key={`${part.key}-${published}`} part={part} onSave={save} onReset={reset} />
           ))}
+          {!loading && (
+            <PublishDefaults
+              onPublish={async () => {
+                await publish()
+                setPublished((n) => n + 1)
+              }}
+            />
+          )}
         </>
       )}
     </section>
@@ -187,6 +197,64 @@ function PromptBlock({ part, onSave, onReset }: BlockProps) {
       {part.customized && dirty && (
         <p className="field__hint">Reset replaces what you typed with the default.</p>
       )}
+    </div>
+  )
+}
+
+/** Admin only: turns the saved wording above into what every user's chat uses. Two steps, because it reaches everyone. */
+function PublishDefaults({ onPublish }: { onPublish: () => Promise<void> }) {
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [done, setDone] = useState(false)
+
+  async function publish() {
+    setBusy(true)
+    setError(null)
+    try {
+      await onPublish()
+      setConfirming(false)
+      setDone(true)
+    } catch (err) {
+      setError(errorMessage(err, 'Failed to publish the instructions'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="prompts__publish">
+      <hr className="rule" />
+      <h3 className="prompts__name">Defaults for all users</h3>
+      <p className="field__hint">
+        Makes the instructions you have saved above the default for every user. Parts you have not customised go back
+        to the built-in text. Unsaved changes in the boxes are not included.
+      </p>
+      {confirming ? (
+        <Banner tone="error">
+          <p>This changes the AI chat for everyone from their next message. Publish your saved instructions?</p>
+          <Button aria-disabled={busy} onClick={() => !busy && void publish()}>
+            {busy ? 'Publishing…' : 'Yes, publish'}
+          </Button>{' '}
+          <Button variant="ghost" aria-disabled={busy} onClick={() => !busy && setConfirming(false)}>
+            Cancel
+          </Button>
+        </Banner>
+      ) : (
+        <div className="profile__actions">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setDone(false)
+              setConfirming(true)
+            }}
+          >
+            Make my instructions the default for all users
+          </Button>
+        </div>
+      )}
+      {error && <Banner tone="error">{error}</Banner>}
+      <div role="status">{done && !error && <Banner tone="ok">Published. Everyone now gets these instructions.</Banner>}</div>
     </div>
   )
 }

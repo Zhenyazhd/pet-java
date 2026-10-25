@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { api, isConflict } from '../../api/client'
 import type { JobMatch } from '../../api/types'
 import { errorMessage } from '../../lib/abort'
@@ -16,20 +15,17 @@ const REMOTE_LABEL: Record<string, string | undefined> = {
 
 type MatchCardProps = {
   match: JobMatch
-  saved: boolean
-  onSeen: (id: JobMatch['id']) => Promise<void>
+  onRemove: (id: JobMatch['id']) => void
   onSaved: (id: JobMatch['id']) => void
 }
 
-export function MatchCard({ match, saved, onSeen, onSaved }: MatchCardProps) {
+export function MatchCard({ match, onRemove, onSaved }: MatchCardProps) {
   const { job } = match
   const [expanded, setExpanded] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [note, setNote] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const link = postingUrl(job.url)
-  const seen = match.deliveredAt !== null
   const posted = formatWhen(job.postedAt)
   const snippet = job.snippet?.trim() ?? ''
   const longSnippet = snippet.length > LONG_SNIPPET
@@ -42,27 +38,17 @@ export function MatchCard({ match, saved, onSeen, onSaved }: MatchCardProps) {
   ].filter(Boolean)
   const skills = job.skills ?? []
 
-  async function markSeen() {
-    setError(null)
-    try {
-      await onSeen(match.id)
-    } catch (err) {
-      setError(errorMessage(err, 'Could not mark as seen.'))
-    }
-  }
-
   async function save() {
-    if (!link || saving || saved) return
+    if (!link || saving) return
     setSaving(true)
     setError(null)
     try {
       await api.createVacancy(vacancyFromMatch(match, link))
       onSaved(match.id)
-      setNote('Saved to your vacancies.')
     } catch (err) {
       if (isConflict(err)) {
+        // already a vacancy: the list should not keep it either
         onSaved(match.id)
-        setNote(errorMessage(err, 'This posting is already in your vacancies.'))
       } else {
         setError(errorMessage(err, 'Could not save the vacancy.'))
       }
@@ -72,7 +58,7 @@ export function MatchCard({ match, saved, onSeen, onSaved }: MatchCardProps) {
   }
 
   return (
-    <li className={classNames('match', seen && 'match--seen')}>
+    <li className="match">
       <div className="match__head">
         <span className="badge match__score">
           <span aria-hidden="true">{match.score}</span>
@@ -84,7 +70,6 @@ export function MatchCard({ match, saved, onSeen, onSaved }: MatchCardProps) {
       <p className="match__meta small-caps">
         {job.source}
         {posted && ` · Posted ${posted}`}
-        {seen && ' · Seen'}
       </p>
       {skills.length > 0 && (
         <ul className="skill-list" aria-label="Skills">
@@ -124,34 +109,25 @@ export function MatchCard({ match, saved, onSeen, onSaved }: MatchCardProps) {
             Open posting<span className="sr-only"> (opens in a new tab)</span>
           </a>
         )}
-        {/* Stays in place once seen, so a keyboard user does not lose the focus. */}
-        <Button variant="ghost" aria-disabled={seen} onClick={() => !seen && markSeen()}>
-          {seen ? 'Seen' : 'Mark as seen'}
+        <Button variant="ghost" onClick={() => onRemove(match.id)}>
+          Remove
           <span className="sr-only">: {job.title}</span>
         </Button>
         <Button
           variant="ghost"
-          aria-disabled={!link || saving || saved}
+          aria-disabled={!link || saving}
           aria-describedby={link ? undefined : `${match.id}-nolink`}
           onClick={() => void save()}
         >
-          {saved ? 'Saved' : saving ? 'Saving…' : 'Save to my vacancies'}
+          {saving ? 'Saving…' : 'Save to my vacancies'}
           <span className="sr-only">: {job.title}</span>
         </Button>
-        {saved && (
-          <Link className="btn btn--ghost" to="/vacancies">
-            View vacancies
-          </Link>
-        )}
       </div>
       {!link && (
         <p id={`${match.id}-nolink`} className="field__hint">
           This posting has no usable link, so it cannot be saved.
         </p>
       )}
-      <p className="status-text" role="status">
-        {note}
-      </p>
       {error && (
         <p className="field__error" role="alert">
           {error}

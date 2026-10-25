@@ -40,6 +40,14 @@
   gap: 1rem;
 }
 
+/* The publish section follows the last block: room above it, and its own parts spaced like a block's. */
+.prompts__publish {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
 .prompts__head {
   display: flex;
   align-items: center;

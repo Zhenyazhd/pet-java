@@ -2,6 +2,8 @@ export type AuthUser = {
   id: number
   email: string
   displayName: string
+  /** 'ADMIN' sees the AI instructions on the Profile page; anyone else does not. */
+  role?: string
   /** What this deployment offers; a switched-off feature is hidden or disabled instead of failing on click. */
   features?: { atsMatch: boolean; pdfReadability?: boolean }
 }
@@ -175,8 +177,12 @@ export type JobMatch = {
 
 export type JobMatchPage = { items: JobMatch[]; nextCursor: string | null }
 
+export type JobMatchSort = 'score' | 'posted'
+
 export type JobMatchQuery = {
   minScore: number
   seen: boolean
+  /** Best score first (the default) or newest posting first. */
+  sort?: JobMatchSort
   cursor?: string | null
 }

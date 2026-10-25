@@ -59,12 +59,16 @@ public class JobSearchController {
 			@RequestParam(required = false) Integer minScore,
 			@RequestParam(required = false) Boolean delivered,
 			@RequestParam(required = false) Integer limit,
-			@RequestParam(required = false) String cursor
+			@RequestParam(required = false) String cursor,
+			@RequestParam(required = false) String sort
 	) {
 		if (cursor != null && (cursor.isBlank() || cursor.length() > MAX_CURSOR_CHARS)) {
 			throw new BadRequestException("cursor must be the nextCursor of a previous page");
 		}
-		return service.matches(minScore, delivered, limit, cursor);
+		if (sort != null && !sort.equals("score") && !sort.equals("posted")) {
+			throw new BadRequestException("sort must be score or posted");
+		}
+		return service.matches(minScore, delivered, limit, cursor, sort);
 	}
 
 	@PostMapping("/matches/{id}/seen")

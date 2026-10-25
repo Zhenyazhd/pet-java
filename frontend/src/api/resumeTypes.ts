@@ -24,6 +24,22 @@ export type SkillItem = {
 
 export type ResumeLocale = 'fr' | 'en'
 
+/** How the PDF is typeset; every field is optional and a missing one keeps the template's own value. */
+export type LayoutSettings = {
+  fontSize?: number
+  lineSpacing?: number
+  paragraphSpacing?: number
+  sectionSpacing?: number
+  bulletSpacing?: number
+  subtitleSpacing?: number
+  bulletsTopSpacing?: number
+  marginX?: number
+  marginTop?: number
+  marginBottom?: number
+  /** True or missing: the type is scaled a few percent so the text fills exactly one page. */
+  autoFit?: boolean
+}
+
 /** The wire format of GET/PUT /api/resume. */
 export type ResumeDocument = {
   name: string
@@ -38,6 +54,7 @@ export type ResumeDocument = {
   achievements: AchievementItem[]
   skills: SkillItem[]
   locale: ResumeLocale
+  layout?: LayoutSettings | null
   /** Optimistic-concurrency token: echoed back on save, a stale one is rejected with 409. */
   version: number
 }
@@ -61,11 +78,28 @@ export type SuggestResponse = {
   proposed: unknown | null
 }
 
+/** One scored dimension of a platform's view: what works, what is missing. */
+export type MatchDimension = {
+  score: number | null
+  good: string[]
+  missing: string[]
+}
+
+export type MatchBreakdown = {
+  formatting: MatchDimension | null
+  keywords: MatchDimension | null
+  sections: MatchDimension | null
+  experience: MatchDimension | null
+  education: MatchDimension | null
+}
+
 export type MatchPlatformScore = {
   system: string
   vendor: string
   overallScore: number
   passesFilter: boolean
+  /** Absent in a result stored before the details were kept, and null when the model gave none. */
+  breakdown?: MatchBreakdown | null
 }
 
 export type MatchSuggestion = {

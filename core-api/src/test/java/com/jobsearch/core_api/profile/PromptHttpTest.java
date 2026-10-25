@@ -10,6 +10,7 @@ import com.jobsearch.core_api.TestcontainersConfiguration;
 import com.jobsearch.core_api.ai.ChatResult;
 import com.jobsearch.core_api.ai.OpenRouterClient;
 import com.jobsearch.core_api.ai.PromptPart;
+import com.jobsearch.core_api.auth.UserRole;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -56,7 +57,12 @@ class PromptHttpTest {
 		private final Map<String, String> cookies = new LinkedHashMap<>();
 
 		Browser() throws Exception {
+			this(UserRole.ADMIN);
+		}
+
+		Browser(UserRole role) throws Exception {
 			AppUser user = new AppUser();
+			user.setRole(role);
 			user.setEmail(UUID.randomUUID() + "@test.local");
 			user.setDisplayName("Prompt Test");
 			user.setPasswordHash(passwordEncoder.encode(PASSWORD));
@@ -317,6 +323,64 @@ class PromptHttpTest {
 		assertFalse(other.item("truthfulness").get("customized").asBoolean());
 		assertEquals(204, other.send("DELETE", "/api/profile/prompts/truthfulness", null).statusCode());
 		assertEquals("Alice's wording", a.item("truthfulness").get("customText").asString());
+	}
+
+	@Test
+	void anOrdinaryUserCannotReadEditOrPublishThePrompts() throws Exception {
+		Browser user = new Browser(UserRole.USER);
+
+		assertEquals(403, user.send("GET", "/api/profile/prompts", null).statusCode());
+		assertEquals(403, user.put("vacancy", "mine").statusCode());
+		assertEquals(403, user.send("DELETE", "/api/profile/prompts/vacancy", null).statusCode());
+		assertEquals(403, user.send("POST", "/api/profile/prompts/publish", null).statusCode());
+	}
+
+	@Test
+	void publishingMakesTheAdminsWordingTheDefaultForEveryone() throws Exception {
+		Browser admin = new Browser();
+		Browser user = new Browser(UserRole.USER);
+		assertEquals(200, admin.put("truthfulness", "Published wording for all.").statusCode());
+		try {
+			HttpResponse<String> published = admin.send("POST", "/api/profile/prompts/publish", null);
+			assertEquals(200, published.statusCode(), published.body());
+
+			// The admin now sees it as the default, not as their own text.
+			JsonNode item = admin.item("truthfulness");
+			assertEquals("Published wording for all.", item.get("defaultText").asString());
+			assertFalse(item.get("customized").asBoolean());
+			// The other parts stay as shipped.
+			assertEquals(PromptPart.COMMITMENTS.defaultText(), admin.item("commitments").get("defaultText").asString());
+
+			// An ordinary user's chat uses it.
+			answerChat();
+			assertEquals(200, user.send("POST", "/api/ai/resume/suggest",
+					"{\"section\":\"profile\",\"instruction\":\"hello\"}").statusCode());
+			assertTrue(lastSystemPrompt().contains("\n\nPublished wording for all.\n\n"));
+			assertFalse(lastSystemPrompt().contains(PromptPart.TRUTHFULNESS.defaultText()));
+
+			// Publishing again with nothing customised puts the shipped text back for everyone.
+			assertEquals(200, admin.send("POST", "/api/profile/prompts/publish", null).statusCode());
+			assertEquals(PromptPart.TRUTHFULNESS.defaultText(), admin.item("truthfulness").get("defaultText").asString());
+			assertEquals(200, user.send("POST", "/api/ai/resume/suggest",
+					"{\"section\":\"profile\",\"instruction\":\"hello\"}").statusCode());
+			assertEquals(com.jobsearch.core_api.ai.SystemPromptComposer.defaultPrompt(), lastSystemPrompt());
+		}
+		finally {
+			jdbc.update("delete from prompt_default");
+		}
+	}
+
+	@Test
+	void anOrdinaryUsersOldOwnTextIsNotUsed() throws Exception {
+		Browser user = new Browser(UserRole.USER);
+		jdbc.update("insert into user_prompt_part (user_id, part_key, content, base_hash) "
+				+ "select id, 'vacancy', 'Left over from before', repeat('0', 64) from app_user order by id desc limit 1");
+		answerChat();
+
+		assertEquals(200, user.send("POST", "/api/ai/resume/suggest",
+				"{\"section\":\"profile\",\"instruction\":\"hello\"}").statusCode());
+
+		assertFalse(lastSystemPrompt().contains("Left over from before"));
 	}
 
 	@Test

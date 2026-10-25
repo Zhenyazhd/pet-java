@@ -208,6 +208,9 @@ export const api = {
   savePromptPart: (key: string, text: string) =>
     request<PromptPart>(`/api/profile/prompts/${encodeURIComponent(key)}`, json('PUT', { text })),
 
+  publishPromptDefaults: () =>
+    request<PromptPart[]>('/api/profile/prompts/publish', { method: 'POST' }),
+
   resetPromptPart: (key: string) =>
     request<void>(`/api/profile/prompts/${encodeURIComponent(key)}`, { method: 'DELETE' }),
 
@@ -273,12 +276,13 @@ export const api = {
 
   startJobRankRun: () => request<JobRun>('/api/job-search/runs/rank', { method: 'POST' }),
 
-  listJobMatches: ({ minScore, seen, cursor }: JobMatchQuery, signal?: AbortSignal) => {
+  listJobMatches: ({ minScore, seen, sort, cursor }: JobMatchQuery, signal?: AbortSignal) => {
     const params = new URLSearchParams({
       minScore: String(minScore),
       delivered: String(seen),
       limit: '20',
     })
+    if (sort) params.set('sort', sort)
     if (cursor) params.set('cursor', cursor)
     return request<JobMatchPage>(`/api/job-search/matches?${params}`, undefined, { signal })
   },

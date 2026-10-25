@@ -109,7 +109,7 @@ public class ResumeAiService {
 		ResumeDocument resume = resumeService.get();
 		Integer itemIndex = wholeResume ? null : request.itemIndex();
 		JsonNode current = wholeResume
-				? objectMapper.valueToTree(resume)
+				? withoutLayout(objectMapper.valueToTree(resume))
 				: sectionValue(resume, section, itemIndex);
 		var profile = profileService.getProfile();
 		String systemPrompt = SystemPromptComposer.compose(userPromptService.customTexts());
@@ -484,5 +484,13 @@ public class ResumeAiService {
 
 	private static String blankToNone(String value) {
 		return value == null || value.isBlank() ? "(none)" : value.strip();
+	}
+
+	/** The typesetting settings are the user's; the model works on the text only. */
+	private static JsonNode withoutLayout(JsonNode resume) {
+		if (resume instanceof ObjectNode object) {
+			object.remove("layout");
+		}
+		return resume;
 	}
 }

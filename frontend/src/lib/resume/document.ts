@@ -6,6 +6,7 @@ import type {
   SkillItem,
 } from '../../api/resumeTypes'
 import { resolveLocale } from './editable'
+import { parseLayout } from './layout'
 
 export type ListSection = 'experience' | 'education' | 'achievements' | 'skills'
 export type ListItem = ExperienceItem | EducationItem | AchievementItem | SkillItem
@@ -74,10 +75,12 @@ export function parseDocument(raw: unknown): ResumeDocument | null {
     if (!items) return null
     lists[section] = items
   }
+  const layout = parseLayout(raw.layout)
   return {
     ...(text as Pick<ResumeDocument, (typeof TEXT_FIELDS)[number]>),
     ...(lists as Pick<ResumeDocument, ListSection>),
     locale: resolveLocale(typeof raw.locale === 'string' ? raw.locale : null),
+    ...(layout ? { layout } : {}),
     version: raw.version,
   }
 }

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import type { JobSearchProfile, JobSearchProfileInput } from '../../api/types'
 import { EXPECTATIONS_MAX, toValues } from '../../lib/jobSearch'
 import { errorMessage } from '../../lib/abort'
+import { removeAt } from '../../lib/resume/list'
 import type { useProfileForm } from '../../lib/useProfileForm'
 import { Banner } from '../ui/Banner'
 import { Button } from '../ui/Button'
@@ -88,7 +89,7 @@ export function SearchProfileCard({
           draft={form.roleDraft}
           onDraft={form.setRoleDraft}
           onAdd={() => form.addRole()}
-          onRemove={(i) => change({ roles: values.roles.filter((_, k) => k !== i) })}
+          onRemove={(i) => change({ roles: removeAt(values.roles, i) })}
           error={form.rolesError}
           note={form.roleNote}
           alert={form.attempted}
@@ -102,7 +103,7 @@ export function SearchProfileCard({
           onCountry={form.setCountry}
           onCity={form.setCity}
           onAdd={() => form.addRegion()}
-          onRemove={(i) => change({ regions: values.regions.filter((_, k) => k !== i) })}
+          onRemove={(i) => change({ regions: removeAt(values.regions, i) })}
           error={form.regionsError}
           note={form.regionNote}
           alert={form.attempted}

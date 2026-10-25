@@ -1,6 +1,5 @@
 package com.jobsearch.core_api.ai;
 
-import com.jobsearch.core_api.common.Hashes;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -51,11 +50,6 @@ public enum PromptPart {
 	/** The built-in wording, stripped of surrounding whitespace. */
 	public String defaultText() {
 		return defaultText;
-	}
-
-	/** Hex sha256 of the default text; stored with a customised part to tell later that the default has changed. */
-	public String defaultHash() {
-		return Hashes.sha256(defaultText);
 	}
 
 	public static Optional<PromptPart> byKey(String key) {

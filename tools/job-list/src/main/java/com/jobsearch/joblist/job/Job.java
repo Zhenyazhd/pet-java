@@ -229,6 +229,10 @@ public class Job {
 		this.postedAt = postedAt;
 	}
 
+	public Instant getFetchedAt() {
+		return fetchedAt;
+	}
+
 	public void setFetchedAt(Instant fetchedAt) {
 		this.fetchedAt = fetchedAt;
 	}
