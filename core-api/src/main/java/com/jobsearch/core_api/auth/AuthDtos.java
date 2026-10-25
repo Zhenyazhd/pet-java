@@ -14,6 +14,8 @@ public final class AuthDtos {
 			String email,
 			String displayName,
 			String role,
+			/** False for someone who signs in only with Google: no current password to ask for, a reset link adds one. */
+			boolean hasPassword,
 			/** What this deployment offers, so the page can hide what is switched off instead of failing on click. */
 			Features features
 	) {
@@ -24,6 +26,7 @@ public final class AuthDtos {
 					principal.getUsername(),
 					principal.getDisplayName(),
 					principal.getRole().name(),
+					principal.getPassword() != null,
 					features
 			);
 		}
@@ -58,6 +61,12 @@ public final class AuthDtos {
 	public record ResetPasswordRequest(
 			@NotBlank @Size(max = 200) String token,
 			@NotBlank @Size(min = 8, max = 200) @MaxUtf8Bytes(72) String password
+	) {
+	}
+
+	public record DeleteAccountRequest(
+			@NotBlank @Email String email,
+			@Size(max = 200) String password
 	) {
 	}
 

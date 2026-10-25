@@ -63,11 +63,13 @@
 }
 
 .topbar__user {
+  /* Block, not the nav-link's inline-flex, so a long name can be cut with an ellipsis. */
+  display: block;
+  line-height: 44px;
   max-width: 14rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--muted-foreground);
 }
 
 .main {
@@ -165,7 +167,7 @@
   }
 
   .topbar__user {
-    display: none;
+    max-width: 8rem;
   }
 
   .main {

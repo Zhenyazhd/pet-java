@@ -4,10 +4,12 @@ import com.jobsearch.core_api.auth.account.AccountEmailService;
 import com.jobsearch.core_api.auth.invite.InviteCode;
 import com.jobsearch.core_api.auth.invite.InviteCodeService;
 import com.jobsearch.core_api.auth.AuthDtos.AuthUserResponse;
+import com.jobsearch.core_api.auth.AuthDtos.DeleteAccountRequest;
 import com.jobsearch.core_api.auth.AuthDtos.Features;
 import com.jobsearch.core_api.auth.AuthDtos.LoginRequest;
 import com.jobsearch.core_api.auth.AuthDtos.RegisterRequest;
 import com.jobsearch.core_api.auth.AuthDtos.Registered;
+import com.jobsearch.core_api.common.BadRequestException;
 import com.jobsearch.core_api.common.Emails;
 import com.jobsearch.core_api.common.FixedWindowRateLimiter;
 import com.jobsearch.core_api.common.ForbiddenException;
@@ -89,10 +91,7 @@ public class AuthService {
 		// Per account on top of the per-IP filter: guessing one password list from many addresses. Only failures count.
 		String email = Emails.normalize(request.email());
 		String failureKey = "login-failed|" + email;
-		long blockedFor = rateLimiter.retryAfterIfFull(failureKey, loginFailuresPerMinute);
-		if (blockedFor > 0) {
-			throw new TooManyRequestsException("Too many failed logins — try again later", Duration.ofSeconds(blockedFor));
-		}
+		requireNotLocked(failureKey);
 		try {
 			Authentication authentication = authenticationManager.authenticate(
 					new UsernamePasswordAuthenticationToken(
@@ -111,7 +110,7 @@ public class AuthService {
 			return AuthUserResponse.of(principal, features);
 		}
 		catch (BadCredentialsException | DisabledException ex) {
-			rateLimiter.tryAcquire(failureKey, loginFailuresPerMinute, Duration.ofMinutes(1).toMillis());
+			recordFailure(failureKey);
 			throw new UnauthorizedException("Invalid email or password");
 		}
 	}
@@ -167,6 +166,32 @@ public class AuthService {
 		return AuthUserResponse.of(principal, features);
 	}
 
+	/**
+	 * Removes the account and, through the foreign keys, everything it owned. Asks for the typed address and, when the
+	 * account has a password, for that too; wrong passwords count against the same limit as failed logins.
+	 */
+	public void deleteAccount(DeleteAccountRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+		AppUser user = currentUserService.requireUser();
+		// AuthBootstrap would make the configured admin address an ADMIN again on the next start anyway.
+		if (user.getRole() == UserRole.ADMIN) {
+			throw new BadRequestException("The admin account is set in the configuration and cannot be deleted here.");
+		}
+		if (!Emails.normalize(request.email()).equals(user.getEmail())) {
+			throw new BadRequestException("Type your email address exactly to confirm.");
+		}
+		if (user.getPasswordHash() != null) {
+			String failureKey = "login-failed|" + user.getEmail();
+			requireNotLocked(failureKey);
+			if (request.password() == null || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+				recordFailure(failureKey);
+				throw new BadRequestException("Wrong password.");
+			}
+		}
+		transaction.executeWithoutResult(status -> appUserRepository.deleteById(user.getId()));
+		log.info("Account deleted userId={}", user.getId());
+		logout(httpRequest, httpResponse);
+	}
+
 	public void logout(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
 		SecurityContextHolder.clearContext();
 		HttpSession session = httpRequest.getSession(false);
@@ -174,6 +199,17 @@ public class AuthService {
 			session.invalidate();
 		}
 		log.info("User logged out");
+	}
+
+	private void requireNotLocked(String failureKey) {
+		long blockedFor = rateLimiter.retryAfterIfFull(failureKey, loginFailuresPerMinute);
+		if (blockedFor > 0) {
+			throw new TooManyRequestsException("Too many failed attempts — try again later", Duration.ofSeconds(blockedFor));
+		}
+	}
+
+	private void recordFailure(String failureKey) {
+		rateLimiter.tryAcquire(failureKey, loginFailuresPerMinute, Duration.ofMinutes(1).toMillis());
 	}
 
 	private void establishSession(
