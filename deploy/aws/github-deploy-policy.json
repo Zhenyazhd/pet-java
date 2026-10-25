@@ -1,0 +1,20 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "RunTheDeployDocumentOnTheServerOnly",
+      "Effect": "Allow",
+      "Action": "ssm:SendCommand",
+      "Resource": [
+        "arn:aws:ssm:<REGION>:<ACCOUNT_ID>:document/cvhelper-deploy",
+        "arn:aws:ssm:<REGION>:<ACCOUNT_ID>:managed-instance/<MANAGED_INSTANCE_ID>"
+      ]
+    },
+    {
+      "Sid": "ReadTheResult",
+      "Effect": "Allow",
+      "Action": ["ssm:GetCommandInvocation"],
+      "Resource": "*"
+    }
+  ]
+}
