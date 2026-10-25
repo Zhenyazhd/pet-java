@@ -1,0 +1,3 @@
+# Changes to the pipeline and to what runs on the server need the owner's review.
+/.github/ @Zhenyazhd
+/deploy/ @Zhenyazhd
