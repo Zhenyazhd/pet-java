@@ -9,6 +9,8 @@ data:
   POSTGRES_USER: job_search
   DB_POOL_SIZE: "10"
   PDF_WORKER_BASE_URL: http://pdf-worker:8090
+  ATS_WORKER_ENABLED: "true"
+  ATS_WORKER_BASE_URL: http://ats-worker:8091
   JOB_LIST_BASE_URL: http://job-list:8100
   SERVER_FORWARD_HEADERS_STRATEGY: native
   APP_STRICT_SECRETS: "true"
@@ -64,6 +66,8 @@ spec:
               valueFrom: { secretKeyRef: { name: cvhelper-secrets, key: POSTGRES_PASSWORD } }
             - name: PDF_WORKER_TOKEN
               valueFrom: { secretKeyRef: { name: cvhelper-secrets, key: PDF_WORKER_TOKEN } }
+            - name: ATS_WORKER_TOKEN
+              valueFrom: { secretKeyRef: { name: cvhelper-secrets, key: ATS_WORKER_TOKEN } }
             - name: OPENROUTER_API_KEY
               valueFrom: { secretKeyRef: { name: cvhelper-secrets, key: OPENROUTER_API_KEY } }
             # optional: without the job-list secret the variable is absent and job matches stay off

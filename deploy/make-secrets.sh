@@ -18,6 +18,7 @@ kubectl get ns cvhelper >/dev/null 2>&1 || kubectl create ns cvhelper
 existing() { kubectl -n cvhelper get secret cvhelper-secrets -o "jsonpath={.data.$1}" 2>/dev/null | base64 -d 2>/dev/null || true; }
 PG="$(existing POSTGRES_PASSWORD)"; PG="${PG:-$(rand)}"
 WT="$(existing PDF_WORKER_TOKEN)"; WT="${WT:-$(rand)}"
+AT="$(existing ATS_WORKER_TOKEN)"; AT="${AT:-$(rand)}"
 
 # Sign-in with Google: only when both are given (an OAuth "Web application" client from the Google Cloud console).
 GOOGLE=()
@@ -28,6 +29,7 @@ fi
 kubectl -n cvhelper create secret generic cvhelper-secrets \
   --from-literal=POSTGRES_PASSWORD="$PG" \
   --from-literal=PDF_WORKER_TOKEN="$WT" \
+  --from-literal=ATS_WORKER_TOKEN="$AT" \
   --from-literal=OPENROUTER_API_KEY="$OPENROUTER_API_KEY" \
   --from-literal=APP_ADMIN_EMAIL="$APP_ADMIN_EMAIL" \
   --from-literal=APP_BOOTSTRAP_PASSWORD="$APP_BOOTSTRAP_PASSWORD" \

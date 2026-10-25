@@ -5,6 +5,7 @@ resources:
   - namespace.yaml
   - postgres.yaml
   - pdf-worker.yaml
+  - ats-worker.yaml
   - core-api.yaml
   - web.yaml
   - ingress.yaml
@@ -14,6 +15,9 @@ images:
     newTag: latest
   - name: pdf-worker
     newName: ghcr.io/zhenyazhd/cvhelper-pdf-worker
+    newTag: latest
+  - name: ats-worker
+    newName: ghcr.io/zhenyazhd/cvhelper-ats-worker
     newTag: latest
   - name: web
     newName: ghcr.io/zhenyazhd/cvhelper-web

@@ -30,6 +30,16 @@ spec:
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
+metadata: { name: ats-worker-from-core-api }
+spec:
+  podSelector: { matchLabels: { app: ats-worker } }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: core-api } } }]
+      ports: [{ port: 8091 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
 metadata: { name: core-api-from-web }
 spec:
   podSelector: { matchLabels: { app: core-api } }
