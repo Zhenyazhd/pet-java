@@ -59,9 +59,12 @@ export function AppLayout() {
             <NavLink to="/resume" className="nav-link">
               Resume
             </NavLink>
+            <NavLink to="/profile" className="nav-link nav-link--profile">
+              Profile
+            </NavLink>
           </nav>
           <div className="topbar__account">
-            <NavLink to="/profile" className="nav-link topbar__user" title="Your profile">
+            <NavLink to="/profile" className="nav-link topbar__user small-caps">
               {user?.displayName || user?.email}
             </NavLink>
             <Button variant="ghost" onClick={onSignOut} aria-disabled={signingOut}>

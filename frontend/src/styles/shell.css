@@ -63,13 +63,15 @@
 }
 
 .topbar__user {
-  /* Block, not the nav-link's inline-flex, so a long name can be cut with an ellipsis. */
-  display: block;
-  line-height: 44px;
   max-width: 14rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The name in the account area opens the profile; the nav link is only for narrow screens, where the name is hidden. */
+.nav-link--profile {
+  display: none;
 }
 
 .main {
@@ -167,7 +169,11 @@
   }
 
   .topbar__user {
-    max-width: 8rem;
+    display: none;
+  }
+
+  .nav-link--profile {
+    display: inline-flex;
   }
 
   .main {
