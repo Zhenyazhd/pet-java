@@ -1,9 +1,10 @@
-import { useState } from 'react'
-import type { LayoutSettings } from '../../api/resumeTypes'
-import { LAYOUT_GROUPS, layoutValue, type LayoutField } from '../../lib/resume/layout'
+import { useId, useState } from 'react'
+import type { LayoutSettings, LayoutTemplate } from '../../api/resumeTypes'
+import { LAYOUT_GROUPS, TEMPLATES, TEMPLATE_KEYS, layoutValue, type LayoutField } from '../../lib/resume/layout'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
 import { Field } from '../ui/Field'
+import { Select } from '../ui/Select'
 
 const TITLE_ID = 'layout-dialog-title'
 
@@ -17,6 +18,12 @@ export function LayoutDialog({ layout, onChange, onClose }: LayoutDialogProps) {
   // Bumped by "Reset" so the number inputs start again from the defaults.
   const [resets, setResets] = useState(0)
   const autoFit = layout?.autoFit ?? true
+  const templateId = useId()
+  const classic = (layout?.template ?? 'classic') === 'classic'
+  const groups = LAYOUT_GROUPS.map((group) => ({
+    ...group,
+    fields: group.fields.filter((field) => classic || TEMPLATE_KEYS.includes(field.key)),
+  })).filter((group) => group.fields.length > 0)
 
   return (
     <Dialog labelledBy={TITLE_ID} onClose={onClose}>
@@ -32,13 +39,26 @@ export function LayoutDialog({ layout, onChange, onClose }: LayoutDialogProps) {
         These change how the PDF is typeset. They are saved with the CV; press Preview PDF to see the result.
       </p>
 
-      {LAYOUT_GROUPS.map((group) => (
+      <div className="field">
+        <label className="field__label small-caps" htmlFor={templateId}>
+          Template
+        </label>
+        <Select
+          id={templateId}
+          className="input"
+          value={layout?.template ?? 'classic'}
+          onChange={(template) => onChange({ ...layout, template: template as LayoutTemplate })}
+          options={TEMPLATES}
+        />
+      </div>
+
+      {groups.map((group) => (
         <fieldset key={group.title} className="layout-group">
           <legend className="small-caps">{group.title}</legend>
           <div className="layout-form">
             {group.fields.map((field) => (
               <LayoutNumber
-                key={`${field.key}-${resets}`}
+                key={`${field.key}-${resets}-${layout?.template ?? "classic"}`}
                 field={field}
                 value={layoutValue(layout, field)}
                 onCommit={(value) => onChange({ ...layout, [field.key]: value })}

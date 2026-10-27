@@ -28,6 +28,9 @@ COPY --from=typst /usr/local/bin/typst /usr/local/bin/typst
 
 USER 10001
 COPY --from=build /src/target/pdf-worker.jar /app/pdf-worker.jar
+# The fonts the CV templates ask for (all OFL, see fonts/OFL.md); typst only knows its own few without them.
+COPY fonts /app/fonts
+ENV TYPST_FONT_PATH=/app/fonts
 EXPOSE 8090
 # The JVM is PID 1 and does not reap killed compiler processes: a plain `docker run` needs `--init`
 # (compose has `init: true`, Kubernetes uses shareProcessNamespace).

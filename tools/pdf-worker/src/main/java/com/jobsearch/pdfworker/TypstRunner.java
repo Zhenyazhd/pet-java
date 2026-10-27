@@ -16,7 +16,7 @@ import java.util.logging.Logger;
  * One {@code typst compile} of the {@code main.typ} in a directory.
  *
  * <p>The directory is the Typst project root, so the document cannot read other files; {@code --ignore-system-fonts}
- * limits fonts to the ones embedded in the binary. Packages are not provided: an {@code @preview} import would be
+ * limits fonts to the ones embedded in the binary plus the directory in {@code TYPST_FONT_PATH} (the image's fonts). Packages are not provided: an {@code @preview} import would be
  * downloaded, which the network policy of the deployment forbids and a dead proxy in the child's environment blocks
  * as well. The child gets a cleared environment and file size and memory limits, so one document cannot exhaust the host.
  */
@@ -55,6 +55,11 @@ final class TypstRunner {
 		// kill logic below see typst itself. A document must not be able to write an unbounded PDF or eat all memory.
 		List<String> command = new ArrayList<>(List.of("sh", "-c", limits() + "exec \"$0\" \"$@\"",
 				typstBin, "compile", "--root", workDir.toString(), "--ignore-system-fonts"));
+		String fontPath = System.getenv("TYPST_FONT_PATH");
+		if (fontPath != null && !fontPath.isBlank()) {
+			command.add("--font-path");
+			command.add(fontPath);
+		}
 		if (scale != null) {
 			command.add("--input");
 			command.add(String.format(Locale.ROOT, "scale=%.3f", scale));

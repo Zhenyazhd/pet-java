@@ -133,7 +133,7 @@ class ResumeTypstRendererTest {
 		ResumeDocument custom = new ResumeDocument(plain.name(), plain.headline(), plain.phone(), plain.email(),
 				plain.linkedinUrl(), plain.linkedinLabel(), plain.profile(), plain.experience(), plain.education(),
 				plain.achievements(), plain.skills(), plain.locale(), plain.version(),
-				new LayoutSettings(11.0, null, null, null, null, null, null, null, null, null, false));
+				new LayoutSettings(11.0, null, null, null, null, null, null, null, null, null, false, null));
 		JsonNode layout = renderer.normalized(custom).path("layout");
 		assertEquals(11.0, layout.path("fontSize").asDouble());
 		assertFalse(layout.path("autoFit").asBoolean(true));
@@ -143,7 +143,7 @@ class ResumeTypstRendererTest {
 	@Test
 	void layoutSurvivesStorageAndAResumeStoredBeforeItReadsAsNone() throws Exception {
 		ResumeDocument plain = doc("x", "y");
-		LayoutSettings layout = new LayoutSettings(11.5, 0.7, null, null, null, null, null, 1.5, null, null, false);
+		LayoutSettings layout = new LayoutSettings(11.5, 0.7, null, null, null, null, null, 1.5, null, null, false, null);
 		ResumeDocument custom = new ResumeDocument(plain.name(), plain.headline(), plain.phone(), plain.email(),
 				plain.linkedinUrl(), plain.linkedinLabel(), plain.profile(), plain.experience(), plain.education(),
 				plain.achievements(), plain.skills(), plain.locale(), plain.version(), layout);
@@ -191,6 +191,41 @@ class ResumeTypstRendererTest {
 			for (String expected : List.of(HOSTILE, code, "Привет, мир", "multi line bullet",
 					"Кириллица и *звёздочки* _x_", "$math$ @ref <label>", "100% {braces} [brackets] ~tilde", "C# F# a_b")) {
 				assertTrue(text.contains(expected.replaceAll("\\s+", " ")), "missing: " + expected + "\n" + text);
+			}
+		}
+	}
+
+	/** Every template compiles with the fonts the pdf-worker ships, keeps the text as data, and prints it all. */
+	@Test
+	void everyTemplateCompilesWithHostileText(@TempDir Path dir) throws Exception {
+		Path fonts = Path.of("../tools/pdf-worker/fonts");
+		if (System.getenv("CI") != null) {
+			assertTrue(typstOnPath(), "typst must be on PATH in CI");
+		}
+		else {
+			assumeTrue(typstOnPath(), "typst is not on PATH");
+		}
+		assumeTrue(Files.isDirectory(fonts), "the pdf-worker fonts are not next to core-api");
+		// A word of 150 characters must break, not run off the page.
+		ResumeDocument d = doc("Ada", HOSTILE + " " + "x".repeat(150));
+		for (String id : ResumeDtos.TEMPLATE_IDS.split("\\|")) {
+			ResumeDocument withTemplate = new ResumeDocument(d.name(), d.headline(), d.phone(), d.email(), d.linkedinUrl(),
+					d.linkedinLabel(), d.profile(), d.experience(), d.education(), d.achievements(), d.skills(),
+					d.locale(), d.version(), new LayoutSettings(null, null, null, null, null, null, null, null, null, null, null, id));
+			Files.writeString(dir.resolve("main.typ"), renderer.render(withTemplate));
+			Process p = new ProcessBuilder("typst", "compile", "--root", dir.toString(), "--ignore-system-fonts",
+					"--font-path", fonts.toString(), dir.resolve("main.typ").toString(), dir.resolve("out.pdf").toString())
+					.redirectErrorStream(true).start();
+			String log = new String(p.getInputStream().readAllBytes());
+			assertTrue(p.waitFor(60, TimeUnit.SECONDS), id);
+			assertEquals(0, p.exitValue(), id + "\n" + log);
+			assertFalse(log.contains("unknown font family"), id + "\n" + log);
+			try (PDDocument pdf = Loader.loadPDF(Files.readAllBytes(dir.resolve("out.pdf")))) {
+				String text = new PDFTextStripper().getText(pdf).replaceAll("\\s+", " ");
+				assertFalse(text.contains("x".repeat(60) + "x"), id + " did not break the long word");
+				for (String expected : List.of("Ada", HOSTILE, "Acme", "University")) {
+					assertTrue(text.contains(expected.replaceAll("\\s+", " ")), id + " is missing: " + expected + "\n" + text);
+				}
 			}
 		}
 	}

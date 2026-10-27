@@ -1,6 +1,30 @@
-import type { LayoutSettings } from '../../api/resumeTypes'
+import type { LayoutSettings, LayoutTemplate } from '../../api/resumeTypes'
 
-export type LayoutKey = Exclude<keyof LayoutSettings, 'autoFit'>
+export type LayoutKey = Exclude<keyof LayoutSettings, 'autoFit' | 'template'>
+
+/** The templates of core-api typst/ (ResumeDtos.TEMPLATE_IDS): the same sections and texts, a different look. */
+/** What a template reads from the settings, and its own value for each (classic reads them all, with the field fallbacks). */
+export const TEMPLATE_KEYS: LayoutKey[] = ['fontSize', 'lineSpacing', 'marginX']
+type TemplateDefaults = Pick<Record<LayoutKey, number>, 'fontSize' | 'lineSpacing' | 'marginX'>
+
+export const TEMPLATES: { value: LayoutTemplate; label: string; defaults?: TemplateDefaults }[] = [
+  { value: 'classic', label: 'Classic: centred, navy rules' },
+  { value: 'anchor', label: 'Anchor: contact band at the foot', defaults: { fontSize: 10.5, lineSpacing: 0.65, marginX: 1.6 } },
+  { value: 'atlas', label: 'Atlas: colour header, skills rail', defaults: { fontSize: 10, lineSpacing: 0.62, marginX: 1.4 } },
+  { value: 'charter', label: 'Charter: heavy rule under the name', defaults: { fontSize: 10.5, lineSpacing: 0.63, marginX: 1.7 } },
+  { value: 'codex', label: 'Codex: quiet, Computer Modern', defaults: { fontSize: 11, lineSpacing: 0.66, marginX: 2.1 } },
+  { value: 'column', label: 'Column: contact and skills rail', defaults: { fontSize: 10, lineSpacing: 0.62, marginX: 1.4 } },
+  { value: 'creative', label: 'Creative: warm paper background', defaults: { fontSize: 10, lineSpacing: 0.65, marginX: 1.5 } },
+  { value: 'crest', label: 'Crest: formal, centred serif', defaults: { fontSize: 10, lineSpacing: 0.62, marginX: 2 } },
+  { value: 'executive', label: 'Executive: LaTeX moderncv style', defaults: { fontSize: 11, lineSpacing: 0.65, marginX: 1.5 } },
+  { value: 'keyline', label: 'Keyline: sans, brown rules', defaults: { fontSize: 10.5, lineSpacing: 0.65, marginX: 1.7 } },
+  { value: 'marker', label: 'Marker: sans, teal headings', defaults: { fontSize: 10, lineSpacing: 0.65, marginX: 1.5 } },
+  { value: 'quartz', label: 'Quartz: grey side panel', defaults: { fontSize: 10, lineSpacing: 0.62, marginX: 1.4 } },
+  { value: 'print', label: 'Print: clean, blue accents', defaults: { fontSize: 10, lineSpacing: 0.6, marginX: 1.8 } },
+  { value: 'refined', label: 'Refined: serif, slate accents', defaults: { fontSize: 10, lineSpacing: 0.62, marginX: 2 } },
+  { value: 'terrace', label: 'Terrace: Garamond, plum', defaults: { fontSize: 11, lineSpacing: 0.68, marginX: 2.2 } },
+  { value: 'vertex', label: 'Vertex: Garamond, plum rules', defaults: { fontSize: 11, lineSpacing: 0.62, marginX: 1.5 } },
+]
 
 export type LayoutField = {
   key: LayoutKey
@@ -44,7 +68,9 @@ export const LAYOUT_GROUPS: { title: string; fields: LayoutField[] }[] = [
 ]
 
 export const layoutValue = (layout: LayoutSettings | null | undefined, field: LayoutField): number =>
-  layout?.[field.key] ?? field.fallback
+  layout?.[field.key] ??
+  TEMPLATES.find((t) => t.value === layout?.template)?.defaults?.[field.key as keyof TemplateDefaults] ??
+  field.fallback
 
 /** Only well-formed numbers and a boolean survive: a stored or pasted layout never breaks the page. */
 export function parseLayout(raw: unknown): LayoutSettings | undefined {
@@ -58,5 +84,7 @@ export function parseLayout(raw: unknown): LayoutSettings | undefined {
     }
   }
   if (typeof source.autoFit === 'boolean') layout.autoFit = source.autoFit
+  const template = TEMPLATES.find((t) => t.value === source.template)
+  if (template) layout.template = template.value
   return Object.keys(layout).length > 0 ? layout : undefined
 }
