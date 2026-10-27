@@ -7,7 +7,7 @@ data:
   JOB_LIST_DB_USER: job_list
   SERVER_FORWARD_HEADERS_STRATEGY: native
   # LinkedIn stays off until it is wanted: set to "true" and re-apply.
-  JOB_LIST_SOURCE_LINKEDIN_ENABLED: "false"
+  JOB_LIST_SOURCE_LINKEDIN_ENABLED: "true"
   TZ: UTC
   JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError"
 ---
