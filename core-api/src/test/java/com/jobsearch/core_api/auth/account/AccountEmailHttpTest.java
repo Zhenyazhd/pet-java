@@ -167,6 +167,23 @@ class AccountEmailHttpTest {
 		assertEquals(204, send("POST", "/api/auth/verify-email", body("token", verifyToken)).statusCode(), "and it was not spent by that");
 	}
 
+	@Test
+	void deletingTheAccountNeedsTheAddressAndThePasswordAndRemovesEverythingTheUserOwned() throws Exception {
+		String email = registered();
+		assertEquals(204, send("POST", "/api/auth/verify-email", body("token", lastMailedToken(email))).statusCode());
+		assertEquals(200, send("POST", "/api/auth/login", credentials(email, PASSWORD)).statusCode());
+		jdbc.update("insert into vacancy (url, title, user_id) select 'https://x.test/1', 'Dev', id from app_user where email = ?", email);
+
+		assertEquals(400, send("DELETE", "/api/auth/account", credentials("other@test.local", PASSWORD)).statusCode(), "another address");
+		assertEquals(400, send("DELETE", "/api/auth/account", credentials(email, "not the password")).statusCode());
+		assertEquals(400, send("DELETE", "/api/auth/account", body("email", email)).statusCode(), "no password");
+		assertEquals(204, send("DELETE", "/api/auth/account", credentials(email, PASSWORD)).statusCode());
+
+		assertEquals(0, jdbc.queryForObject("select count(*) from app_user where email = ?", Integer.class, email));
+		assertEquals(0, jdbc.queryForObject("select count(*) from vacancy where url = 'https://x.test/1'", Integer.class));
+		assertEquals(401, send("GET", "/api/auth/me", null).statusCode(), "the session ended with the account");
+	}
+
 	/** Registers a new account and returns its address; the confirmation mail is the latest on the mock. */
 	private String registered() throws Exception {
 		String invite = "INVITE-" + UUID.randomUUID().toString().toUpperCase();

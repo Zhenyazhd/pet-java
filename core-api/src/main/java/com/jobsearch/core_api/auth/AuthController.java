@@ -4,6 +4,7 @@ import com.jobsearch.core_api.auth.account.AccountEmailService;
 import com.jobsearch.core_api.auth.google.GoogleLoginHandler;
 import com.jobsearch.core_api.auth.invite.InviteCodeService;
 import com.jobsearch.core_api.auth.AuthDtos.AuthUserResponse;
+import com.jobsearch.core_api.auth.AuthDtos.DeleteAccountRequest;
 import com.jobsearch.core_api.auth.AuthDtos.EmailRequest;
 import com.jobsearch.core_api.auth.AuthDtos.InviteRequest;
 import com.jobsearch.core_api.auth.AuthDtos.PublicConfig;
@@ -19,6 +20,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -117,6 +119,16 @@ public class AuthController {
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
 		accountEmailService.resetPassword(request.token(), request.password());
+	}
+
+	@DeleteMapping("/account")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void deleteAccount(
+			@Valid @RequestBody DeleteAccountRequest request,
+			HttpServletRequest httpRequest,
+			HttpServletResponse httpResponse
+	) {
+		authService.deleteAccount(request, httpRequest, httpResponse);
 	}
 
 	@PostMapping("/logout")

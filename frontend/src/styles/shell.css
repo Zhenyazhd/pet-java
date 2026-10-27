@@ -67,7 +67,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--muted-foreground);
+}
+
+/* The name in the account area opens the profile; the nav link is only for narrow screens, where the name is hidden. */
+.nav-link--profile {
+  display: none;
 }
 
 .main {
@@ -166,6 +170,10 @@
 
   .topbar__user {
     display: none;
+  }
+
+  .nav-link--profile {
+    display: inline-flex;
   }
 
   .main {

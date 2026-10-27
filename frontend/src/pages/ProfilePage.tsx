@@ -6,6 +6,7 @@ import type { Profile } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { Banner } from '../components/ui/Banner'
 import { Button } from '../components/ui/Button'
+import { AccountCard } from '../components/profile/AccountCard'
 import { PromptsCard } from '../components/profile/PromptsCard'
 import { Field, TextAreaField } from '../components/ui/Field'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -176,6 +177,7 @@ export default function ProfilePage() {
         </form>
       )}
 
+      <AccountCard />
       {user?.role === 'ADMIN' && <PromptsCard />}
     </section>
   )

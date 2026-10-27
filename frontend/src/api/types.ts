@@ -4,6 +4,8 @@ export type AuthUser = {
   displayName: string
   /** 'ADMIN' sees the AI instructions on the Profile page; anyone else does not. */
   role?: string
+  /** False when the account only signs in with Google, so there is no current password to ask for. */
+  hasPassword?: boolean
   /** What this deployment offers; a switched-off feature is hidden or disabled instead of failing on click. */
   features?: { atsMatch: boolean; pdfReadability?: boolean }
 }

@@ -22,7 +22,8 @@
   color: var(--accent-strong);
 }
 
-.prompts {
+.prompts,
+.account {
   display: flex;
   flex-direction: column;
   gap: 2rem;
@@ -82,4 +83,9 @@
   .profile__actions .btn {
     flex: 1;
   }
+}
+
+.btn.btn--danger {
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  color: var(--danger);
 }

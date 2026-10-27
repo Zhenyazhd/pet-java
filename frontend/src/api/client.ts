@@ -221,6 +221,9 @@ export const api = {
   resetPassword: (token: string, password: string) =>
     request<void>('/api/auth/reset-password', json('POST', { token, password }), { skipAuthRedirect: true }),
 
+  deleteAccount: (body: { email: string; password?: string }) =>
+    request<void>('/api/auth/account', json('DELETE', body)),
+
   logout: async () => {
     await request<void>('/api/auth/logout', { method: 'POST' }, { skipAuthRedirect: true })
     try {
