@@ -103,7 +103,7 @@
     let place = (edu.subtitle, edu.location).filter(part => part.trim() != "").join(", ")
     entry(edu.title, place, "")
     if edu.details.trim() != "" {
-      block(above: 0.3em)[#text(size: size * 0.9)[#edu.details]]
+      block(above: lv("bulletsTopSpacing", 0.6) * 1em)[#text(size: size * 0.9)[#edu.details]]
     }
   }
 ]

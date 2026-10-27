@@ -29,7 +29,7 @@ export const LAYOUT_GROUPS: { title: string; fields: LayoutField[] }[] = [
     fields: [
       { key: 'sectionSpacing', label: 'Above section titles', unit: 'em', hint: 'Space before Experience, Education and the other sections.', min: 0, max: 3, step: 0.05, fallback: 0.95 },
       { key: 'bulletSpacing', label: 'Between bullets', unit: 'em', hint: 'Space after each bullet point.', min: 0, max: 1.5, step: 0.05, fallback: 0.2 },
-      { key: 'bulletsTopSpacing', label: 'Above the first bullet', unit: 'em', hint: 'Space between the description line and the first bullet of a job.', min: 0, max: 2, step: 0.05, fallback: 0.6 },
+      { key: 'bulletsTopSpacing', label: 'Above the first bullet', unit: 'em', hint: 'Space between the description line and the first bullet of a job, or the details of a school.', min: 0, max: 2, step: 0.05, fallback: 0.6 },
       { key: 'subtitleSpacing', label: 'Under job and school titles', unit: 'em', hint: 'Space between a title and the line below it, e.g. the company description.', min: 0, max: 1.5, step: 0.05, fallback: 0 },
     ],
   },
