@@ -30,6 +30,7 @@
 
 #let print-cv(
   author: "",
+  profession: "",
   location: "",
   email: "",
   phone: "",
@@ -117,13 +118,16 @@
   } else {
     // The 100%-width rule stretches this block to full width, so align(center)
     // inside centres the name and contact across the page.
-    block(above: 0pt, below: 1.15em, breakable: false, {
+    // The rule that used to stretch this block is gone, so give it the full width the centred lines are centred in.
+    block(width: 100%, above: 0pt, below: 1.7em, breakable: false, {
       set block(spacing: 0pt)
       set par(spacing: 0pt)
       align(center, text(size: 19pt, weight: "bold", tracking: 1.4pt, fill: heading-tone, upper(author)))
-      v(0.45em)
-      line(length: 100%, stroke: 0.8pt + heading-tone)
-      v(0.55em)
+      if not is-blank(profession) {
+        v(0.9em)
+        align(center, text(size: 1.3em, fill: muted, profession))
+      }
+      v(0.8em)
       align(center, contact-text)
     })
   }
@@ -158,20 +162,21 @@
 // Adapted for this project: the sample document is replaced by the resume `r`, and the page settings of the
 // editor (font size, line spacing, left/right margin) override the template's own values when they are set.
 
-// The sample's entries are inline grids: title and date in the left cell, the organisation in the right one.
+// The sample's entries are inline grids: title and the organisation in the left cell, the dates in the right one.
 #let entry(title, sub, dates, body) = {
   grid(
     columns: (auto, 1fr),
     align: (left + top, right + top),
     column-gutter: 0.6em,
-    [#strong[#title]#if dates != "" { linebreak(); text(fill: lighten-tone("#2b4c7e"))[#dates] }],
-    [#text(fill: rgb("#5e5e5e"))[#sub]],
+    [#strong[#title]#if sub != "" { linebreak(); text(fill: rgb("#5e5e5e"))[#sub] }],
+    [#text(fill: lighten-tone("#2b4c7e"))[#dates]],
   )
   body
 }
 
 #show: print-cv.with(
   author: r.name,
+  profession: headline,
   email: r.email,
   phone: r.phone,
   location: "",
@@ -185,5 +190,4 @@
   lang: lang,
 )
 #show: apply-spacing
-#if headline != "" { align(center)[#text(fill: rgb("#5e5e5e"))[#headline]] }
 #flat-body(cv-section, (title: "", subtitle: "", dates: "", location: "", meta: "", body) => entry(title, subtitle, dates, body))

@@ -104,6 +104,9 @@
     set par(spacing: 0pt, justify: false)
     set text(hyphenate: false)
     text(size: label-size, weight: "bold", tracking: 1.1pt, fill: rgb(accent-color), upper(title))
+    v(4pt)
+    // A translucent hairline under the section name.
+    line(length: 100%, stroke: 0.6pt + rgb(accent-color).transparentize(65%))
   })
 }
 
@@ -126,8 +129,7 @@
         column-gutter: 0.75em,
         {
           if not is-blank(title) { text(weight: "bold", fill: ink, title) }
-          if not is-blank(title) and not is-blank(subtitle) { text(fill: muted)[ #sym.dash.en ] }
-          if not is-blank(subtitle) { text(fill: muted, subtitle) }
+          if not is-blank(subtitle) { linebreak(); text(fill: muted, subtitle) }
         },
         if not is-blank(dates) { text(size: meta-size, fill: muted, dates) } else { [] },
       )

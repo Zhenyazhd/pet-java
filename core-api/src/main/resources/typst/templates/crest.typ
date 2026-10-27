@@ -147,8 +147,8 @@
     columns: (auto, 1fr),
     align: (left + top, right + top),
     column-gutter: 0.6em,
-    [#strong[#title]#if dates != "" { linebreak(); text(fill: rgb("#5a5a55"))[#dates] }],
-    [#text(fill: rgb("#5a5a55"))[#sub]],
+    [#strong[#title]#if sub != "" { linebreak(); text(fill: rgb("#5a5a55"))[#sub] }],
+    [#text(fill: rgb("#5a5a55"))[#dates]],
   )
   body
 }

@@ -29,8 +29,8 @@ export const TEMPLATES: { value: LayoutTemplate; label: string; defaults?: Templ
   { value: 'quartz', label: 'Quartz: grey side panel', defaults: { fontSize: 10, lineSpacing: 0.62, marginX: 1.4 } },
   { value: 'print', label: 'Print: clean, blue accents', defaults: { fontSize: 10, lineSpacing: 0.6, marginX: 1.8 } },
   { value: 'refined', label: 'Refined: serif, slate accents', defaults: { fontSize: 10, lineSpacing: 0.62, marginX: 2 } },
-  { value: 'terrace', label: 'Terrace: Garamond, plum', defaults: { fontSize: 11, lineSpacing: 0.68, marginX: 2.2 } },
-  { value: 'vertex', label: 'Vertex: Garamond, plum rules', defaults: { fontSize: 11, lineSpacing: 0.62, marginX: 1.5 } },
+  { value: 'terrace', label: 'Terrace: Garamond, dark emerald', defaults: { fontSize: 11, lineSpacing: 0.68, marginX: 2.2 } },
+  { value: 'vertex', label: 'Vertex: Garamond, deep blue rules', defaults: { fontSize: 11, lineSpacing: 0.62, marginX: 1.5 } },
 ]
 
 export type LayoutField = {

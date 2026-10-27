@@ -51,7 +51,7 @@
   margin: 2.2cm,
   leading: 0.68em,
   lang: "en",
-  accent-color: "#5f4b6b",
+  accent-color: "#0f5a46",
   body,
 ) = {
   let author-str = if type(author) == str { author } else { "CV" }
@@ -92,7 +92,7 @@
 // Section label: accent UPPERCASE + tracking, hanging one step into the left margin.
 // No rule anywhere in this template. `gap` is the section separation resolved from
 // the sectionSpacing knob (see the adapter), so it scales with the entry gaps.
-#let cv-section(title, accent-color: "#5f4b6b", gap: 1.7em) = {
+#let cv-section(title, accent-color: "#0f5a46", gap: 1.7em) = {
   block(above: gap, below: 1em, sticky: true, {
     set block(spacing: 0pt)
     set par(spacing: 0pt, justify: false)
@@ -118,8 +118,7 @@
         column-gutter: 0.75em,
         {
           if not is-blank(title) { text(weight: "semibold", fill: ink, title) }
-          if not is-blank(title) and not is-blank(subtitle) { text(fill: muted)[ #sym.dash.en ] }
-          if not is-blank(subtitle) { text(fill: muted, subtitle) }
+          if not is-blank(subtitle) { linebreak(); text(fill: muted, subtitle) }
         },
         if not is-blank(dates) { text(size: meta-size, fill: muted, dates) } else { [] },
       )
@@ -160,7 +159,7 @@
   author: r.name,
   profession: headline,
   contact: contact-line,
-  accent-color: "#5f4b6b",
+  accent-color: "#0f5a46",
   font: "EB Garamond",
   font-size: lv("fontSize", 11) * 1pt * scale,
   paper: "a4",

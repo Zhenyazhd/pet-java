@@ -58,7 +58,7 @@
 
 // Masthead (CENTERED): name (bold) over the profession (accent) and a quiet contact
 // line, closed by a thin accent rule. Guarded.
-#let masthead(author: "", profession: "", contact: "", accent-color: "#5c3a5f") = {
+#let masthead(author: "", profession: "", contact: "", accent-color: "#1b3a6b") = {
   let has-name = not is-blank(author)
   let has-prof = not is-blank(profession)
   let has-contact = not is-blank(contact)
@@ -83,7 +83,7 @@
 
 // Section label: accent UPPERCASE + tracking over a thin accent rule. Sticky. Used for
 // full-width sections and (at half width) inside the two-up band.
-#let cv-section(title, accent-color: "#5c3a5f") = {
+#let cv-section(title, accent-color: "#1b3a6b") = {
   block(above: 1.2em, below: 0.9em, sticky: true, {
     set block(spacing: 0pt)
     set par(spacing: 0pt, justify: false)
@@ -180,5 +180,5 @@
   lang: lang,
 )
 #show: apply-spacing
-#masthead(author: r.name, profession: headline, contact: contact-line, accent-color: "#5c3a5f")
+#masthead(author: r.name, profession: headline, contact: contact-line, accent-color: "#1b3a6b")
 #flat-body(cv-section, vertex-entry)

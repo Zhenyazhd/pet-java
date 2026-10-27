@@ -26,21 +26,21 @@ export type ResumeLocale = 'fr' | 'en'
 
 export type LayoutTemplate =
   | 'classic'
-  | 'anchor'
-  | 'atlas'
-  | 'charter'
-  | 'codex'
-  | 'column'
-  | 'creative'
-  | 'crest'
-  | 'executive'
-  | 'keyline'
-  | 'marker'
-  | 'quartz'
-  | 'print'
-  | 'refined'
-  | 'terrace'
-  | 'vertex'
+  | 'anchor' // ok 
+  | 'atlas' // 
+  | 'charter' // ok 
+  | 'codex' // 
+  | 'column' // ok 
+  | 'creative' // еще нужно вернуться
+  | 'crest' // ok 
+  | 'executive' // еще нужно вернуться
+  | 'keyline'// ok 
+  | 'marker' // ok 
+  | 'quartz' // ok 
+  | 'print' // убрать разделитель из заголовка
+  | 'refined' // убрать разделитель из заголовка
+  | 'terrace' // вернуться 
+  | 'vertex' // ok 
 
 /** How the PDF is typeset; every field is optional and a missing one keeps the template's own value. */
 export type LayoutSettings = {

@@ -165,8 +165,7 @@
         column-gutter: 0.75em,
         {
           if not is-blank(title) { text(weight: "semibold", fill: ink, title) }
-          if not is-blank(title) and not is-blank(subtitle) { text(fill: muted)[ #sym.dash.en ] }
-          if not is-blank(subtitle) { text(fill: muted, subtitle) }
+          if not is-blank(subtitle) { linebreak(); text(fill: muted, subtitle) }
         },
         if not is-blank(dates) { text(size: meta-size, fill: muted, dates) } else { [] },
       )

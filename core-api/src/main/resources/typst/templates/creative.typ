@@ -37,7 +37,7 @@
     fill: secondaryTextColor,
     weight: "medium",
   )[
-    #fa-icon(icon, solid: true) #h(10pt) #content
+    #content
   ]
 }
 
@@ -179,6 +179,7 @@
 #let creative-cv(
   author: [],
   author-str: "",
+  profession: "",
   location: "",
   email: "",
   phone: "",
@@ -224,9 +225,15 @@
     width: 100%,
     breakable: false,
   )[
+    #set block(spacing: 0pt)
+    #set par(spacing: 0pt, leading: 0.4em)
     #text(size: 30pt, weight: "extrabold", fill: textColor)[#author]
+    #if not is-blank(profession) {
+      v(10pt)
+      text(size: 13pt, weight: "medium", fill: secondaryTextColor)[#profession]
+    }
     #if contact-items.len() > 0 {
-      v(8pt)
+      v(10pt)
       table(
         columns: (1fr, 1fr),
         stroke: none,
@@ -237,7 +244,7 @@
     }
   ]
 
-  v(12pt)
+  v(10pt)
 
   body
 }
@@ -249,6 +256,7 @@
 #let entry(title: "", subtitle: "", dates: "", location: "", meta: "", body) = cvEntry(title: title, subtitle: subtitle, date: dates, location: location, description: body)
 #show: creative-cv.with(
   author: [#r.name],
+  profession: headline,
   author-str: r.name,
   email: r.email,
   phone: r.phone,
@@ -261,5 +269,4 @@
   lang: lang,
 )
 #show: apply-spacing
-#if headline != "" { text(size: 12pt, weight: "medium", fill: secondaryTextColor)[#headline] }
 #flat-body(sectionHeader, entry)

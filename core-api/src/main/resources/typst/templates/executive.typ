@@ -19,7 +19,7 @@
 
 #let is-blank(v) = v == none or v == "" or v == []
 
-#let moderncv-blue = rgb("#3973AF")
+#let moderncv-blue = rgb("#1b3a6b")
 #let light-gray = rgb("#737373")
 
 // FontAwesome icon function using ligatures

@@ -18,6 +18,7 @@
 
 #let refined-cv(
   author: "",
+  profession: "",
   location: "",
   email: "",
   phone: "",
@@ -99,14 +100,16 @@
       contact-line
     })
   } else {
-    block(above: 0pt, below: 1em, breakable: false, {
+    block(above: 0pt, below: 1.7em, breakable: false, {
       set block(spacing: 0pt)
       set par(spacing: 0pt, leading: 0.5em)
       text(size: 23pt, weight: "semibold", tracking: 0.3pt, fill: rgb("#1a1a1a"), author)
-      v(0.95em)
+      if not is-blank(profession) {
+        v(0.9em)
+        text(size: 13pt, fill: rgb("#5a5a55"), profession)
+      }
+      v(0.8em)
       contact-line
-      v(0.7em)
-      line(length: 100%, stroke: 0.8pt + c)
     })
   }
 
@@ -138,20 +141,21 @@
 // Adapted for this project: the sample document is replaced by the resume `r`, and the page settings of the
 // editor (font size, line spacing, left/right margin) override the template's own values when they are set.
 
-// The sample's entries are inline grids: title and date in the left cell, the organisation in the right one.
+// The sample's entries are inline grids: title and the organisation in the left cell, the dates in the right one.
 #let entry(title, sub, dates, body) = {
   grid(
     columns: (auto, 1fr),
     align: (left + top, right + top),
     column-gutter: 0.6em,
-    [#strong[#title]#if dates != "" { linebreak(); text(fill: rgb("#5a5a55"))[#dates] }],
-    [#text(fill: rgb("#5a5a55"))[#sub]],
+    [#strong[#title]#if sub != "" { linebreak(); text(fill: rgb("#5a5a55"))[#sub] }],
+    [#text(fill: rgb("#5a5a55"))[#dates]],
   )
   body
 }
 
 #show: refined-cv.with(
   author: r.name,
+  profession: headline,
   email: r.email,
   phone: r.phone,
   location: "",
@@ -165,5 +169,4 @@
   lang: lang,
 )
 #show: apply-spacing
-#if headline != "" { align(center)[#text(fill: rgb("#5a5a55"))[#headline]] }
 #flat-body(cv-section, (title: "", subtitle: "", dates: "", location: "", meta: "", body) => entry(title, subtitle, dates, body))
