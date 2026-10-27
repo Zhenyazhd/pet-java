@@ -106,8 +106,9 @@
       v(10pt)
     }
     text(size: display-size, weight: "bold", fill: ink, author)
-    if profession != "" {
-      v(3pt)
+    if not is-blank(profession) {
+      v(headline-gap(9pt))
+      set par(leading: 0.65em)
       text(size: subhead-size, weight: "regular", fill: rgb(accent-color), profession)
     }
   })
@@ -226,7 +227,8 @@
   leading: lv("lineSpacing", 0.62) * 1em,
   lang: lang,
 )
+#show: apply-spacing
 #cv-layout(
   main: [#main-body(main-section, quartz-entry)],
-  aside: [#masthead(author: r.name, profession: r.headline, accent-color: "#3f5450")#panel-contact(contacts, accent-color: "#3f5450")#side-body(panel-section)],
+  aside: [#masthead(author: r.name, profession: headline, accent-color: "#3f5450")#panel-contact(contacts, accent-color: "#3f5450")#side-body(panel-section)],
 )

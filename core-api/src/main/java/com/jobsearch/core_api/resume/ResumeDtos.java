@@ -85,7 +85,11 @@ public final class ResumeDtos {
 			/** True (or missing): the pdf worker scales the type slightly so the text fills exactly one page. */
 			Boolean autoFit,
 			/** The look of the PDF, one of {@link #TEMPLATE_IDS}; missing means "classic". */
-			@Pattern(regexp = TEMPLATE_IDS) String template
+			@Pattern(regexp = TEMPLATE_IDS) String template,
+			/** Space between the lines of Skills and Achievements, em (templates other than classic). */
+			@DecimalMin("0") @DecimalMax("2") Double itemSpacing,
+			/** Space between the name and the job title line, em. */
+			@DecimalMin("0") @DecimalMax("3") Double headlineSpacing
 	) {
 	}
 

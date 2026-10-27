@@ -72,7 +72,7 @@
       set par(spacing: 0pt, leading: 0.4em, justify: false)
       if has-name { text(size: display-size, weight: "bold", fill: ink, author) }
       if has-prof {
-        if has-name { v(display-size * 0.3) }
+        if has-name { v(headline-gap(display-size * 0.3)) }
         text(size: 1.3em, fill: ink, profession)
       }
       if has-contact {
@@ -188,7 +188,8 @@
   margin: lv("marginX", 1.7) * 1cm,
   leading: lv("lineSpacing", 0.63) * 1em,
   lang: lang,
-  profession: r.headline,
+  profession: headline,
   contact: contact-line,
 )
-#flat-body(cv-section, charter-entry)
+#show: apply-spacing
+#flat-body(section-gap(cv-section), charter-entry)

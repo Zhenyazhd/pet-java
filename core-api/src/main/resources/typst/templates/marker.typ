@@ -74,7 +74,7 @@
         )
       }
       if has-prof {
-        if has-name { v(3pt) }
+        if has-name { v(headline-gap(9pt)) }
         text(size: subhead-size, weight: "regular", fill: muted, profession)
       }
       if has-contact {
@@ -163,5 +163,6 @@
   leading: lv("lineSpacing", 0.65) * 1em,
   lang: lang,
 )
-#masthead(author: r.name, profession: r.headline, contact: contact-line, accent-color: "#2c5f6e")
+#show: apply-spacing
+#masthead(author: r.name, profession: headline, contact: contact-line, accent-color: "#2c5f6e")
 #flat-body(cv-section, marker-entry)

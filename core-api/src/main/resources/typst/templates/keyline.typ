@@ -71,7 +71,7 @@
       set par(spacing: 0pt, leading: 0.4em, justify: false)
       if has-name { text(size: display-size, weight: "bold", fill: ink, author) }
       if has-prof or has-contact {
-        if has-name { v(display-size * 0.38) }
+        if has-name { v(headline-gap(display-size * 0.38)) }
         grid(
           columns: (auto, 1fr),
           align: (left + bottom, right + bottom),
@@ -162,7 +162,7 @@
 
 #show: keyline-cv.with(
   author: r.name,
-  profession: r.headline,
+  profession: headline,
   contact: contact-line,
   accent-color: "#6d4f3b",
   font: "Hanken Grotesk",
@@ -172,4 +172,5 @@
   leading: lv("lineSpacing", 0.65) * 1em,
   lang: lang,
 )
-#flat-body(cv-section, keyline-entry)
+#show: apply-spacing
+#flat-body(section-gap(cv-section), keyline-entry)

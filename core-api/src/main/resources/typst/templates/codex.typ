@@ -77,7 +77,7 @@
       set text(hyphenate: false)
       if has-name { text(size: display-size, weight: "bold", fill: ink, author) }
       if has-prof {
-        if has-name { v(display-size * 0.38) }
+        if has-name { v(headline-gap(display-size * 0.38)) }
         text(size: subhead-size, weight: "regular", fill: muted, profession)
       }
       if has-contact {
@@ -167,7 +167,7 @@
 
 #show: codex-cv.with(
   author: r.name,
-  profession: r.headline,
+  profession: headline,
   contact: contact-line,
   accent-color: "#3b3a4d",
   font: "New Computer Modern",
@@ -177,4 +177,5 @@
   leading: lv("lineSpacing", 0.66) * 1em,
   lang: lang,
 )
-#flat-body(cv-section, codex-entry)
+#show: apply-spacing
+#flat-body(section-gap(cv-section), codex-entry)

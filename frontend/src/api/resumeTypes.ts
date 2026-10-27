@@ -58,6 +58,10 @@ export type LayoutSettings = {
   autoFit?: boolean
   /** The look of the PDF; missing means classic. */
   template?: LayoutTemplate
+  /** Space between the lines of Skills and Achievements (templates other than classic). */
+  itemSpacing?: number
+  /** Space between the name and the job title line. */
+  headlineSpacing?: number
 }
 
 /** The wire format of GET/PUT /api/resume. */

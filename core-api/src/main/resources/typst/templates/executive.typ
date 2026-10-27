@@ -61,7 +61,7 @@
     dir: ttb,
     spacing: 1em,
     text(size: 30pt, hyphenate: false, title),
-    text(size: 20pt, subtitle, style: subtitle-emphasis, fill: subtitle-color),
+    text(size: 15pt, subtitle, style: subtitle-emphasis, fill: subtitle-color),
   )
 
   let format_social(linkPrefix, username, display: none, icon: none) = {
@@ -375,7 +375,7 @@
 #let section(title) = heading(level: 1, title)
 #show: moderner-cv.with(
   name: r.name,
-  subtitle: [#r.headline],
+  subtitle: [#headline],
   social: (
     ..if r.phone.trim() != "" { (("phone", r.phone),) } else { () },
     ..if r.email.trim() != "" { (("email", r.email),) } else { () },
@@ -388,4 +388,6 @@
   margin: (top: lv("marginTop", 1) * 1cm, bottom: lv("marginBottom", 1.5) * 1cm, left: lv("marginX", 1.5) * 1cm, right: lv("marginX", 1.5) * 1cm),
   lang: lang,
 )
+#show: apply-spacing
+#v(0.8em)
 #flat-body(section, entry)

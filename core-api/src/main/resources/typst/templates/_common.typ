@@ -38,15 +38,40 @@
 ).filter(part => part != none)
 #let contact-line = contacts.join([#h(0.5em)#sym.bar.v#h(0.5em)])
 
+// The settings every template honours besides font size, line spacing and side margins; one that is missing keeps the
+// template's own look. A template applies this right after its own setup (`#show: apply-spacing`).
+#let apply-spacing(body) = {
+  set par(spacing: lv("paragraphSpacing", 0) * 1em) if "paragraphSpacing" in layout
+  set list(spacing: lv("bulletSpacing", 0) * 1em) if "bulletSpacing" in layout
+  body
+}
+
+// Space between the name and the job title line: the user's, or the template's own.
+#let headline-gap(default) = if "headlineSpacing" in layout { lv("headlineSpacing", 0) * 1em } else { default }
+
+// A template's section title with the user's gap above it when they set one, else the template's own.
+#let section-gap(section) = if "sectionSpacing" in layout { title => section(title, gap: lv("sectionSpacing", 0) * 1em) } else { section }
+#let headline = r.headline.trim()
+
 #let filled(items) = items.filter(item => item.trim() != "")
 // A job's bullets as one list, or nothing when it has none.
-#let bullet-list(items) = if filled(items).len() > 0 { list(..filled(items).map(item => [#item])) } else { [] }
+#let bullet-list(items) = if filled(items).len() > 0 {
+  if "bulletsTopSpacing" in layout { v(lv("bulletsTopSpacing", 0) * 1em) }
+  list(..filled(items).map(item => [#item]))
+} else { [] }
 #let skill-lines = r.skills.filter(s => s.category.trim() != "" or s.items.trim() != "")
 #let achievement-items = r.achievements.filter(a => a.title.trim() != "" or a.text.trim() != "")
 #let edu-place(edu) = (edu.subtitle, edu.location).filter(part => part.trim() != "").join(", ")
 // The skills as "Category: items" lines.
-#let skills-text = for s in skill-lines { [#strong[#s.category#colon] #s.items]; parbreak() }
-#let achievements-text = for a in achievement-items { [#strong[#a.title#colon] #a.text]; parbreak() }
+// The lines of Skills and Achievements, with the user's space between them when it is set.
+#let item-lines(items) = for (i, item) in items.enumerate() {
+  if "itemSpacing" in layout {
+    block(spacing: 0pt, item)
+    if i < items.len() - 1 { v(lv("itemSpacing", 0) * 1em) }
+  } else { item; parbreak() }
+}
+#let skills-text = item-lines(skill-lines.map(s => [#strong[#s.category#colon] #s.items]))
+#let achievements-text = item-lines(achievement-items.map(a => [#strong[#a.title#colon] #a.text]))
 
 // Profile, experience and education for a template made of `section(title)` and
 // `entry(title:, subtitle:, dates:, location:, meta:, body)`; the rest is `flat-body` or a rail's job.

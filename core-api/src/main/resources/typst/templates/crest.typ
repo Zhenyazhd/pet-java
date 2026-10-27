@@ -106,7 +106,7 @@
       set par(spacing: 0pt, leading: 0.5em)
       set align(center)
       text(size: 26pt, weight: "medium", tracking: 0.5pt, fill: rgb("#1a1a1a"), author)
-      v(0.55em)
+      v(0.95em)
       contact-line
       v(0.7em)
       line(length: 100%, stroke: 1.4pt + c)
@@ -167,5 +167,6 @@
   leading: lv("lineSpacing", 0.62) * 1em,
   lang: lang,
 )
-#if r.headline.trim() != "" { align(center)[#text(fill: rgb("#5a5a55"))[#r.headline]] }
+#show: apply-spacing
+#if headline != "" { align(center)[#text(fill: rgb("#5a5a55"))[#headline]] }
 #flat-body(cv-section, (title: "", subtitle: "", dates: "", location: "", meta: "", body) => entry(title, subtitle, dates, body))

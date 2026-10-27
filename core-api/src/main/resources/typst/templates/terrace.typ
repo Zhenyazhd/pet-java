@@ -76,7 +76,7 @@
         pad(left: -STEP, text(size: display-size, weight: "bold", fill: ink, author))
       }
       if has-prof {
-        if has-name { v(display-size * 0.38) }
+        if has-name { v(headline-gap(display-size * 0.38)) }
         text(size: subhead-size, weight: "regular", fill: muted, profession)
       }
       if has-contact {
@@ -158,7 +158,7 @@
 
 #show: terrace-cv.with(
   author: r.name,
-  profession: r.headline,
+  profession: headline,
   contact: contact-line,
   accent-color: "#5f4b6b",
   font: "EB Garamond",
@@ -168,4 +168,5 @@
   leading: lv("lineSpacing", 0.68) * 1em,
   lang: lang,
 )
-#flat-body(cv-section, terrace-entry)
+#show: apply-spacing
+#flat-body(section-gap(cv-section), terrace-entry)

@@ -79,7 +79,7 @@
 
 #align(center)[
   #text(size: size * 1.85, weight: "bold", fill: accent)[#r.name]
-  #v(-0.05em)
+  #v(lv("headlineSpacing", -0.05) * 1em)
   #text(fill: soft, size: size * 1.05)[#r.headline]
   #v(0em)
   #text(size: size * 0.9)[#contacts.join([#h(0.5em)|#h(0.5em)])]

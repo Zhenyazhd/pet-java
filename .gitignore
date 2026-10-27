@@ -10,3 +10,5 @@ __pycache__/
 .venv/
 local_docs/
 cookies.txt
+# A clone of third-party CV templates kept next to the repo for reference
+/typst-templates/

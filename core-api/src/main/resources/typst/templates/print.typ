@@ -184,5 +184,6 @@
   leading: lv("lineSpacing", 0.6) * 1em,
   lang: lang,
 )
-#if r.headline.trim() != "" { align(center)[#text(fill: rgb("#5e5e5e"))[#r.headline]] }
+#show: apply-spacing
+#if headline != "" { align(center)[#text(fill: rgb("#5e5e5e"))[#headline]] }
 #flat-body(cv-section, (title: "", subtitle: "", dates: "", location: "", meta: "", body) => entry(title, subtitle, dates, body))

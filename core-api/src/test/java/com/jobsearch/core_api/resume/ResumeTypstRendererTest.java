@@ -15,7 +15,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -133,7 +135,7 @@ class ResumeTypstRendererTest {
 		ResumeDocument custom = new ResumeDocument(plain.name(), plain.headline(), plain.phone(), plain.email(),
 				plain.linkedinUrl(), plain.linkedinLabel(), plain.profile(), plain.experience(), plain.education(),
 				plain.achievements(), plain.skills(), plain.locale(), plain.version(),
-				new LayoutSettings(11.0, null, null, null, null, null, null, null, null, null, false, null));
+				new LayoutSettings(11.0, null, null, null, null, null, null, null, null, null, false, null, null, null));
 		JsonNode layout = renderer.normalized(custom).path("layout");
 		assertEquals(11.0, layout.path("fontSize").asDouble());
 		assertFalse(layout.path("autoFit").asBoolean(true));
@@ -143,7 +145,7 @@ class ResumeTypstRendererTest {
 	@Test
 	void layoutSurvivesStorageAndAResumeStoredBeforeItReadsAsNone() throws Exception {
 		ResumeDocument plain = doc("x", "y");
-		LayoutSettings layout = new LayoutSettings(11.5, 0.7, null, null, null, null, null, 1.5, null, null, false, null);
+		LayoutSettings layout = new LayoutSettings(11.5, 0.7, null, null, null, null, null, 1.5, null, null, false, null, null, null);
 		ResumeDocument custom = new ResumeDocument(plain.name(), plain.headline(), plain.phone(), plain.email(),
 				plain.linkedinUrl(), plain.linkedinLabel(), plain.profile(), plain.experience(), plain.education(),
 				plain.achievements(), plain.skills(), plain.locale(), plain.version(), layout);
@@ -195,39 +197,140 @@ class ResumeTypstRendererTest {
 		}
 	}
 
-	/** Every template compiles with the fonts the pdf-worker ships, keeps the text as data, and prints it all. */
-	@Test
-	void everyTemplateCompilesWithHostileText(@TempDir Path dir) throws Exception {
-		Path fonts = Path.of("../tools/pdf-worker/fonts");
+	private static final Path FONTS = Path.of("../tools/pdf-worker/fonts");
+	private static final Path LAYOUT_TS = Path.of("../frontend/src/lib/resume/layout.ts");
+	private static final Path TEMPLATES = Path.of("src/main/resources/typst/templates");
+
+	private static String[] templateIds() {
+		return ResumeDtos.TEMPLATE_IDS.split("\\|");
+	}
+
+	private static void requireTypstAndFonts() {
 		if (System.getenv("CI") != null) {
 			assertTrue(typstOnPath(), "typst must be on PATH in CI");
+			assertTrue(Files.isDirectory(FONTS), "the pdf-worker fonts must be next to core-api in CI");
 		}
 		else {
 			assumeTrue(typstOnPath(), "typst is not on PATH");
+			assumeTrue(Files.isDirectory(FONTS), "the pdf-worker fonts are not next to core-api");
 		}
-		assumeTrue(Files.isDirectory(fonts), "the pdf-worker fonts are not next to core-api");
-		// A word of 150 characters must break, not run off the page.
+	}
+
+	private static ResumeDocument variant(ResumeDocument d, String locale, LayoutSettings layout) {
+		return new ResumeDocument(d.name(), d.headline(), d.phone(), d.email(), d.linkedinUrl(), d.linkedinLabel(),
+				d.profile(), d.experience(), d.education(), d.achievements(), d.skills(), locale, d.version(), layout);
+	}
+
+	/** Compiles with the fonts the pdf-worker ships and returns the text of the PDF. */
+	private String compile(Path dir, ResumeDocument document, String label) throws Exception {
+		Files.writeString(dir.resolve("main.typ"), renderer.render(document));
+		Process p = new ProcessBuilder("typst", "compile", "--root", dir.toString(), "--ignore-system-fonts",
+				"--font-path", FONTS.toString(), dir.resolve("main.typ").toString(), dir.resolve("out.pdf").toString())
+				.redirectErrorStream(true).start();
+		String log = new String(p.getInputStream().readAllBytes());
+		assertTrue(p.waitFor(60, TimeUnit.SECONDS), label);
+		assertEquals(0, p.exitValue(), label + "\n" + log);
+		assertFalse(log.contains("unknown font family"), label + "\n" + log);
+		try (PDDocument pdf = Loader.loadPDF(Files.readAllBytes(dir.resolve("out.pdf")))) {
+			return new PDFTextStripper().getText(pdf).replaceAll("\\s+", " ");
+		}
+	}
+
+	/**
+	 * Every template compiles, with the settings absent and with all of them set, in English and in French, keeps the
+	 * text as data, breaks a very long word, and prints everything.
+	 */
+	@Test
+	void everyTemplateCompilesWithHostileText(@TempDir Path dir) throws Exception {
+		requireTypstAndFonts();
 		ResumeDocument d = doc("Ada", HOSTILE + " " + "x".repeat(150));
-		for (String id : ResumeDtos.TEMPLATE_IDS.split("\\|")) {
-			ResumeDocument withTemplate = new ResumeDocument(d.name(), d.headline(), d.phone(), d.email(), d.linkedinUrl(),
-					d.linkedinLabel(), d.profile(), d.experience(), d.education(), d.achievements(), d.skills(),
-					d.locale(), d.version(), new LayoutSettings(null, null, null, null, null, null, null, null, null, null, null, id));
-			Files.writeString(dir.resolve("main.typ"), renderer.render(withTemplate));
-			Process p = new ProcessBuilder("typst", "compile", "--root", dir.toString(), "--ignore-system-fonts",
-					"--font-path", fonts.toString(), dir.resolve("main.typ").toString(), dir.resolve("out.pdf").toString())
-					.redirectErrorStream(true).start();
-			String log = new String(p.getInputStream().readAllBytes());
-			assertTrue(p.waitFor(60, TimeUnit.SECONDS), id);
-			assertEquals(0, p.exitValue(), id + "\n" + log);
-			assertFalse(log.contains("unknown font family"), id + "\n" + log);
-			try (PDDocument pdf = Loader.loadPDF(Files.readAllBytes(dir.resolve("out.pdf")))) {
-				String text = new PDFTextStripper().getText(pdf).replaceAll("\\s+", " ");
-				assertFalse(text.contains("x".repeat(60) + "x"), id + " did not break the long word");
-				for (String expected : List.of("Ada", HOSTILE, "Acme", "University")) {
-					assertTrue(text.contains(expected.replaceAll("\\s+", " ")), id + " is missing: " + expected + "\n" + text);
+		for (String id : templateIds()) {
+			Map<String, LayoutSettings> layouts = new LinkedHashMap<>();
+			layouts.put("absent", new LayoutSettings(null, null, null, null, null, null, null, null, null, null, null, id, null, null));
+			layouts.put("set", new LayoutSettings(null, null, 0.8, 1.0, 0.4, null, 0.5, null, null, null, null, id, 0.9, 1.1));
+			// The ends of every range of LayoutSettings, with the page fit off, so no template breaks at an extreme.
+			layouts.put("max", new LayoutSettings(14.0, 1.5, 2.0, 3.0, 1.5, 1.5, 2.0, 4.0, 4.0, 4.0, false, id, 2.0, 3.0));
+			layouts.put("min", new LayoutSettings(8.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.3, 0.3, false, id, 0.0, 0.0));
+			for (Map.Entry<String, LayoutSettings> layout : layouts.entrySet()) {
+				for (String locale : List.of("en", "fr")) {
+					String label = id + " settings=" + layout.getKey() + " locale=" + locale;
+					String text = compile(dir, variant(d, locale, layout.getValue()), label);
+					assertFalse(text.contains("x".repeat(60) + "x"), label + " did not break the long word");
+					for (String expected : List.of("Ada", HOSTILE, "Acme", "University")) {
+						assertTrue(text.contains(expected.replaceAll("\\s+", " ")), label + " is missing: " + expected + "\n" + text);
+					}
 				}
 			}
 		}
+	}
+
+	/** A resume with nothing but a name still compiles in every template, with a blank-only headline too. */
+	@Test
+	void everyTemplateCompilesAnEmptyResume(@TempDir Path dir) throws Exception {
+		requireTypstAndFonts();
+		for (String id : templateIds()) {
+			ResumeDocument empty = new ResumeDocument("Ada", "  ", "", "", "", "", "", List.of(), List.of(), List.of(),
+					List.of(), "fr", 1, new LayoutSettings(null, null, null, null, null, null, null, null, null, null, null, id, null, null));
+			// Some templates set the name in capitals.
+			assertTrue(compile(dir, empty, id + " empty").toLowerCase().contains("ada"), id);
+		}
+	}
+
+	/**
+	 * The editor (frontend/src/lib/resume/layout.ts) keeps a copy of what each template reads and of its own values; this
+	 * fails when a template changes and the copy does not.
+	 */
+	@Test
+	void editorTableMatchesTheTemplates() throws Exception {
+		if (System.getenv("CI") != null) {
+			assertTrue(Files.isRegularFile(LAYOUT_TS), "the frontend must be next to core-api in CI");
+		}
+		else {
+			assumeTrue(Files.isRegularFile(LAYOUT_TS), "the frontend is not next to core-api");
+		}
+		String ts = Files.readString(LAYOUT_TS);
+		for (String id : templateIds()) {
+			if (id.equals("classic")) {
+				continue;
+			}
+			String typ = Files.readString(TEMPLATES.resolve(id + ".typ"));
+			assertTrue(typ.contains("#show: apply-spacing"), id + " must apply the shared spacing settings");
+			java.util.regex.Matcher entry = java.util.regex.Pattern.compile("value: '" + id + "'[^\\n]*?defaults: \\{([^}]*)\\}").matcher(ts);
+			assertTrue(entry.find(), id + " has no defaults in layout.ts");
+			for (String key : List.of("fontSize", "lineSpacing", "marginX", "marginTop", "marginBottom")) {
+				java.util.regex.Matcher inTs = java.util.regex.Pattern.compile(key + ": ([0-9.]+)").matcher(entry.group(1));
+				java.util.regex.Matcher inTyp = java.util.regex.Pattern.compile("lv\\(\"" + key + "\", ([0-9.]+)\\)").matcher(typ);
+				boolean listed = inTs.find();
+				assertEquals(inTyp.find(), listed, id + " " + key + ": read by the template and listed in layout.ts differ");
+				if (listed) {
+					assertEquals(Double.parseDouble(inTyp.group(1)), Double.parseDouble(inTs.group(1)), 1e-9, id + " " + key);
+				}
+			}
+		}
+		assertEquals(idsUsing("headline-gap("), idsListed(ts, "HEADLINE_TEMPLATES"), "HEADLINE_TEMPLATES");
+		assertEquals(idsUsing("section-gap("), idsListed(ts, "SECTION_GAP_TEMPLATES"), "SECTION_GAP_TEMPLATES");
+		assertEquals(idsUsing("lv(\"marginTop\""), idsListed(ts, "MARGIN_TEMPLATES"), "MARGIN_TEMPLATES");
+	}
+
+	private static java.util.Set<String> idsUsing(String needle) throws IOException {
+		java.util.Set<String> ids = new java.util.TreeSet<>();
+		for (String id : templateIds()) {
+			if (!id.equals("classic") && Files.readString(TEMPLATES.resolve(id + ".typ")).contains(needle)) {
+				ids.add(id);
+			}
+		}
+		return ids;
+	}
+
+	private static java.util.Set<String> idsListed(String ts, String name) {
+		java.util.regex.Matcher m = java.util.regex.Pattern.compile(name + ": LayoutTemplate\\[\\] = \\[([^\\]]*)\\]").matcher(ts);
+		assertTrue(m.find(), name);
+		java.util.Set<String> ids = new java.util.TreeSet<>();
+		java.util.regex.Matcher id = java.util.regex.Pattern.compile("'(\\w+)'").matcher(m.group(1));
+		while (id.find()) {
+			ids.add(id.group(1));
+		}
+		return ids;
 	}
 
 	private static boolean typstOnPath() {

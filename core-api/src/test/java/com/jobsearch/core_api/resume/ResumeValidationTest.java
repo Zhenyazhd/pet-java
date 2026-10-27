@@ -50,15 +50,23 @@ class ResumeValidationTest {
 
 	@Test
 	void layoutSettingsInRangeOrAbsentPass() {
-		assertTrue(validator.validate(withLayout(new LayoutSettings(null, null, null, null, null, null, null, null, null, null, null, null))).isEmpty());
-		assertTrue(validator.validate(withLayout(new LayoutSettings(8.0, 0.2, 0.0, 3.0, 1.5, 1.5, 2.0, 4.0, 0.3, 0.3, false, null))).isEmpty());
+		assertTrue(validator.validate(withLayout(new LayoutSettings(null, null, null, null, null, null, null, null, null, null, null, null, null, null))).isEmpty());
+		assertTrue(validator.validate(withLayout(new LayoutSettings(8.0, 0.2, 0.0, 3.0, 1.5, 1.5, 2.0, 4.0, 0.3, 0.3, false, null, null, null))).isEmpty());
 	}
 
 	@Test
 	void layoutSettingsOutOfRangeAreRejected() {
-		assertTrue(!validator.validate(withLayout(new LayoutSettings(7.9, null, null, null, null, null, null, null, null, null, null, null))).isEmpty());
-		assertTrue(!validator.validate(withLayout(new LayoutSettings(null, null, null, null, null, null, null, 4.1, null, null, null, null))).isEmpty());
-		assertTrue(!validator.validate(withLayout(new LayoutSettings(null, null, null, -1.0, null, null, null, null, null, null, null, null))).isEmpty());
+		assertTrue(!validator.validate(withLayout(new LayoutSettings(7.9, null, null, null, null, null, null, null, null, null, null, null, null, null))).isEmpty());
+		assertTrue(!validator.validate(withLayout(new LayoutSettings(null, null, null, null, null, null, null, 4.1, null, null, null, null, null, null))).isEmpty());
+		assertTrue(!validator.validate(withLayout(new LayoutSettings(null, null, null, -1.0, null, null, null, null, null, null, null, null, null, null))).isEmpty());
+	}
+
+	@Test
+	void templateAndSpacingSettingsAreChecked() {
+		assertTrue(validator.validate(withLayout(new LayoutSettings(null, null, null, null, null, null, null, null, null, null, null, "charter", 0.8, 1.5))).isEmpty());
+		assertTrue(!validator.validate(withLayout(new LayoutSettings(null, null, null, null, null, null, null, null, null, null, null, "gothic", null, null))).isEmpty());
+		assertTrue(!validator.validate(withLayout(new LayoutSettings(null, null, null, null, null, null, null, null, null, null, null, null, 2.1, null))).isEmpty());
+		assertTrue(!validator.validate(withLayout(new LayoutSettings(null, null, null, null, null, null, null, null, null, null, null, null, null, 3.1))).isEmpty());
 	}
 
 	private static ResumeDocument withLayout(LayoutSettings layout) {

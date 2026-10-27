@@ -104,7 +104,7 @@
       set par(spacing: 0pt, leading: 0.4em, justify: false)
       if has-name { text(size: display-size, weight: "bold", fill: ink, author) }
       if has-prof {
-        if has-name { v(display-size * 0.38) }
+        if has-name { v(headline-gap(display-size * 0.38)) }
         text(size: subhead-size, weight: "regular", fill: muted, profession)
       }
       v(9pt)
@@ -184,7 +184,7 @@
 
 #show: anchor-cv.with(
   author: r.name,
-  profession: r.headline,
+  profession: headline,
   contact: contact-line,
   accent-color: "#22423a",
   font: "Source Sans 3",
@@ -194,4 +194,5 @@
   leading: lv("lineSpacing", 0.65) * 1em,
   lang: lang,
 )
-#flat-body(cv-section, anchor-entry)
+#show: apply-spacing
+#flat-body(section-gap(cv-section), anchor-entry)

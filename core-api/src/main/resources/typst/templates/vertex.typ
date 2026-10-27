@@ -69,7 +69,7 @@
       set align(center)
       if has-name { block(spacing: 0pt, text(size: display-size, weight: "bold", fill: ink, author)) }
       if has-prof {
-        v(6pt)
+        v(headline-gap(11pt))
         block(spacing: 0pt, text(size: subhead-size, weight: "regular", fill: rgb(accent-color), profession))
       }
       if has-contact {
@@ -179,5 +179,6 @@
   leading: lv("lineSpacing", 0.62) * 1em,
   lang: lang,
 )
-#masthead(author: r.name, profession: r.headline, contact: contact-line, accent-color: "#5c3a5f")
+#show: apply-spacing
+#masthead(author: r.name, profession: headline, contact: contact-line, accent-color: "#5c3a5f")
 #flat-body(cv-section, vertex-entry)

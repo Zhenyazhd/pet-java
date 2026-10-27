@@ -34,10 +34,17 @@ final class TypstRunner {
 
 	private final String typstBin;
 	private final int maxPdfBytes;
+	private final String fontPath;
 
+	/** The font directory is the one of {@code TYPST_FONT_PATH}, the image's fonts, when it is set. */
 	TypstRunner(String typstBin, int maxPdfBytes) {
+		this(typstBin, maxPdfBytes, System.getenv("TYPST_FONT_PATH"));
+	}
+
+	TypstRunner(String typstBin, int maxPdfBytes, String fontPath) {
 		this.typstBin = typstBin;
 		this.maxPdfBytes = maxPdfBytes;
+		this.fontPath = fontPath;
 	}
 
 	/** One {@code typst compile}; {@code scale} null means no scale input. */
@@ -55,7 +62,6 @@ final class TypstRunner {
 		// kill logic below see typst itself. A document must not be able to write an unbounded PDF or eat all memory.
 		List<String> command = new ArrayList<>(List.of("sh", "-c", limits() + "exec \"$0\" \"$@\"",
 				typstBin, "compile", "--root", workDir.toString(), "--ignore-system-fonts"));
-		String fontPath = System.getenv("TYPST_FONT_PATH");
 		if (fontPath != null && !fontPath.isBlank()) {
 			command.add("--font-path");
 			command.add(fontPath);

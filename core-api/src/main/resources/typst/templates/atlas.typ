@@ -78,7 +78,7 @@
       let text-stack = {
         if has-name { text(size: display-size, weight: "bold", fill: band-ink, tracking: 0.3pt, author) }
         if has-prof {
-          if has-name { linebreak(); v(9pt) }
+          if has-name { linebreak(); v(headline-gap(9pt)) }
           set par(leading: 0.7em)
           text(size: subhead-size, weight: "regular", fill: band-muted, profession)
         }
@@ -218,7 +218,8 @@
   leading: lv("lineSpacing", 0.62) * 1em,
   lang: lang,
 )
-#band-header(author: r.name, profession: r.headline, contact: contact-line, accent-color: "#1f5c52")
+#show: apply-spacing
+#band-header(author: r.name, profession: headline, contact: contact-line, accent-color: "#1f5c52")
 #cv-layout(
   rail: [#side-body(cv-section)],
   main: [#main-body(cv-section, atlas-entry)],

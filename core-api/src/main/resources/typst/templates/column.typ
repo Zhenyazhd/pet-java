@@ -66,7 +66,7 @@
       set par(spacing: 0pt, leading: 0.4em, justify: false)
       if has-name { text(size: display-size, weight: "bold", fill: ink, author) }
       if has-prof {
-        if has-name { v(3pt) }
+        if has-name { v(headline-gap(9pt)) }
         text(size: subhead-size, weight: "regular", fill: muted, profession)
       }
       v(6pt)
@@ -209,7 +209,8 @@
   leading: lv("lineSpacing", 0.62) * 1em,
   lang: lang,
 )
-#masthead(author: r.name, profession: r.headline, accent-color: "#2b4c7e")
+#show: apply-spacing
+#masthead(author: r.name, profession: headline, accent-color: "#2b4c7e")
 #cv-layout(
   rail: [#rail-contact(contacts, accent-color: "#2b4c7e")#side-body(cv-section)],
   main: [#main-body(cv-section, column-entry)],

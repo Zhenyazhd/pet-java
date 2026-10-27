@@ -260,5 +260,6 @@
   leading: lv("lineSpacing", 0.65) * 1em,
   lang: lang,
 )
-#if r.headline.trim() != "" { text(size: 12pt, weight: "medium", fill: secondaryTextColor)[#r.headline] }
+#show: apply-spacing
+#if headline != "" { text(size: 12pt, weight: "medium", fill: secondaryTextColor)[#headline] }
 #flat-body(sectionHeader, entry)

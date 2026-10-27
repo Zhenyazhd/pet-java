@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
-import type { LayoutSettings, LayoutTemplate } from '../../api/resumeTypes'
-import { LAYOUT_GROUPS, TEMPLATES, TEMPLATE_KEYS, layoutValue, type LayoutField } from '../../lib/resume/layout'
+import type { LayoutSettings } from '../../api/resumeTypes'
+import { LAYOUT_GROUPS, TEMPLATES, fieldApplies, layoutValue, leftToTemplate, withTemplate, type LayoutField } from '../../lib/resume/layout'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
 import { Field } from '../ui/Field'
@@ -19,10 +19,9 @@ export function LayoutDialog({ layout, onChange, onClose }: LayoutDialogProps) {
   const [resets, setResets] = useState(0)
   const autoFit = layout?.autoFit ?? true
   const templateId = useId()
-  const classic = (layout?.template ?? 'classic') === 'classic'
   const groups = LAYOUT_GROUPS.map((group) => ({
     ...group,
-    fields: group.fields.filter((field) => classic || TEMPLATE_KEYS.includes(field.key)),
+    fields: group.fields.filter((field) => fieldApplies(field, layout?.template)),
   })).filter((group) => group.fields.length > 0)
 
   return (
@@ -47,7 +46,10 @@ export function LayoutDialog({ layout, onChange, onClose }: LayoutDialogProps) {
           id={templateId}
           className="input"
           value={layout?.template ?? 'classic'}
-          onChange={(template) => onChange({ ...layout, template: template as LayoutTemplate })}
+          onChange={(value) => {
+            const template = TEMPLATES.find((t) => t.value === value)
+            if (template) onChange(withTemplate(layout, template.value))
+          }}
           options={TEMPLATES}
         />
       </div>
@@ -58,9 +60,10 @@ export function LayoutDialog({ layout, onChange, onClose }: LayoutDialogProps) {
           <div className="layout-form">
             {group.fields.map((field) => (
               <LayoutNumber
-                key={`${field.key}-${resets}-${layout?.template ?? "classic"}`}
+                key={`${field.key}-${resets}-${layout?.template ?? 'classic'}`}
                 field={field}
                 value={layoutValue(layout, field)}
+                optional={leftToTemplate(field, layout?.template)}
                 onCommit={(value) => onChange({ ...layout, [field.key]: value })}
               />
             ))}
@@ -87,7 +90,8 @@ export function LayoutDialog({ layout, onChange, onClose }: LayoutDialogProps) {
         <Button
           variant="outline"
           onClick={() => {
-            onChange(null)
+            // The numbers go back to the defaults; the chosen template stays.
+            onChange(layout?.template ? { template: layout.template } : null)
             setResets((n) => n + 1)
           }}
         >
@@ -98,29 +102,41 @@ export function LayoutDialog({ layout, onChange, onClose }: LayoutDialogProps) {
   )
 }
 
-type LayoutNumberProps = { field: LayoutField; value: number; onCommit: (value: number) => void }
+type LayoutNumberProps = {
+  field: LayoutField
+  value: number | undefined
+  /** Empty is allowed and means "the template's own value"; the setting is then left out of the CV. */
+  optional: boolean
+  onCommit: (value: number | undefined) => void
+}
 
 /** Keeps what is typed while it is half-written; only a number inside the range reaches the CV. */
-function LayoutNumber({ field, value, onCommit }: LayoutNumberProps) {
-  const [text, setText] = useState(String(value))
+function LayoutNumber({ field, value, optional, onCommit }: LayoutNumberProps) {
+  const [text, setText] = useState(value === undefined ? '' : String(value))
   const number = Number(text)
-  const valid = text.trim() !== '' && Number.isFinite(number) && number >= field.min && number <= field.max
+  const empty = text.trim() === ''
+  const valid = (optional && empty) || (!empty && Number.isFinite(number) && number >= field.min && number <= field.max)
 
   return (
     <Field
       label={`${field.label} (${field.unit})`}
-      hint={field.hint || undefined}
+      hint={optional ? `${field.hint} Leave empty to keep the template's own value.`.trim() : field.hint || undefined}
       type="number"
       inputMode="decimal"
       min={field.min}
       max={field.max}
       step={field.step}
       value={text}
+      // What is left in the box after a typo is what the CV holds again.
+      onBlur={() => setText(value === undefined ? '' : String(value))}
+      placeholder={optional ? 'template default' : undefined}
       error={valid ? null : `Enter a number from ${field.min} to ${field.max}.`}
       onChange={(e) => {
         setText(e.target.value)
         const next = Number(e.target.value)
-        if (e.target.value.trim() !== '' && Number.isFinite(next) && next >= field.min && next <= field.max) {
+        if (optional && e.target.value.trim() === '') {
+          onCommit(undefined)
+        } else if (e.target.value.trim() !== '' && Number.isFinite(next) && next >= field.min && next <= field.max) {
           onCommit(next)
         }
       }}
