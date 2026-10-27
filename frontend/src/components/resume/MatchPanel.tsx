@@ -13,9 +13,12 @@ type MatchPanelProps = {
   error: string | null
   note: string | null
   onCheck: () => void
+  /** The CV is blocked or the chat is busy, so the report cannot be sent now. */
+  sendBlocked: boolean
+  onSendToChat: () => void
 }
 
-export function MatchPanel({ available, hasVacancy, matching, blocked, report, error, note, onCheck }: MatchPanelProps) {
+export function MatchPanel({ available, hasVacancy, matching, blocked, report, error, note, onCheck, sendBlocked, onSendToChat }: MatchPanelProps) {
   return (
     <section className="match-report" aria-labelledby="match-title">
       <div className="match-report__bar">
@@ -54,6 +57,9 @@ export function MatchPanel({ available, hasVacancy, matching, blocked, report, e
             <span className="match-report__score">{report.averageScore}</span>
             <span className="small-caps"> / 100 average</span>
           </p>
+          <Button variant="outline" aria-disabled={sendBlocked} onClick={onSendToChat}>
+            Send to AI chat
+          </Button>
           {report.platforms.length > 0 && (
             <ul className="match-report__platforms">
               {report.platforms.map((platform) => (

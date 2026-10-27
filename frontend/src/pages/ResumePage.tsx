@@ -19,6 +19,7 @@ import {
   shouldOfferCreate,
 } from '../lib/resume/createFromProfile'
 import { focusLabel } from '../lib/resume/focus'
+import { buildMatchInstruction, MATCH_SHOWN_AS } from '../lib/resume/matchToChat'
 import { sameTarget } from '../lib/resume/selection'
 import { buildVacancyContext } from '../lib/vacancies/vacancyContext'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
@@ -297,6 +298,8 @@ export default function ResumePage() {
         error={jobs.matchError}
         note={jobs.matchNote}
         onCheck={() => matchAvailable && void jobs.checkMatch(vacancyContext, vacancy?.id ?? null)}
+        sendBlocked={conflictBlocked || ai.busy}
+        onSendToChat={() => !conflictBlocked && !ai.busy && jobs.report && void ai.send(buildMatchInstruction(jobs.report), { shownAs: MATCH_SHOWN_AS, wholeCv: true })}
       />
 
       <ReadabilityPanel
