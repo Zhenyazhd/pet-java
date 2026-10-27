@@ -5,6 +5,7 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 
@@ -17,6 +18,9 @@ public final class ResumeDtos {
 
 	private ResumeDtos() {
 	}
+
+	/** The CV templates: "classic" is typst/resume.typ, the others are typst/templates/<id>.typ. */
+	public static final String TEMPLATE_IDS = "classic|anchor|atlas|charter|codex|column|creative|crest|executive|keyline|marker|quartz|print|refined|terrace|vertex";
 
 	public record ResumeDocument(
 			@NotBlank @Size(max = 200) String name,
@@ -79,7 +83,13 @@ public final class ResumeDtos {
 			@DecimalMin("0.3") @DecimalMax("4") Double marginTop,
 			@DecimalMin("0.3") @DecimalMax("4") Double marginBottom,
 			/** True (or missing): the pdf worker scales the type slightly so the text fills exactly one page. */
-			Boolean autoFit
+			Boolean autoFit,
+			/** The look of the PDF, one of {@link #TEMPLATE_IDS}; missing means "classic". */
+			@Pattern(regexp = TEMPLATE_IDS) String template,
+			/** Space between the lines of Skills and Achievements, em (templates other than classic). */
+			@DecimalMin("0") @DecimalMax("2") Double itemSpacing,
+			/** Space between the name and the job title line, em. */
+			@DecimalMin("0") @DecimalMax("3") Double headlineSpacing
 	) {
 	}
 

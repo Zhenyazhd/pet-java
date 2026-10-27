@@ -24,6 +24,24 @@ export type SkillItem = {
 
 export type ResumeLocale = 'fr' | 'en'
 
+export type LayoutTemplate =
+  | 'classic'
+  | 'anchor' // ok 
+  | 'atlas' // 
+  | 'charter' // ok 
+  | 'codex' // 
+  | 'column' // ok 
+  | 'creative' // еще нужно вернуться
+  | 'crest' // ok 
+  | 'executive' // еще нужно вернуться
+  | 'keyline'// ok 
+  | 'marker' // ok 
+  | 'quartz' // ok 
+  | 'print' // убрать разделитель из заголовка
+  | 'refined' // убрать разделитель из заголовка
+  | 'terrace' // вернуться 
+  | 'vertex' // ok 
+
 /** How the PDF is typeset; every field is optional and a missing one keeps the template's own value. */
 export type LayoutSettings = {
   fontSize?: number
@@ -38,6 +56,12 @@ export type LayoutSettings = {
   marginBottom?: number
   /** True or missing: the type is scaled a few percent so the text fills exactly one page. */
   autoFit?: boolean
+  /** The look of the PDF; missing means classic. */
+  template?: LayoutTemplate
+  /** Space between the lines of Skills and Achievements (templates other than classic). */
+  itemSpacing?: number
+  /** Space between the name and the job title line. */
+  headlineSpacing?: number
 }
 
 /** The wire format of GET/PUT /api/resume. */

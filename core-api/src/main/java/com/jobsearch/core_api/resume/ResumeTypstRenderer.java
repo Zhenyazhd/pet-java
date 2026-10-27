@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
@@ -22,20 +24,31 @@ import tools.jackson.databind.node.ObjectNode;
 public class ResumeTypstRenderer {
 
 	private static final String TEMPLATE_PATH = "typst/resume.typ";
+	private static final String TEMPLATES_DIR = "typst/templates/";
+	private static final String CLASSIC = "classic";
 
 	/** Keys whose value is a list, here and in the items; a missing one reads as an empty list, never null. */
 	private static final Set<String> LISTS = Set.of("experience", "education", "achievements", "skills", "bullets");
 
 	private final ObjectMapper objectMapper;
-	private final String template;
+	/** The template sources by id, each ready to follow the line that binds the resume. */
+	private final Map<String, String> templates = new HashMap<>();
 
 	public ResumeTypstRenderer(ObjectMapper objectMapper) {
 		this.objectMapper = objectMapper;
-		this.template = loadTemplate();
+		templates.put(CLASSIC, load(TEMPLATE_PATH));
+		String common = load(TEMPLATES_DIR + "_common.typ");
+		for (String id : ResumeDtos.TEMPLATE_IDS.split("\\|")) {
+			if (!id.equals(CLASSIC)) {
+				templates.put(id, common + "\n" + load(TEMPLATES_DIR + id + ".typ"));
+			}
+		}
 	}
 
 	public String render(ResumeDocument document) {
-		return "#let r = json(bytes(\"" + escape(normalized(document).toString()) + "\"))\n" + template;
+		JsonNode resume = normalized(document);
+		String template = templates.getOrDefault(resume.path("layout").path("template").asString(CLASSIC), templates.get(CLASSIC));
+		return "#let r = json(bytes(\"" + escape(resume.toString()) + "\"))\n" + template;
 	}
 
 	/**
@@ -116,12 +129,12 @@ public class ResumeTypstRenderer {
 		return out.toString();
 	}
 
-	private static String loadTemplate() {
-		try (InputStream in = new ClassPathResource(TEMPLATE_PATH).getInputStream()) {
+	private static String load(String path) {
+		try (InputStream in = new ClassPathResource(path).getInputStream()) {
 			return new String(in.readAllBytes(), StandardCharsets.UTF_8);
 		}
 		catch (IOException ex) {
-			throw new UncheckedIOException("Cannot load " + TEMPLATE_PATH, ex);
+			throw new UncheckedIOException("Cannot load " + path, ex);
 		}
 	}
 }
