@@ -131,7 +131,7 @@
       column-gutter: 0.9em,
       align: (horizon, horizon, horizon),
       line(length: 100%, stroke: 0.5pt + rgb(accent-color)),
-      text(size: 11pt, weight: "semibold", tracking: 1.4pt, fill: rgb(accent-color), smallcaps(title)),
+      text(size: 11pt, weight: "semibold", fill: rgb(accent-color), smallcaps(title)),
       line(length: 100%, stroke: 0.5pt + rgb(accent-color)),
     )
   })

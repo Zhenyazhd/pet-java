@@ -103,7 +103,7 @@
     set block(spacing: 0pt)
     set par(spacing: 0pt, justify: false)
     set text(hyphenate: false)
-    text(size: label-size, weight: "bold", tracking: 1.1pt, fill: rgb(accent-color), upper(title))
+    text(size: label-size, weight: "bold", fill: rgb(accent-color), upper(title))
     v(4pt)
     // A translucent hairline under the section name.
     line(length: 100%, stroke: 0.6pt + rgb(accent-color).transparentize(65%))

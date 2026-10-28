@@ -122,7 +122,7 @@
     block(width: 100%, above: 0pt, below: 1.7em, breakable: false, {
       set block(spacing: 0pt)
       set par(spacing: 0pt)
-      align(center, text(size: 19pt, weight: "bold", tracking: 1.4pt, fill: heading-tone, upper(author)))
+      align(center, text(size: 19pt, weight: "bold", fill: heading-tone, upper(author)))
       if not is-blank(profession) {
         v(0.9em)
         align(center, text(size: 1.3em, fill: muted, profession))
@@ -149,7 +149,7 @@
     text(
       size: 10pt,
       weight: "bold",
-      tracking: 1.2pt,
+      
       fill: rgb(accent-color),
       upper(title),
     )

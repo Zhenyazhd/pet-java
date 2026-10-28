@@ -98,7 +98,7 @@
   block(above: gap, below: 1em, sticky: true, {
     set block(spacing: 0pt)
     set par(spacing: 0pt, justify: false)
-    text(size: label-size, weight: "bold", tracking: 1pt, fill: ink, upper(title))
+    text(size: label-size, weight: "bold", fill: ink, upper(title))
     v(4pt)
     line(length: 100%, stroke: 0.9pt + rgb(accent-color))
   })

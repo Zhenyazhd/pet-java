@@ -96,7 +96,7 @@
   block(above: gap, below: 1em, sticky: true, {
     set block(spacing: 0pt)
     set par(spacing: 0pt, justify: false)
-    pad(left: -STEP, text(size: label-size, weight: "semibold", tracking: 1pt, fill: rgb(accent-color), upper(title)))
+    pad(left: -STEP, text(size: label-size, weight: "semibold", fill: rgb(accent-color), upper(title)))
   })
 }
 

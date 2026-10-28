@@ -128,7 +128,7 @@
     text(
       size: 11pt,
       weight: "semibold",
-      tracking: 0.6pt,
+      
       fill: rgb(accent-color),
       smallcaps(title),
     )

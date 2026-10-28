@@ -97,7 +97,7 @@
       column-gutter: 8pt,
       align: (left + horizon, left + horizon),
       box(width: 4pt, height: label-size, radius: 1pt, fill: rgb(accent-color)),
-      text(size: label-size, weight: "semibold", tracking: 0.8pt, fill: ink, upper(title)),
+      text(size: label-size, weight: "semibold", fill: ink, upper(title)),
     )
     v(3pt)
     line(length: 100%, stroke: 0.5pt + rgb(accent-color).lighten(45%))

@@ -100,7 +100,7 @@
       columns: (auto, 1fr),
       align: (left + horizon, left + horizon),
       column-gutter: 0.8em,
-      text(size: label-size, weight: "bold", tracking: 1.1pt, fill: ink, upper(title)),
+      text(size: label-size, weight: "bold", fill: ink, upper(title)),
       line(length: 100%, stroke: 1pt + rgb(accent-color)),
     )
   })
