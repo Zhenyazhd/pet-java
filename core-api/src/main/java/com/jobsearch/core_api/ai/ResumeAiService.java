@@ -52,7 +52,7 @@ public class ResumeAiService {
 			"openai/gpt-5-nano",
 			"openai/gpt-5-mini",
 			"openai/gpt-5",
-			"anthropic/claude-sonnet-4",
+			"anthropic/claude-sonnet-5.5",
 			"google/gemini-2.5-flash",
 			"deepseek/deepseek-chat"
 	);

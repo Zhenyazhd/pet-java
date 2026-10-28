@@ -8,7 +8,7 @@ export const AI_MODELS: AiModelOption[] = [
   { id: 'openai/gpt-5-nano', label: 'GPT-5 nano' },
   { id: 'openai/gpt-5-mini', label: 'GPT-5 mini' },
   { id: 'openai/gpt-5', label: 'GPT-5' },
-  { id: 'anthropic/claude-sonnet-4', label: 'Claude Sonnet 4' },
+  { id: 'anthropic/claude-sonnet-5.5', label: 'Claude Sonnet 5.5' },
   { id: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
   { id: 'deepseek/deepseek-chat', label: 'DeepSeek Chat' },
 ]

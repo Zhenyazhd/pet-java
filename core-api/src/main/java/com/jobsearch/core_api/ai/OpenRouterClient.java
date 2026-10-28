@@ -141,6 +141,13 @@ public class OpenRouterClient {
 			return null;
 		}
 		logUsage(root);
+		JsonNode error = root.path("error");
+		if (!error.isMissingNode()) {
+			// OpenRouter can answer 200 with an error object (provider refused, no credit for the model, ...).
+			String message = error.path("message").asString("");
+			log.error("OpenRouter error in answer code={} message={}", error.path("code").asString(""),
+					message.length() <= 200 ? message : message.substring(0, 200));
+		}
 		JsonNode choice = root.path("choices").path(0);
 		String content = choice.path("message").path("content").asString("");
 		return new Completion(
